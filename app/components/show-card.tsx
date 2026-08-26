@@ -1,0 +1,66 @@
+"use client";
+
+import { useState } from "react";
+import { kindLabels, type ItemKind, type SampleItem } from "../../data/sample-items";
+
+const kindStyles: Record<ItemKind, string> = {
+  concert: "bg-accent/15 text-accent",
+  album: "bg-violet-400/15 text-violet-300",
+  past: "bg-rose-400/12 text-rose-300",
+  venue: "bg-sky-400/12 text-sky-300",
+};
+
+export function ShowCard({ item }: { item: SampleItem }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <li className="flex flex-col rounded-3xl border border-line bg-panel p-4 shadow-[0_12px_32px_rgba(0,0,0,0.32)] transition-colors hover:bg-panel-hover sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+        <div className="flex shrink-0 flex-row items-center gap-3 rounded-2xl bg-accent/10 px-3 py-2.5 sm:w-16 sm:flex-col sm:justify-center sm:gap-0 sm:px-1 sm:py-3">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-accent sm:text-xs">
+            {item.month}
+          </span>
+          <span className="font-display text-2xl leading-none tracking-tight sm:text-3xl">
+            {item.day}
+          </span>
+          <span className="text-[10px] font-medium uppercase tracking-wide text-mute sm:mt-1 sm:text-xs">
+            {item.weekday}
+          </span>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <span
+            className={`inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-semibold tracking-wide ${kindStyles[item.kind]}`}
+          >
+            {kindLabels[item.kind]}
+          </span>
+          <h3 className="mt-2 font-display text-xl leading-tight tracking-tight sm:text-2xl">
+            {item.title}
+          </h3>
+          <p className="mt-1 text-sm text-accent">{item.dateLabel}</p>
+          <p className="mt-0.5 text-sm leading-5 text-mute">{item.place}</p>
+        </div>
+      </div>
+
+      <p className="mt-4 text-sm leading-6 text-foreground/90">{item.note}</p>
+      <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-mute">
+        {item.genre}
+      </p>
+
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="mt-4 inline-flex min-h-12 w-full touch-manipulation items-center justify-center rounded-full bg-accent px-5 text-sm font-semibold text-background transition-colors hover:bg-accent-deep focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent sm:min-h-11 sm:w-auto"
+      >
+        View Show
+      </button>
+
+      {open ? (
+        <p className="mt-3 rounded-2xl border border-line bg-background/70 px-3 py-3 text-sm leading-6 text-mute">
+          {item.details}
+        </p>
+      ) : null}
+    </li>
+  );
+}
