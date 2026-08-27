@@ -10,8 +10,31 @@ const kindStyles: Record<ItemKind, string> = {
   venue: "bg-sky-400/12 text-sky-300",
 };
 
-export function ShowCard({ item }: { item: SampleItem }) {
+type ShowCardProps = {
+  item: SampleItem;
+  saved?: boolean;
+  favoriteBusy?: boolean;
+  favoritesReady?: boolean;
+  favoritesUnavailable?: boolean;
+  onToggleFavorite?: () => void;
+};
+
+export function ShowCard({
+  item,
+  saved = false,
+  favoriteBusy = false,
+  favoritesReady = false,
+  favoritesUnavailable = false,
+  onToggleFavorite,
+}: ShowCardProps) {
   const [open, setOpen] = useState(false);
+  const canFavorite = item.kind === "concert" && Boolean(onToggleFavorite);
+  const favoriteLabel =
+    !favoritesReady && !favoritesUnavailable
+      ? "Loading…"
+      : saved
+        ? "Saved"
+        : "Favorite";
 
   return (
     <li className="flex flex-col rounded-3xl border border-line bg-panel p-4 shadow-[0_12px_32px_rgba(0,0,0,0.32)] transition-colors hover:bg-panel-hover sm:p-5">
@@ -47,14 +70,32 @@ export function ShowCard({ item }: { item: SampleItem }) {
         {item.genre}
       </p>
 
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
-        className="mt-4 inline-flex min-h-12 w-full touch-manipulation items-center justify-center rounded-full bg-accent px-5 text-sm font-semibold text-background transition-colors hover:bg-accent-deep focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent sm:min-h-11 sm:w-auto"
-      >
-        View Show
-      </button>
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+          className="inline-flex min-h-12 w-full touch-manipulation items-center justify-center rounded-full bg-accent px-5 text-sm font-semibold text-background transition-colors hover:bg-accent-deep focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent sm:min-h-11 sm:w-auto"
+        >
+          View Show
+        </button>
+        {canFavorite ? (
+          <button
+            type="button"
+            aria-pressed={saved}
+            aria-busy={favoriteBusy || (!favoritesReady && !favoritesUnavailable)}
+            disabled={!favoritesReady || favoriteBusy}
+            onClick={onToggleFavorite}
+            className={
+              saved
+                ? "inline-flex min-h-12 w-full touch-manipulation items-center justify-center rounded-full border border-accent bg-accent/15 px-5 text-sm font-semibold text-accent transition-colors hover:bg-accent/25 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-70 sm:min-h-11 sm:w-auto"
+                : "inline-flex min-h-12 w-full touch-manipulation items-center justify-center rounded-full border border-line px-5 text-sm font-semibold text-foreground transition-colors hover:bg-panel-hover focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-70 sm:min-h-11 sm:w-auto"
+            }
+          >
+            {favoriteBusy ? "Loading…" : favoriteLabel}
+          </button>
+        ) : null}
+      </div>
 
       {open ? (
         <p className="mt-3 rounded-2xl border border-line bg-background/70 px-3 py-3 text-sm leading-6 text-mute">
