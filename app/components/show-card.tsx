@@ -66,9 +66,11 @@ export function ShowCard({
       </div>
 
       <p className="mt-4 text-sm leading-6 text-foreground/90">{item.note}</p>
-      <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-mute">
-        {item.genre}
-      </p>
+      {item.genre ? (
+        <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-mute">
+          {item.genre}
+        </p>
+      ) : null}
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
         <button
