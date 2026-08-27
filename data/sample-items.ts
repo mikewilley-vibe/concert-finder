@@ -12,6 +12,7 @@ export type SampleItem = {
   genre: string;
   note: string;
   details: string;
+  published?: boolean;
 };
 
 export const sampleItems: SampleItem[] = [

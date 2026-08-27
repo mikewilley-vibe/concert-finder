@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { sampleItems, type SampleItem } from "../../data/sample-items";
+import { AddConcertForm } from "./add-concert-form";
 import { loadConcerts } from "../../lib/concerts";
 import {
   concertItemKey,
@@ -78,6 +79,13 @@ export function ShowList() {
     async function loadListings() {
       try {
         const supabase = getSupabaseBrowserClient();
+
+        try {
+          await ensureAnonymousUser(supabase);
+        } catch {
+          // Published concerts can still load without a session.
+        }
+
         const rows = await loadConcerts(supabase);
 
         if (!cancelled) {
@@ -253,6 +261,14 @@ export function ShowList() {
             : "No concerts are listed yet."}
         </p>
       )}
+
+      <AddConcertForm
+        onSubmitted={async () => {
+          const supabase = getSupabaseBrowserClient();
+          const rows = await loadConcerts(supabase);
+          setConcerts(rows);
+        }}
+      />
     </section>
   );
 }

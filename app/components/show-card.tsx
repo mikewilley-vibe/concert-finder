@@ -28,6 +28,7 @@ export function ShowCard({
   onToggleFavorite,
 }: ShowCardProps) {
   const [open, setOpen] = useState(false);
+  const isDraft = item.kind === "concert" && item.published === false;
   const canFavorite = item.kind === "concert" && Boolean(onToggleFavorite);
   const favoriteLabel =
     !favoritesReady && !favoritesUnavailable
@@ -52,11 +53,17 @@ export function ShowCard({
         </div>
 
         <div className="min-w-0 flex-1">
-          <span
-            className={`inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-semibold tracking-wide ${kindStyles[item.kind]}`}
-          >
-            {kindLabels[item.kind]}
-          </span>
+          {isDraft ? (
+            <span className="inline-flex w-fit rounded-full bg-mute/15 px-2.5 py-1 text-xs font-semibold tracking-wide text-mute">
+              Draft
+            </span>
+          ) : (
+            <span
+              className={`inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-semibold tracking-wide ${kindStyles[item.kind]}`}
+            >
+              {kindLabels[item.kind]}
+            </span>
+          )}
           <h3 className="mt-2 font-display text-xl leading-tight tracking-tight sm:text-2xl">
             {item.title}
           </h3>
@@ -66,6 +73,11 @@ export function ShowCard({
       </div>
 
       <p className="mt-4 text-sm leading-6 text-foreground/90">{item.note}</p>
+      {isDraft ? (
+        <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-mute">
+          Waiting to be published
+        </p>
+      ) : null}
       {item.genre ? (
         <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-mute">
           {item.genre}
