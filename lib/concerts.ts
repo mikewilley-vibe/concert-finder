@@ -12,6 +12,16 @@ export type ConcertRow = {
   is_published: boolean;
 };
 
+export type ManagedConcert = {
+  id: string;
+  artist: string;
+  venue: string;
+  city: string;
+  event_date: string;
+  description: string;
+  is_published: boolean;
+};
+
 export type ConcertSubmission = {
   artist: string;
   venue: string;
@@ -22,6 +32,7 @@ export type ConcertSubmission = {
 
 const CONCERT_SELECT =
   "id, artist, venue, city, event_date, description, created_at, is_published";
+const OWN_CONCERT_SELECT = `${CONCERT_SELECT}, created_by`;
 
 function parseEventDate(value: string) {
   const day = value.slice(0, 10);
@@ -64,6 +75,24 @@ export function concertRowToItem(row: ConcertRow): SampleItem {
   };
 }
 
+function eventDateInputValue(value: string) {
+  const day = value.slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : "";
+}
+
+function mapManagedConcert(row: Record<string, unknown>): ManagedConcert {
+  return {
+    id: String(row.id),
+    artist: String(row.artist ?? ""),
+    venue: String(row.venue ?? ""),
+    city: String(row.city ?? ""),
+    event_date: eventDateInputValue(String(row.event_date ?? "")),
+    description:
+      typeof row.description === "string" ? row.description : "",
+    is_published: row.is_published === true,
+  };
+}
+
 function mapConcertRow(row: Record<string, unknown>): SampleItem {
   return concertRowToItem({
     id: String(row.id),
@@ -77,6 +106,12 @@ function mapConcertRow(row: Record<string, unknown>): SampleItem {
   });
 }
 
+function deniedError() {
+  const error = new Error("Could not change this concert.");
+  (error as Error & { code?: string }).code = "42501";
+  return error;
+}
+
 export async function loadConcerts(supabase: SupabaseClient) {
   const { data, error } = await supabase
     .from("concerts")
@@ -88,6 +123,73 @@ export async function loadConcerts(supabase: SupabaseClient) {
   }
 
   return (data ?? []).map((row) => mapConcertRow(row));
+}
+
+export async function loadOwnConcerts(
+  supabase: SupabaseClient,
+  userId: string,
+) {
+  const { data, error } = await supabase
+    .from("concerts")
+    .select(OWN_CONCERT_SELECT)
+    .eq("created_by", userId)
+    .order("event_date", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? [])
+    .filter((row) => String(row.created_by) === userId)
+    .map((row) => mapManagedConcert(row));
+}
+
+export async function updateOwnDraft(
+  supabase: SupabaseClient,
+  id: string,
+  input: ConcertSubmission,
+) {
+  const { data, error } = await supabase
+    .from("concerts")
+    .update({
+      artist: input.artist,
+      venue: input.venue,
+      city: input.city,
+      event_date: input.event_date,
+      description: input.description,
+    })
+    .eq("id", id)
+    .eq("is_published", false)
+    .select(OWN_CONCERT_SELECT)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data) {
+    throw deniedError();
+  }
+
+  return mapManagedConcert(data as Record<string, unknown>);
+}
+
+export async function deleteOwnDraft(supabase: SupabaseClient, id: string) {
+  const { data, error } = await supabase
+    .from("concerts")
+    .delete()
+    .eq("id", id)
+    .eq("is_published", false)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data) {
+    throw deniedError();
+  }
 }
 
 export async function submitConcert(

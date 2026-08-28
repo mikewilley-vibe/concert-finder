@@ -7,6 +7,10 @@ export function accountRedirectUrl() {
   return `${window.location.origin}/account`;
 }
 
+export function isPermanentUser(user: User | null) {
+  return Boolean(user && user.is_anonymous === false);
+}
+
 export function isAnonymousUser(user: User | null) {
   return Boolean(user?.is_anonymous);
 }
