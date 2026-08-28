@@ -4,7 +4,7 @@ const VENUES_PATH = "/discovery/v2/venues.json";
 const EVENTS_PATH = "/discovery/v2/events.json";
 const RESULT_LIMIT = 8;
 const EVENT_PAGE_SIZE = 20;
-const MAX_FOLLOWED_IDS = 8;
+export const MAX_FOLLOWED_IDS = 8;
 const MIN_KEYWORD_LENGTH = 2;
 const MAX_KEYWORD_LENGTH = 80;
 const ID_PATTERN = /^[A-Za-z0-9_-]{4,64}$/;
@@ -56,6 +56,7 @@ type TicketmasterFailure = {
   ok: false;
   status: number;
   message: string;
+  cause?: "auth" | "rate_limit";
 };
 
 function normalizeKeyword(value: string | null) {
@@ -248,6 +249,7 @@ async function ticketmasterGet(
       ok: false,
       status: 500,
       message: "Search is not configured on the server yet.",
+      cause: "auth",
     };
   }
 
@@ -280,6 +282,7 @@ async function ticketmasterGet(
       ok: false,
       status: 502,
       message: "Ticketmaster search is not set up correctly.",
+      cause: "auth",
     };
   }
 
@@ -289,6 +292,7 @@ async function ticketmasterGet(
       status: 429,
       message:
         "Ticketmaster is receiving too many requests right now. Try again shortly.",
+      cause: "rate_limit",
     };
   }
 
@@ -763,4 +767,124 @@ export async function searchUpcomingShows(input: {
     ok: true,
     shows: mergeShows(batches, input.attractions, input.venues),
   };
+}
+
+export type FollowedEventIdsResult =
+  | { ok: true; ids: string[] }
+  | TicketmasterFailure;
+
+export async function searchFollowedEventIds(input: {
+  itemType: "ticketmaster_attraction" | "ticketmaster_venue";
+  itemKey: string;
+}): Promise<FollowedEventIdsResult> {
+  const params: Record<string, string> = {
+    size: String(EVENT_PAGE_SIZE),
+    sort: "date,asc",
+    startDateTime: startDateTimeNow(),
+  };
+
+  if (input.itemType === "ticketmaster_attraction") {
+    params.attractionId = input.itemKey;
+  } else {
+    params.venueId = input.itemKey;
+  }
+
+  const result = await ticketmasterGet(EVENTS_PATH, params);
+  if (!result.ok) {
+    return result;
+  }
+
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const event of eventRows(result.payload)) {
+    if (!isUpcomingEvent(event)) {
+      continue;
+    }
+    const id = typeof event.id === "string" ? event.id.trim() : "";
+    if (!id || seen.has(id)) {
+      continue;
+    }
+    seen.add(id);
+    ids.push(id);
+  }
+
+  return { ok: true, ids };
+}
+
+const MAX_DETAIL_IDS = 8;
+
+export function parseEventDetailIds(value: string | null) {
+  const ids = (value ?? "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter((id) => ID_PATTERN.test(id));
+  const unique: string[] = [];
+  const seen = new Set<string>();
+  for (const id of ids) {
+    if (seen.has(id)) {
+      continue;
+    }
+    seen.add(id);
+    unique.push(id);
+    if (unique.length >= MAX_DETAIL_IDS) {
+      break;
+    }
+  }
+  if (unique.length === 0) {
+    return {
+      ok: false as const,
+      status: 400,
+      message: "Choose a show to look up.",
+    };
+  }
+  return { ok: true as const, ids: unique };
+}
+
+function attractionNames(event: Record<string, unknown>) {
+  return relatedRows(event, "attractions")
+    .map((row) =>
+      row && typeof row === "object" && typeof (row as { name?: unknown }).name === "string"
+        ? String((row as { name: string }).name).trim()
+        : "",
+    )
+    .filter(Boolean);
+}
+
+function asEventRecord(payload: unknown): Record<string, unknown> | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+  const record = payload as Record<string, unknown>;
+  if (typeof record.id === "string") {
+    return record;
+  }
+  return eventRows(payload)[0] ?? null;
+}
+
+export async function lookupEventsByIds(
+  ids: string[],
+): Promise<UpcomingShowsResult> {
+  const shows: TicketmasterShow[] = [];
+
+  for (const id of ids) {
+    const result = await ticketmasterGet(`${EVENTS_PATH.replace(".json", "")}/${id}.json`, {});
+    if (!result.ok) {
+      if (result.status === 429) {
+        return result;
+      }
+      continue;
+    }
+
+    const event = asEventRecord(result.payload);
+    if (!event) {
+      continue;
+    }
+    const labels = attractionNames(event);
+    const show = mapShow(event, labels.length > 0 ? labels : ["New show"]);
+    if (show) {
+      shows.push(show);
+    }
+  }
+
+  return { ok: true, shows };
 }

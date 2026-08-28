@@ -1,4 +1,5 @@
 import { FavoriteBands } from "./components/favorite-bands";
+import { NewShows } from "./components/new-shows";
 import { ShowList } from "./components/show-list";
 import { ShowsForYou } from "./components/shows-for-you";
 import { SiteHeader } from "./components/site-header";
@@ -46,6 +47,8 @@ export default function Home() {
 
         <div className="flex flex-col gap-12 sm:gap-16">
           <FavoriteBands />
+
+          <NewShows />
 
           <TicketmasterFollows />
 

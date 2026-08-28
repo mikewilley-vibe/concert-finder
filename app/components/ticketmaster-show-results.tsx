@@ -70,6 +70,28 @@ export async function fetchUpcomingShows(
   return { ok: true as const, shows: data.shows ?? [] };
 }
 
+export async function fetchEventDetails(ids: string[], signal?: AbortSignal) {
+  const params = new URLSearchParams({ ids: ids.join(",") });
+  const response = await fetch(`/api/ticketmaster/event-details?${params}`, {
+    method: "GET",
+    signal,
+  });
+  const data = (await response.json()) as {
+    shows?: ShowResult[];
+    error?: string;
+  };
+
+  if (!response.ok) {
+    return {
+      ok: false as const,
+      status: response.status,
+      error: showsMessage(response.status, data.error ?? ""),
+    };
+  }
+
+  return { ok: true as const, shows: data.shows ?? [] };
+}
+
 function placeLabel(show: ShowResult) {
   return [show.city, show.state].filter(Boolean).join(", ");
 }

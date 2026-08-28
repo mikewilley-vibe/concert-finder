@@ -20,6 +20,12 @@ export function SiteHeader() {
             Bands
           </Link>
           <Link
+            href="/#new-shows"
+            className="inline-flex min-h-11 touch-manipulation items-center px-2 text-sm text-mute transition-colors hover:text-foreground sm:px-3"
+          >
+            New
+          </Link>
+          <Link
             href="/#follows"
             className="inline-flex min-h-11 touch-manipulation items-center px-2 text-sm text-mute transition-colors hover:text-foreground sm:px-3"
           >
