@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import {
   parseSearchKeyword,
-  searchTicketmasterAttractions,
+  searchTicketmasterAttractionsForFollow,
 } from "../../../../lib/ticketmaster";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const result = await searchTicketmasterAttractions(parsed.keyword);
+  const result = await searchTicketmasterAttractionsForFollow(parsed.keyword);
   if (!result.ok) {
     return Response.json(
       { error: result.message },
@@ -24,5 +24,8 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  return Response.json({ attractions: result.attractions });
+  return Response.json({
+    attractions: result.attractions,
+    suggestions: result.suggestions,
+  });
 }

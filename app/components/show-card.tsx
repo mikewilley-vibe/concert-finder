@@ -35,7 +35,7 @@ export function ShowCard({
       ? "Loading…"
       : saved
         ? "Saved"
-        : "Favorite";
+        : "Save show";
 
   return (
     <li className="flex flex-col rounded-3xl border border-line bg-panel p-4 shadow-[0_12px_32px_rgba(0,0,0,0.32)] transition-colors hover:bg-panel-hover sm:p-5">
@@ -88,15 +88,23 @@ export function ShowCard({
         <button
           type="button"
           aria-expanded={open}
+          aria-label={
+            open ? `Hide details for ${item.title}` : `Show details for ${item.title}`
+          }
           onClick={() => setOpen((value) => !value)}
           className="inline-flex min-h-12 w-full touch-manipulation items-center justify-center rounded-full bg-accent px-5 text-sm font-semibold text-background transition-colors hover:bg-accent-deep focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent sm:min-h-11 sm:w-auto"
         >
-          View Show
+          {open ? "Hide details" : "Show details"}
         </button>
         {canFavorite ? (
           <button
             type="button"
             aria-pressed={saved}
+            aria-label={
+              saved
+                ? `Unsave ${item.title}`
+                : `Save show ${item.title}`
+            }
             aria-busy={favoriteBusy || (!favoritesReady && !favoritesUnavailable)}
             disabled={!favoritesReady || favoriteBusy}
             onClick={onToggleFavorite}

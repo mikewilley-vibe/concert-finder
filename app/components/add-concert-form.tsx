@@ -23,14 +23,14 @@ function submitMessage(error: unknown) {
       : "";
 
   if (message.includes("NEXT_PUBLIC_SUPABASE")) {
-    return "Submissions need NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in .env.local.";
+    return "Couldn't save that. Try again.";
   }
 
   if (
     code === "anonymous_provider_disabled" ||
     /anonymous sign-ins are disabled/i.test(message)
   ) {
-    return "Anonymous sign-in is turned off in Supabase. Enable it under Authentication → Providers → Anonymous, then try again.";
+    return "Couldn't start a session. Try refreshing the page.";
   }
 
   if (code === "42501" || /row-level security/i.test(message)) {
@@ -208,7 +208,7 @@ export function AddConcertForm({ onSubmitted }: AddConcertFormProps) {
 
         {error ? (
           <p
-            className="mt-4 rounded-2xl border border-line bg-background/70 px-4 py-3 text-sm leading-6 text-mute"
+            className="mt-4 rounded-2xl border border-line bg-background/70 px-4 py-3 text-sm leading-6 text-foreground"
             role="alert"
           >
             {error}

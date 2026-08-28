@@ -66,11 +66,3 @@ export const kindLabels: Record<ItemKind, string> = {
   past: "Past show",
   venue: "Venue nearby",
 };
-
-export const starterFavoriteBands = [
-  "Japanese Breakfast",
-  "Clairo",
-  "Turnstile",
-  "Mitski",
-  "Smino",
-];

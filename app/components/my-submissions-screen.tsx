@@ -39,7 +39,7 @@ function managementMessage(error: unknown) {
       : "";
 
   if (message.includes("NEXT_PUBLIC_SUPABASE")) {
-    return "Submissions need NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in .env.local.";
+    return "Couldn't save that. Try again.";
   }
 
   if (code === "42501" || /row-level security|could not change this concert/i.test(message)) {
@@ -201,7 +201,11 @@ export function MySubmissionsScreen() {
   }
 
   return (
-    <main className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 pb-20 sm:px-8 sm:pb-16">
+    <main
+      id="main"
+      tabIndex={-1}
+      className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 pb-20 outline-none sm:px-8 sm:pb-16"
+    >
       <section className="flex max-w-xl flex-col gap-3 py-8 sm:py-16">
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-accent sm:text-sm">
           Your submissions
@@ -215,7 +219,7 @@ export function MySubmissionsScreen() {
       </section>
 
       {!ready ? (
-        <p className={`${panelClass} max-w-xl text-sm leading-6 text-mute`}>
+        <p className={`${panelClass} max-w-xl text-sm leading-6 text-mute`} aria-live="polite">
           Loading submissions…
         </p>
       ) : !permanent ? (
@@ -224,14 +228,14 @@ export function MySubmissionsScreen() {
             Create or sign in to an account to manage your submissions.
           </p>
           <Link href="/account" className={`${primaryButtonClass} mt-5`}>
-            Go to Account
+            Go to account
           </Link>
         </section>
       ) : (
         <div className="flex max-w-xl flex-col gap-5">
           {error ? (
             <p
-              className="rounded-2xl border border-line bg-panel px-4 py-3 text-sm leading-6 text-mute"
+              className="rounded-2xl border border-line bg-panel px-4 py-3 text-sm leading-6 text-foreground"
               role="alert"
             >
               {error}

@@ -123,6 +123,7 @@ export function TicketmasterShowCard({ show }: { show: ShowResult }) {
           href={show.url}
           target="_blank"
           rel="noopener noreferrer"
+          aria-label={`View ${show.name} on Ticketmaster`}
           className="mt-4 inline-flex min-h-11 w-fit items-center rounded-full border border-line px-4 text-sm font-semibold text-foreground transition-colors hover:bg-panel-hover focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
         >
           View on Ticketmaster
@@ -140,6 +141,7 @@ export function TicketmasterShowResults({
   emptyMessage,
   emptyHint,
   onSearchWithoutZip,
+  compact = false,
 }: {
   pending: boolean;
   error: string | null;
@@ -148,11 +150,12 @@ export function TicketmasterShowResults({
   emptyMessage: string;
   emptyHint?: string;
   onSearchWithoutZip?: () => void;
+  compact?: boolean;
 }) {
   if (error) {
     return (
       <p
-        className="mt-5 max-w-xl rounded-2xl border border-line bg-panel px-4 py-3 text-sm leading-6 text-mute"
+        className="mt-5 max-w-xl rounded-2xl border border-line bg-panel px-4 py-3 text-sm leading-6 text-foreground"
         role="alert"
       >
         {error}
@@ -161,7 +164,11 @@ export function TicketmasterShowResults({
   }
 
   if (pending) {
-    return <p className="mt-5 text-sm text-mute">Loading shows...</p>;
+    return (
+      <p className="mt-5 text-sm text-mute" aria-live="polite">
+        Loading shows...
+      </p>
+    );
   }
 
   if (!shows) {
@@ -170,7 +177,7 @@ export function TicketmasterShowResults({
 
   if (shows.length === 0) {
     return (
-      <div className="mt-5 max-w-xl">
+      <div className="mt-5 max-w-xl" aria-live="polite">
         <p className="text-sm leading-6 text-mute">{emptyMessage}</p>
         {emptyHint ? (
           <p className="mt-2 text-sm leading-6 text-mute">{emptyHint}</p>
@@ -191,11 +198,20 @@ export function TicketmasterShowResults({
   return (
     <div className="mt-6">
       {heading ? (
-        <p className="mb-4 max-w-xl text-sm font-medium leading-6 text-foreground sm:text-base">
+        <p
+          className="mb-4 max-w-xl text-sm font-medium leading-6 text-foreground sm:text-base"
+          aria-live="polite"
+        >
           {heading}
         </p>
       ) : null}
-      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <ul
+        className={
+          compact
+            ? "grid grid-cols-1 gap-3"
+            : "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+        }
+      >
         {shows.map((show) => (
           <TicketmasterShowCard key={show.id} show={show} />
         ))}

@@ -13,9 +13,11 @@ const body = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "My Shows",
-  description:
-    "Keep track of concerts, album releases, and venues near you — built for music fans who want to stay aware of what’s coming.",
+  metadataBase: new URL("https://concert-finder-eta.vercel.app"),
+  title: {
+    default: "My Shows",
+    template: "%s · My Shows",
+  },
 };
 
 export const viewport: Viewport = {
@@ -27,6 +29,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
+      data-scroll-behavior="smooth"
       className={`${display.variable} ${body.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">{children}</body>

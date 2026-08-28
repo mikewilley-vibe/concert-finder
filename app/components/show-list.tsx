@@ -22,14 +22,14 @@ function favoritesMessage(error: unknown) {
       : "";
 
   if (message.includes("NEXT_PUBLIC_SUPABASE")) {
-    return "Favorites need NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in .env.local.";
+    return "Couldn't save that. Try again.";
   }
 
   if (
     code === "anonymous_provider_disabled" ||
     /anonymous sign-ins are disabled/i.test(message)
   ) {
-    return "Anonymous sign-in is turned off in Supabase. Enable it under Authentication → Providers → Anonymous, then refresh this page.";
+    return "Couldn't start a session. Try refreshing the page.";
   }
 
   return "Could not load saved concerts. Try refreshing the page.";
@@ -40,7 +40,7 @@ function concertsMessage(error: unknown) {
     error instanceof Error &&
     error.message.includes("NEXT_PUBLIC_SUPABASE")
   ) {
-    return "Concerts need NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in .env.local.";
+    return "Couldn't start a session. Try refreshing the page.";
   }
 
   return "Could not load concerts right now. Try refreshing the page.";
@@ -185,19 +185,8 @@ export function ShowList() {
   }
 
   return (
-    <section id="whats-coming" className="scroll-mt-24">
-      <div className="mb-6 flex flex-col gap-2 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="font-display text-2xl tracking-tight sm:text-3xl">
-            A peek at your music week
-          </h2>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-mute sm:text-base">
-            Upcoming concerts from the database, plus an album drop, a past
-            night out, and a venue nearby.
-          </p>
-        </div>
-        <p className="text-sm text-mute">{resultLabel}</p>
-      </div>
+    <div className="mt-6">
+      <p className="mb-5 text-sm text-mute">{resultLabel}</p>
 
       <label
         htmlFor="search-concerts"
@@ -216,13 +205,13 @@ export function ShowList() {
       />
 
       {concertsError ? (
-        <p className="mb-5 rounded-2xl border border-line bg-panel px-4 py-3 text-sm leading-6 text-mute" role="alert">
+        <p className="mb-5 rounded-2xl border border-line bg-panel px-4 py-3 text-sm leading-6 text-foreground" role="alert">
           {concertsError}
         </p>
       ) : null}
 
       {favoritesError ? (
-        <p className="mb-5 rounded-2xl border border-line bg-panel px-4 py-3 text-sm leading-6 text-mute" role="alert">
+        <p className="mb-5 rounded-2xl border border-line bg-panel px-4 py-3 text-sm leading-6 text-foreground" role="alert">
           {favoritesError}
         </p>
       ) : null}
@@ -269,6 +258,6 @@ export function ShowList() {
           setConcerts(rows);
         }}
       />
-    </section>
+    </div>
   );
 }

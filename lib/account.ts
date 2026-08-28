@@ -50,7 +50,7 @@ export function upgradeEmailMessage(error: unknown) {
   const { message, code } = authErrorFields(error);
 
   if (message.includes("NEXT_PUBLIC_SUPABASE")) {
-    return "Accounts need NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in .env.local.";
+    return "Couldn't start a session. Try refreshing the page.";
   }
 
   if (
@@ -62,7 +62,7 @@ export function upgradeEmailMessage(error: unknown) {
   }
 
   if (code === "anonymous_provider_disabled") {
-    return "Anonymous sign-in is turned off in Supabase. Enable it under Authentication → Providers → Anonymous, then refresh this page.";
+    return "Couldn't start a session. Try refreshing the page.";
   }
 
   if (/invalid.*email|email.*invalid|valid email/i.test(message)) {
@@ -87,7 +87,7 @@ export function passwordMessage(error: unknown) {
   }
 
   if (/reauthentication|nonce|recently signed in/i.test(message)) {
-    return "Supabase needs a recent sign-in before setting a password. Sign out, sign back in after verifying your email, then try again.";
+    return "Sign out, verify your email, sign back in, then try again.";
   }
 
   return "Could not save that password. Try a different one, at least 8 characters.";

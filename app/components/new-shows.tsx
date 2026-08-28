@@ -118,9 +118,11 @@ export function NewShows() {
 
   if (!ready) {
     return (
-      <section id="new-shows" className="scroll-mt-24">
-        <h2 className={headingClass}>New Shows Found</h2>
-        <p className={bodyClass}>Checking your latest scheduled results…</p>
+      <section id="new-shows" className="scroll-mt-24" aria-busy="true">
+        <h2 className={headingClass}>New shows</h2>
+        <p className={bodyClass} aria-live="polite">
+          Checking for new shows…
+        </p>
       </section>
     );
   }
@@ -130,8 +132,7 @@ export function NewShows() {
       <section id="new-shows" className="scroll-mt-24">
         <h2 className={headingClass}>Save your account first</h2>
         <p className={bodyClass}>
-          An automation needs a lasting account so it knows whose preferences it
-          is checking.
+          Save your account to get new-show checks.
         </p>
         <Link
           href="/account"
@@ -147,20 +148,15 @@ export function NewShows() {
     <section id="new-shows" className="scroll-mt-24">
       {newCount > 0 ? (
         <>
-          <h2 className={headingClass}>New Shows Found</h2>
+          <h2 className={headingClass}>New shows</h2>
           <p className={bodyClass}>
-            These Ticketmaster event IDs showed up after your last scheduled
-            check.
+            These appeared after the last check.
           </p>
         </>
       ) : (
         <>
-          <h2 className={headingClass}>Your starting point is set</h2>
-          <p className={bodyClass}>
-            Your automation now knows what Ticketmaster already had. On future
-            checks, it can recognize something that wasn&apos;t there before.
-          </p>
-          <p className="mt-3 text-sm text-foreground sm:text-base">
+          <h2 className={headingClass}>New shows</h2>
+          <p className="mt-2 text-sm text-foreground sm:text-base">
             No new shows since the last check.
           </p>
         </>
@@ -177,7 +173,11 @@ export function NewShows() {
         </div>
       </dl>
 
-      {error ? <p className="mt-4 text-sm text-accent">{error}</p> : null}
+      {error ? (
+        <p className="mt-4 text-sm text-foreground" role="alert">
+          {error}
+        </p>
+      ) : null}
 
       {shows.length > 0 ? (
         <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
@@ -196,6 +196,12 @@ export function NewShows() {
         >
           {pending ? "Saving…" : "Mark as seen"}
         </button>
+      ) : null}
+
+      {newCount === 0 ? (
+        <p className="mt-8 max-w-xl text-sm leading-6 text-mute">
+          We&apos;ll only flag shows that weren&apos;t here last time.
+        </p>
       ) : null}
     </section>
   );

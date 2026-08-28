@@ -1,8 +1,19 @@
+import {
+  fallbackSearchToken,
+  isDirectNameMatch,
+  MAX_NAME_SUGGESTIONS,
+  nameSimilarity,
+  normalizeNameForComparison,
+  SUGGEST_NAME_SIMILARITY,
+} from "./name-similarity";
+
 const TICKETMASTER_HOST = "https://app.ticketmaster.com";
 const ATTRACTIONS_PATH = "/discovery/v2/attractions.json";
+const SUGGEST_PATH = "/discovery/v2/suggest.json";
 const VENUES_PATH = "/discovery/v2/venues.json";
 const EVENTS_PATH = "/discovery/v2/events.json";
 const RESULT_LIMIT = 8;
+const FALLBACK_CANDIDATE_LIMIT = 24;
 const EVENT_PAGE_SIZE = 20;
 export const MAX_FOLLOWED_IDS = 8;
 const MIN_KEYWORD_LENGTH = 2;
@@ -155,7 +166,10 @@ function pickImage(images: unknown) {
   return preferred?.url;
 }
 
-function mapAttractions(payload: unknown): TicketmasterAttraction[] {
+function mapAttractions(
+  payload: unknown,
+  limit = RESULT_LIMIT,
+): TicketmasterAttraction[] {
   if (!payload || typeof payload !== "object") {
     return [];
   }
@@ -166,6 +180,7 @@ function mapAttractions(payload: unknown): TicketmasterAttraction[] {
     ? embedded.attractions
     : [];
   const attractions: TicketmasterAttraction[] = [];
+  const seen = new Set<string>();
 
   for (const row of rows) {
     if (!row || typeof row !== "object") {
@@ -175,10 +190,11 @@ function mapAttractions(payload: unknown): TicketmasterAttraction[] {
     const record = row as { id?: unknown; name?: unknown; images?: unknown };
     const id = typeof record.id === "string" ? record.id.trim() : "";
     const name = typeof record.name === "string" ? record.name.trim() : "";
-    if (!id || !name) {
+    if (!id || !name || seen.has(id)) {
       continue;
     }
 
+    seen.add(id);
     const attraction: TicketmasterAttraction = { id, name };
     const image = pickImage(record.images);
     if (image) {
@@ -186,7 +202,7 @@ function mapAttractions(payload: unknown): TicketmasterAttraction[] {
     }
 
     attractions.push(attraction);
-    if (attractions.length >= RESULT_LIMIT) {
+    if (attractions.length >= limit) {
       break;
     }
   }
@@ -317,16 +333,107 @@ async function ticketmasterGet(
 
 export async function searchTicketmasterAttractions(
   keyword: string,
+  size = RESULT_LIMIT,
 ): Promise<AttractionSearchResult> {
   const result = await ticketmasterGet(ATTRACTIONS_PATH, {
     keyword,
-    size: String(RESULT_LIMIT),
+    size: String(size),
   });
   if (!result.ok) {
     return result;
   }
 
-  return { ok: true, attractions: mapAttractions(result.payload) };
+  return { ok: true, attractions: mapAttractions(result.payload, size) };
+}
+
+function rankAttractionSuggestions(
+  query: string,
+  candidates: TicketmasterAttraction[],
+) {
+  const ranked = candidates
+    .map((attraction) => ({
+      attraction,
+      score: nameSimilarity(query, attraction.name),
+    }))
+    .filter((row) => row.score >= SUGGEST_NAME_SIMILARITY)
+    .sort((a, b) => b.score - a.score || a.attraction.name.localeCompare(b.attraction.name));
+
+  const unique: TicketmasterAttraction[] = [];
+  const seen = new Set<string>();
+  for (const row of ranked) {
+    if (seen.has(row.attraction.id)) {
+      continue;
+    }
+    seen.add(row.attraction.id);
+    unique.push(row.attraction);
+    if (unique.length >= MAX_NAME_SUGGESTIONS) {
+      break;
+    }
+  }
+
+  return unique;
+}
+
+export type AttractionFollowSearchResult =
+  | {
+      ok: true;
+      attractions: TicketmasterAttraction[];
+      suggestions: TicketmasterAttraction[];
+    }
+  | { ok: false; status: number; message: string };
+
+export async function searchTicketmasterAttractionsForFollow(
+  keyword: string,
+): Promise<AttractionFollowSearchResult> {
+  const direct = await searchTicketmasterAttractions(keyword);
+  if (!direct.ok) {
+    return direct;
+  }
+
+  if (
+    direct.attractions.some((attraction) =>
+      isDirectNameMatch(keyword, attraction.name),
+    )
+  ) {
+    return { ok: true, attractions: direct.attractions, suggestions: [] };
+  }
+
+  const token = fallbackSearchToken(keyword);
+  let candidates: TicketmasterAttraction[] = [];
+
+  if (token && token !== normalizeNameForComparison(keyword)) {
+    const fallback = await searchTicketmasterAttractions(
+      token,
+      FALLBACK_CANDIDATE_LIMIT,
+    );
+    if (!fallback.ok) {
+      if (fallback.status === 429) {
+        return fallback;
+      }
+    } else {
+      candidates = fallback.attractions;
+    }
+  } else {
+    const suggested = await ticketmasterGet(SUGGEST_PATH, { keyword });
+    if (!suggested.ok) {
+      if (suggested.status === 429) {
+        return suggested;
+      }
+    } else {
+      candidates = mapAttractions(suggested.payload, FALLBACK_CANDIDATE_LIMIT);
+    }
+  }
+
+  const suggestions = rankAttractionSuggestions(keyword, candidates);
+  if (suggestions.length > 0) {
+    return { ok: true, attractions: [], suggestions };
+  }
+
+  return {
+    ok: true,
+    attractions: direct.attractions,
+    suggestions: [],
+  };
 }
 
 export async function searchTicketmasterVenues(

@@ -10,19 +10,17 @@ import {
 } from "../../lib/saved-follows";
 import { ensureAnonymousUser } from "../../lib/saved-concerts";
 import { getSupabaseBrowserClient } from "../../lib/supabase/browser-client";
+import { FollowedArtistSelect, ALL_FOLLOWED_ARTISTS } from "./followed-artist-select";
 import {
   fetchUpcomingShows,
   TicketmasterShowResults,
   type ShowResult,
 } from "./ticketmaster-show-results";
 
-const ALL = "all";
+const ALL = ALL_FOLLOWED_ARTISTS;
 
 const fieldClass =
-  "min-h-12 w-full rounded-full border border-line bg-panel px-4 text-base text-foreground outline-none placeholder:text-mute/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
-
-const primaryButtonClass =
-  "inline-flex min-h-12 w-full shrink-0 touch-manipulation items-center justify-center rounded-full bg-accent px-6 text-sm font-semibold text-background transition-colors hover:bg-accent-deep focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto";
+  "min-h-12 min-w-0 w-full rounded-full border border-line bg-panel px-4 text-base text-foreground outline-none placeholder:text-mute/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
 function toRefs(items: FollowedItem[]) {
   return items.map((item) => ({
@@ -55,6 +53,23 @@ function upcomingArtistHeading(name: string, usedZip: boolean) {
   return `Upcoming shows for ${name}`;
 }
 
+function venueHeadingLabel(items: FollowedItem[], selected: string) {
+  if (selected === ALL) {
+    return "the venues you follow";
+  }
+  return (
+    items.find((item) => item.item_key === selected)?.item_label ||
+    "this venue"
+  );
+}
+
+function upcomingVenueHeading(name: string) {
+  return `Upcoming shows at ${name}`;
+}
+
+const columnButtonClass =
+  "inline-flex min-h-12 w-full touch-manipulation items-center justify-center rounded-full bg-accent px-6 text-sm font-semibold text-background transition-colors hover:bg-accent-deep focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-70";
+
 export function ShowsForYou() {
   const [artists, setArtists] = useState<FollowedItem[]>([]);
   const [venues, setVenues] = useState<FollowedItem[]>([]);
@@ -70,6 +85,7 @@ export function ShowsForYou() {
   const [artistUsedZip, setArtistUsedZip] = useState(false);
   const [artistResultHeading, setArtistResultHeading] = useState("");
   const [venueShows, setVenueShows] = useState<ShowResult[] | null>(null);
+  const [venueResultHeading, setVenueResultHeading] = useState("");
   const artistRequestRef = useRef<AbortController | null>(null);
   const venueRequestRef = useRef<AbortController | null>(null);
 
@@ -116,6 +132,24 @@ export function ShowsForYou() {
       window.removeEventListener(FOLLOWS_CHANGED_EVENT, onFollowsChanged);
     };
   }, []);
+
+  useEffect(() => {
+    if (
+      selectedArtist !== ALL &&
+      !artists.some((artist) => artist.item_key === selectedArtist)
+    ) {
+      setSelectedArtist(ALL);
+    }
+  }, [artists, selectedArtist]);
+
+  useEffect(() => {
+    if (
+      selectedVenue !== ALL &&
+      !venues.some((venue) => venue.item_key === selectedVenue)
+    ) {
+      setSelectedVenue(ALL);
+    }
+  }, [venues, selectedVenue]);
 
   async function runArtistSearch(nextPostalCode: string) {
     if (artistPending) {
@@ -202,6 +236,7 @@ export function ShowsForYou() {
       if (chosen.length === 0) {
         setSelectedVenue(ALL);
         setVenueShows(null);
+        setVenueResultHeading("");
         return;
       }
 
@@ -219,6 +254,9 @@ export function ShowsForYou() {
         return;
       }
 
+      setVenueResultHeading(
+        upcomingVenueHeading(venueHeadingLabel(nextVenues, selectedVenue)),
+      );
       setVenueShows(result.shows);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
@@ -235,25 +273,28 @@ export function ShowsForYou() {
   }
 
   return (
-    <div id="shows-for-you" className="flex flex-col gap-12 sm:gap-16">
-      <section id="upcoming-artist-shows" className="scroll-mt-24">
+    <div
+      id="shows-for-you"
+      className="grid grid-cols-1 items-start gap-10 lg:grid-cols-2 lg:gap-8"
+    >
+      <section id="upcoming-artist-shows" className="min-w-0 scroll-mt-24">
         <h2 className="font-display text-2xl tracking-tight sm:text-3xl">
           Upcoming Shows by Artist
         </h2>
-        <p className="mt-2 max-w-xl text-sm leading-6 text-mute sm:text-base">
-          Where are artists I follow playing? Choose an artist you follow. You
-          can optionally add a ZIP/postal code to narrow the Ticketmaster
-          results. This app does not sell tickets.
+        <p className="mt-2 text-sm leading-6 text-mute sm:text-base">
+          See where followed artists are playing. Add a ZIP to narrow it.
         </p>
 
         {!followsReady ? (
-          <p className="mt-5 text-sm text-mute">Loading shows...</p>
+          <p className="mt-5 text-sm text-mute" aria-live="polite">
+            Loading who you follow…
+          </p>
         ) : artists.length === 0 ? (
-          <p className="mt-5 max-w-xl text-sm leading-6 text-mute">
+          <p className="mt-5 text-sm leading-6 text-mute">
             You aren&apos;t following any artists yet.{" "}
             <a
               href="#follow-artist-keyword"
-              className="font-semibold text-foreground underline decoration-line underline-offset-4"
+              className="rounded-sm font-semibold text-foreground underline decoration-line underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
             >
               Search and follow an artist
             </a>
@@ -262,29 +303,13 @@ export function ShowsForYou() {
         ) : (
           <form
             onSubmit={handleArtistSearch}
-            className="mt-5 flex max-w-xl flex-col gap-3"
+            className="mt-5 flex w-full flex-col gap-3"
           >
-            <div>
-              <label
-                htmlFor="upcoming-artist-select"
-                className="mb-2 block text-sm font-medium text-foreground"
-              >
-                Artist
-              </label>
-              <select
-                id="upcoming-artist-select"
-                value={selectedArtist}
-                onChange={(event) => setSelectedArtist(event.target.value)}
-                className={fieldClass}
-              >
-                <option value={ALL}>All Followed Artists</option>
-                {artists.map((artist) => (
-                  <option key={artist.item_key} value={artist.item_key}>
-                    {artist.item_label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <FollowedArtistSelect
+              artists={artists}
+              value={selectedArtist}
+              onChange={setSelectedArtist}
+            />
             <div>
               <label
                 htmlFor="artist-postal-code"
@@ -310,7 +335,7 @@ export function ShowsForYou() {
             <button
               type="submit"
               disabled={artistPending}
-              className={primaryButtonClass}
+              className={columnButtonClass}
             >
               {artistPending ? "Loading shows..." : "Find Artist Shows"}
             </button>
@@ -331,26 +356,28 @@ export function ShowsForYou() {
           onSearchWithoutZip={
             artistUsedZip ? handleSearchWithoutZip : undefined
           }
+          compact
         />
       </section>
 
-      <section id="upcoming-venue-shows" className="scroll-mt-24">
+      <section id="upcoming-venue-shows" className="min-w-0 scroll-mt-24">
         <h2 className="font-display text-2xl tracking-tight sm:text-3xl">
           Upcoming Shows by Venue
         </h2>
-        <p className="mt-2 max-w-xl text-sm leading-6 text-mute sm:text-base">
-          What&apos;s coming up at venues I follow? Choose a venue you follow to
-          see what Ticketmaster has coming up there.
+        <p className="mt-2 text-sm leading-6 text-mute sm:text-base">
+          See what&apos;s coming at venues you follow.
         </p>
 
         {!followsReady ? (
-          <p className="mt-5 text-sm text-mute">Loading shows...</p>
+          <p className="mt-5 text-sm text-mute" aria-live="polite">
+            Loading who you follow…
+          </p>
         ) : venues.length === 0 ? (
-          <p className="mt-5 max-w-xl text-sm leading-6 text-mute">
+          <p className="mt-5 text-sm leading-6 text-mute">
             You aren&apos;t following any venues yet.{" "}
             <a
               href="#follow-venue-keyword"
-              className="font-semibold text-foreground underline decoration-line underline-offset-4"
+              className="rounded-sm font-semibold text-foreground underline decoration-line underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
             >
               Search and follow a venue
             </a>
@@ -359,14 +386,14 @@ export function ShowsForYou() {
         ) : (
           <form
             onSubmit={handleVenueSearch}
-            className="mt-5 flex max-w-xl flex-col gap-3"
+            className="mt-5 flex w-full flex-col gap-3"
           >
             <div>
               <label
                 htmlFor="upcoming-venue-select"
                 className="mb-2 block text-sm font-medium text-foreground"
               >
-                Venue
+                Followed venues
               </label>
               <select
                 id="upcoming-venue-select"
@@ -374,7 +401,7 @@ export function ShowsForYou() {
                 onChange={(event) => setSelectedVenue(event.target.value)}
                 className={fieldClass}
               >
-                <option value={ALL}>All Followed Venues</option>
+                <option value={ALL}>All followed venues</option>
                 {venues.map((venue) => (
                   <option key={venue.item_key} value={venue.item_key}>
                     {venue.item_label}
@@ -385,7 +412,7 @@ export function ShowsForYou() {
             <button
               type="submit"
               disabled={venuePending}
-              className={primaryButtonClass}
+              className={columnButtonClass}
             >
               {venuePending ? "Loading shows..." : "Find Venue Shows"}
             </button>
@@ -396,7 +423,9 @@ export function ShowsForYou() {
           pending={venuePending}
           error={venueError}
           shows={venueShows}
+          heading={venueResultHeading}
           emptyMessage="No upcoming shows found at this venue."
+          compact
         />
       </section>
     </div>

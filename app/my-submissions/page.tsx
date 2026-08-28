@@ -1,10 +1,15 @@
+import type { Metadata } from "next";
 import { MySubmissionsScreen } from "../components/my-submissions-screen";
 import { SiteHeader } from "../components/site-header";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
-  title: "My Submissions · My Shows",
+export const metadata: Metadata = {
+  title: "My Submissions",
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function MySubmissionsPage() {
@@ -18,8 +23,8 @@ export default function MySubmissionsPage() {
       <MySubmissionsScreen />
       <footer className="relative z-10 border-t border-line pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         <p className="mx-auto max-w-6xl px-4 py-6 text-sm text-mute sm:px-8">
-          My Shows · Sample data for now. Alerts and calendar sync can come
-          later.
+          My Shows · Listings include example cards. Alerts and calendar sync
+          can come later. This app does not sell tickets.
         </p>
       </footer>
     </div>

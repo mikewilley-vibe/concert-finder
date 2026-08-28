@@ -313,7 +313,11 @@ export function AccountScreen() {
   }
 
   return (
-    <main className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 pb-20 sm:px-8 sm:pb-16">
+    <main
+      id="main"
+      tabIndex={-1}
+      className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 pb-20 outline-none sm:px-8 sm:pb-16"
+    >
       <section className="flex max-w-xl flex-col gap-3 py-8 sm:py-16">
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-accent sm:text-sm">
           Your account
@@ -329,14 +333,17 @@ export function AccountScreen() {
       </section>
 
       {!ready ? (
-        <p className={`${panelClass} max-w-xl text-sm leading-6 text-mute`}>
+        <p
+          className={`${panelClass} max-w-xl text-sm leading-6 text-mute`}
+          aria-live="polite"
+        >
           Loading account…
         </p>
       ) : (
         <div className="flex max-w-xl flex-col gap-8">
           {error ? (
             <p
-              className="rounded-2xl border border-line bg-panel px-4 py-3 text-sm leading-6 text-mute"
+              className="rounded-2xl border border-line bg-panel px-4 py-3 text-sm leading-6 text-foreground"
               role="alert"
             >
               {error}
