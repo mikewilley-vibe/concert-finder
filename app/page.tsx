@@ -1,5 +1,6 @@
 import { FavoriteBands } from "./components/favorite-bands";
 import { ShowList } from "./components/show-list";
+import { SiteHeader } from "./components/site-header";
 
 export default function Home() {
   return (
@@ -9,32 +10,7 @@ export default function Home() {
         className="pointer-events-none absolute inset-x-0 top-0 h-[20rem] bg-[radial-gradient(ellipse_at_top,_rgba(216,255,62,0.16),_transparent_58%)] sm:h-[28rem]"
       />
 
-      <header className="sticky top-0 z-20 border-b border-line/70 bg-background/80 pt-[env(safe-area-inset-top)] backdrop-blur-md">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-8 sm:py-4">
-          <a href="/" className="flex min-h-11 items-center gap-2.5">
-            <span className="grid h-8 w-8 place-items-center rounded-md bg-accent text-sm font-semibold text-background">
-              MS
-            </span>
-            <span className="font-display text-base tracking-tight sm:text-lg">
-              My Shows
-            </span>
-          </a>
-          <nav className="flex items-center gap-1 sm:gap-2">
-            <a
-              href="#favorite-bands"
-              className="inline-flex min-h-11 touch-manipulation items-center px-2 text-sm text-mute transition-colors hover:text-foreground sm:px-3"
-            >
-              Bands
-            </a>
-            <a
-              href="#whats-coming"
-              className="inline-flex min-h-11 touch-manipulation items-center px-2 text-sm text-mute transition-colors hover:text-foreground sm:px-3"
-            >
-              Shows
-            </a>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 pb-20 sm:px-8 sm:pb-16">
         <section className="flex max-w-2xl flex-col gap-4 py-8 sm:gap-6 sm:py-16">

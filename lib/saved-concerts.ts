@@ -11,26 +11,26 @@ export function concertItemLabel(item: SampleItem) {
   return `${item.title} · ${item.place}`;
 }
 
-let pendingAnonymousUser: Promise<User> | null = null;
+let pendingAnonymousSignIn: Promise<User> | null = null;
 
 export async function ensureAnonymousUser(
   supabase: SupabaseClient,
 ): Promise<User> {
-  if (!pendingAnonymousUser) {
-    pendingAnonymousUser = (async () => {
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
 
-      if (sessionError) {
-        throw sessionError;
-      }
+  if (sessionError) {
+    throw sessionError;
+  }
 
-      if (session?.user) {
-        return session.user;
-      }
+  if (session?.user) {
+    return session.user;
+  }
 
+  if (!pendingAnonymousSignIn) {
+    pendingAnonymousSignIn = (async () => {
       const { data, error } = await supabase.auth.signInAnonymously();
 
       if (error) {
@@ -42,15 +42,12 @@ export async function ensureAnonymousUser(
       }
 
       return data.user;
-    })();
+    })().finally(() => {
+      pendingAnonymousSignIn = null;
+    });
   }
 
-  try {
-    return await pendingAnonymousUser;
-  } catch (error) {
-    pendingAnonymousUser = null;
-    throw error;
-  }
+  return pendingAnonymousSignIn;
 }
 
 export async function loadSavedConcertKeys(supabase: SupabaseClient) {
