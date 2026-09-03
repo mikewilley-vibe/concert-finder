@@ -1,4 +1,5 @@
-import type { AuthError, EmailOtpType, SupabaseClient, User } from "@supabase/supabase-js";
+import type { AuthError, EmailOtpType, User } from "@supabase/supabase-js";
+import type { AppSupabaseClient } from "./supabase/database.types";
 
 export const PASSWORD_SET_KEY = "password_set";
 export const MIN_PASSWORD_LENGTH = 8;
@@ -123,7 +124,7 @@ export function confirmationMessage(detail: string) {
   return "Could not finish email confirmation. Request a new verification email.";
 }
 
-export async function consumeAuthRedirect(supabase: SupabaseClient) {
+export async function consumeAuthRedirect(supabase: AppSupabaseClient) {
   const url = new URL(window.location.href);
   const hash = new URLSearchParams(url.hash.replace(/^#/, ""));
   const rawError =
@@ -166,7 +167,7 @@ export async function consumeAuthRedirect(supabase: SupabaseClient) {
   return notice;
 }
 
-export async function markPasswordSet(supabase: SupabaseClient) {
+export async function markPasswordSet(supabase: AppSupabaseClient) {
   const { error } = await supabase.auth.updateUser({
     data: { [PASSWORD_SET_KEY]: true },
   });
