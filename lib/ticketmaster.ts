@@ -282,7 +282,8 @@ async function ticketmasterGet(
     response = await fetch(url, {
       method: "GET",
       headers: { Accept: "application/json" },
-      cache: "no-store",
+      cache: "force-cache",
+      next: { revalidate: 300 },
       signal: AbortSignal.timeout(10000),
     });
   } catch {
