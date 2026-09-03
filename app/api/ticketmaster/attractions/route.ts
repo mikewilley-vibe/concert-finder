@@ -3,10 +3,16 @@ import {
   parseSearchKeyword,
   searchTicketmasterAttractionsForFollow,
 } from "../../../../lib/ticketmaster";
-
-export const dynamic = "force-dynamic";
+import { ticketmasterRateLimitResponse } from "../../../../lib/api-rate-limit";
 
 export async function GET(request: NextRequest) {
+  const limited = ticketmasterRateLimitResponse(
+    request,
+    "ticketmaster-attractions",
+    30,
+  );
+  if (limited) return limited;
+
   const parsed = parseSearchKeyword(request.nextUrl.searchParams.get("keyword"));
 
   if (!parsed.ok) {

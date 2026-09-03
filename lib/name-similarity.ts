@@ -4,7 +4,7 @@ export function normalizeNameForComparison(value: string) {
   return value
     .trim()
     .toLowerCase()
-    .replace(/['’.`]/g, "")
+    .replace(/['\u2019.`]/g, "")
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -103,12 +103,13 @@ export function isDirectNameMatch(query: string, candidate: string) {
 
 export function fallbackSearchToken(keyword: string) {
   const normalized = normalizeNameForComparison(keyword);
-  const tokens = normalized.split(" ").filter((token) => token.length >= 3);
+  const core = stripLeadingSmallWords(normalized);
+  const tokens = core.split(" ").filter((token) => token.length >= 3);
   if (tokens.length >= 2) {
     return tokens[0];
   }
-  if (normalized.length >= 5) {
-    return normalized.slice(0, -1);
+  if (core.length >= 5) {
+    return core.slice(0, -1);
   }
   return null;
 }

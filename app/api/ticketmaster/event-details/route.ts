@@ -3,10 +3,16 @@ import {
   lookupEventsByIds,
   parseEventDetailIds,
 } from "../../../../lib/ticketmaster";
-
-export const dynamic = "force-dynamic";
+import { ticketmasterRateLimitResponse } from "../../../../lib/api-rate-limit";
 
 export async function GET(request: NextRequest) {
+  const limited = ticketmasterRateLimitResponse(
+    request,
+    "ticketmaster-event-details",
+    60,
+  );
+  if (limited) return limited;
+
   const parsed = parseEventDetailIds(request.nextUrl.searchParams.get("ids"));
   if (!parsed.ok) {
     return Response.json(

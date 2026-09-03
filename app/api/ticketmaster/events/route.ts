@@ -3,10 +3,16 @@ import {
   parseUpcomingShowsRequest,
   searchUpcomingShows,
 } from "../../../../lib/ticketmaster";
-
-export const dynamic = "force-dynamic";
+import { ticketmasterRateLimitResponse } from "../../../../lib/api-rate-limit";
 
 export async function POST(request: NextRequest) {
+  const limited = ticketmasterRateLimitResponse(
+    request,
+    "ticketmaster-events",
+    20,
+  );
+  if (limited) return limited;
+
   let body: unknown;
   try {
     body = await request.json();

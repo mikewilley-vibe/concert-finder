@@ -1,4 +1,5 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
+import type { AppSupabaseClient, Database } from "./database.types";
 
 export class AdminConfigError extends Error {
   constructor(message: string) {
@@ -7,9 +8,9 @@ export class AdminConfigError extends Error {
   }
 }
 
-let adminClient: SupabaseClient | null = null;
+let adminClient: AppSupabaseClient | null = null;
 
-export function getSupabaseAdminClient(): SupabaseClient {
+export function getSupabaseAdminClient(): AppSupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const secretKey = process.env.SUPABASE_SECRET_KEY?.trim();
 
@@ -21,7 +22,7 @@ export function getSupabaseAdminClient(): SupabaseClient {
     return adminClient;
   }
 
-  adminClient = createClient(url, secretKey, {
+  adminClient = createClient<Database>(url, secretKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,

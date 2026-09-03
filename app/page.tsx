@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { NewShows } from "./components/new-shows";
+import { SavedTicketmasterShows } from "./components/saved-ticketmaster-shows";
 import { ShowList } from "./components/show-list";
 import { ShowsForYou } from "./components/shows-for-you";
 import { SiteHeader } from "./components/site-header";
@@ -8,9 +9,9 @@ import {
   TicketmasterFollows,
 } from "./components/ticketmaster-follows";
 
-const homeTitle = "My Shows · Concerts for the bands and rooms you follow";
+const homeTitle = "My Shows \u00b7 Concerts for the bands and rooms you follow";
 const homeDescription =
-  "Follow artists and venues, see upcoming concerts, and keep a listings board — for music fans who want to stay aware of what's coming.";
+  "Follow artists and venues, see upcoming concerts, and keep a listings board \u2014 for music fans who want to stay aware of what's coming.";
 
 export const metadata: Metadata = {
   title: {
@@ -56,7 +57,7 @@ export default function Home() {
           </h1>
           <p className="max-w-xl text-base leading-7 text-mute sm:text-lg sm:leading-8">
             My Shows helps you stay aware of concerts. Follow the bands you
-            love, see what's coming to venues you follow, and keep a listings
+            love, see what&apos;s coming to venues you follow, and keep a listings
             board of shows.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -80,12 +81,14 @@ export default function Home() {
 
           <ShowsForYou />
 
+          <SavedTicketmasterShows />
+
           <section id="whats-coming" className="scroll-mt-24">
             <h2 className="font-display text-2xl tracking-tight sm:text-3xl">
               Listings
             </h2>
             <p className="mt-2 max-w-xl text-sm leading-6 text-mute sm:text-base">
-              Concerts you've added, plus a few example cards.
+              Concerts submitted by the community.
             </p>
             <ShowList />
           </section>
@@ -98,8 +101,8 @@ export default function Home() {
 
       <footer className="relative z-10 border-t border-line pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         <p className="mx-auto max-w-6xl px-4 py-6 text-sm text-mute sm:px-8">
-          My Shows · Listings include example cards. Alerts and calendar sync
-          can come later. This app does not sell tickets.
+          My Shows \u00b7 Community submissions remain drafts until they are
+          published. This app does not sell tickets.
         </p>
       </footer>
     </div>

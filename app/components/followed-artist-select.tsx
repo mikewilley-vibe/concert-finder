@@ -22,7 +22,6 @@ export function FollowedArtistSelect({
   const listId = useId();
   const inputId = "upcoming-artist-select";
   const rootRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [filtering, setFiltering] = useState(false);
@@ -72,20 +71,16 @@ export function FollowedArtistSelect({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [open]);
 
-  useEffect(() => {
-    setActiveIndex(0);
-  }, [query, open, filtering]);
-
   function close() {
     setOpen(false);
     setQuery("");
     setFiltering(false);
+    setActiveIndex(0);
   }
 
   function selectOption(next: string) {
     onChange(next);
     close();
-    inputRef.current?.focus();
   }
 
   return (
@@ -97,7 +92,6 @@ export function FollowedArtistSelect({
         Followed artists
       </label>
       <input
-        ref={inputRef}
         id={inputId}
         type="text"
         role="combobox"
@@ -114,12 +108,15 @@ export function FollowedArtistSelect({
           setQuery(event.target.value);
           setFiltering(true);
           setOpen(true);
+          setActiveIndex(0);
         }}
         onFocus={() => {
           setOpen(true);
+          setActiveIndex(0);
         }}
         onClick={() => {
           setOpen(true);
+          setActiveIndex(0);
         }}
         onKeyDown={(event) => {
           if (event.key === "ArrowDown") {

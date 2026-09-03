@@ -1,7 +1,8 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { AppSupabaseClient } from "./supabase/database.types";
 
 export const FOLLOWED_ATTRACTION_TYPE = "ticketmaster_attraction";
 export const FOLLOWED_VENUE_TYPE = "ticketmaster_venue";
+export const MAX_MONITORED_FOLLOWS = 8;
 export const FOLLOWS_CHANGED_EVENT = "my-shows:follows-changed";
 
 export function notifyFollowsChanged() {
@@ -21,7 +22,7 @@ export type FollowedItem = {
 };
 
 export async function loadFollowedItems(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   itemType: FollowedItemType,
 ) {
   const { data, error } = await supabase
@@ -49,7 +50,7 @@ export async function loadFollowedItems(
 }
 
 export async function followItem(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   itemType: FollowedItemType,
   item: FollowedItem,
@@ -67,7 +68,7 @@ export async function followItem(
 }
 
 export async function unfollowItem(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   itemType: FollowedItemType,
   itemKey: string,
