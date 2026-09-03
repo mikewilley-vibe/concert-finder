@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { sampleItems, type SampleItem } from "../../data/sample-items";
 import { AddConcertForm } from "./add-concert-form";
 import { loadConcerts } from "../../lib/concerts";
+import type { ListingItem } from "../../lib/listing-item";
 import {
   concertItemKey,
   ensureAnonymousUser,
@@ -48,7 +48,7 @@ function concertsMessage(error: unknown) {
 
 export function ShowList() {
   const [query, setQuery] = useState("");
-  const [concerts, setConcerts] = useState<SampleItem[]>([]);
+  const [concerts, setConcerts] = useState<ListingItem[]>([]);
   const [concertsReady, setConcertsReady] = useState(false);
   const [concertsError, setConcertsError] = useState<string | null>(null);
   const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
@@ -56,21 +56,20 @@ export function ShowList() {
   const [favoritesError, setFavoritesError] = useState<string | null>(null);
   const [pendingKeys, setPendingKeys] = useState<Set<string>>(new Set());
   const pendingKeysRef = useRef<Set<string>>(new Set());
-  const listings = [...concerts, ...sampleItems];
   const needle = query.trim().toLowerCase();
   const matches = needle
-    ? listings.filter((item) => {
+    ? concerts.filter((item) => {
         const band = item.title.toLowerCase();
         const venue = item.place.toLowerCase();
         return band.includes(needle) || venue.includes(needle);
       })
-    : listings;
+    : concerts;
 
   const trimmedQuery = query.trim();
   const resultLabel = !concertsReady
-    ? "Loading concerts…"
+    ? "Loading concerts\u2026"
     : needle
-      ? `${matches.length} matching ${matches.length === 1 ? "show" : "shows"} for “${trimmedQuery}”`
+      ? `${matches.length} matching ${matches.length === 1 ? "show" : "shows"} for \u201c${trimmedQuery}\u201d`
       : `${concerts.length} upcoming ${concerts.length === 1 ? "concert" : "concerts"}`;
 
   useEffect(() => {
@@ -129,7 +128,7 @@ export function ShowList() {
     };
   }, []);
 
-  async function toggleFavorite(item: SampleItem) {
+  async function toggleFavorite(item: ListingItem) {
     const key = concertItemKey(item);
 
     if (
@@ -218,7 +217,7 @@ export function ShowList() {
 
       {!concertsReady ? (
         <p className="rounded-2xl border border-line bg-panel px-4 py-6 text-sm leading-6 text-mute sm:text-base">
-          Loading concerts…
+          Loading concerts\u2026
         </p>
       ) : matches.length > 0 ? (
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
@@ -246,7 +245,7 @@ export function ShowList() {
       ) : (
         <p className="rounded-2xl border border-line bg-panel px-4 py-6 text-sm leading-6 text-mute sm:text-base">
           {trimmedQuery
-            ? `No shows match “${trimmedQuery}”. Try another band or venue name.`
+            ? `No shows match \u201c${trimmedQuery}\u201d. Try another band or venue name.`
             : "No concerts are listed yet."}
         </p>
       )}
