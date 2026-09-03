@@ -59,7 +59,8 @@ async function loadFollowedRows() {
   const { data, error } = await admin
     .from("saved_items")
     .select("user_id, item_type, item_key, item_label")
-    .in("item_type", [FOLLOWED_ATTRACTION_TYPE, FOLLOWED_VENUE_TYPE]);
+    .in("item_type", [FOLLOWED_ATTRACTION_TYPE, FOLLOWED_VENUE_TYPE])
+    .order("created_at", { ascending: true });
 
   if (error) {
     throw error;

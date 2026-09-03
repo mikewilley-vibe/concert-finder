@@ -1,5 +1,5 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { SampleItem } from "../data/sample-items";
+import type { ListingItem } from "./listing-item";
+import type { AppSupabaseClient } from "./supabase/database.types";
 
 export type ConcertRow = {
   id: string;
@@ -43,11 +43,11 @@ function parseEventDate(value: string) {
   return new Date(value);
 }
 
-export function concertRowToItem(row: ConcertRow): SampleItem {
+export function concertRowToItem(row: ConcertRow): ListingItem {
   const date = parseEventDate(row.event_date);
   const valid = !Number.isNaN(date.getTime());
   const description = row.description?.trim() || "Details coming soon.";
-  const place = [row.venue, row.city].filter(Boolean).join(" · ");
+  const place = [row.venue, row.city].filter(Boolean).join(" \u00b7 ");
 
   return {
     id: String(row.id),
@@ -63,8 +63,8 @@ export function concertRowToItem(row: ConcertRow): SampleItem {
       : row.event_date,
     month: valid
       ? date.toLocaleDateString("en-US", { month: "short" })
-      : "—",
-    day: valid ? String(date.getDate()) : "–",
+      : "\u2014",
+    day: valid ? String(date.getDate()) : "\u2013",
     weekday: valid
       ? date.toLocaleDateString("en-US", { weekday: "short" })
       : "",
@@ -93,7 +93,7 @@ function mapManagedConcert(row: Record<string, unknown>): ManagedConcert {
   };
 }
 
-function mapConcertRow(row: Record<string, unknown>): SampleItem {
+function mapConcertRow(row: Record<string, unknown>): ListingItem {
   return concertRowToItem({
     id: String(row.id),
     artist: String(row.artist ?? ""),
@@ -112,7 +112,7 @@ function deniedError() {
   return error;
 }
 
-export async function loadConcerts(supabase: SupabaseClient) {
+export async function loadConcerts(supabase: AppSupabaseClient) {
   const { data, error } = await supabase
     .from("concerts")
     .select(CONCERT_SELECT)
@@ -126,7 +126,7 @@ export async function loadConcerts(supabase: SupabaseClient) {
 }
 
 export async function loadOwnConcerts(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
 ) {
   const { data, error } = await supabase
@@ -145,7 +145,7 @@ export async function loadOwnConcerts(
 }
 
 export async function updateOwnDraft(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   id: string,
   input: ConcertSubmission,
 ) {
@@ -174,7 +174,7 @@ export async function updateOwnDraft(
   return mapManagedConcert(data as Record<string, unknown>);
 }
 
-export async function deleteOwnDraft(supabase: SupabaseClient, id: string) {
+export async function deleteOwnDraft(supabase: AppSupabaseClient, id: string) {
   const { data, error } = await supabase
     .from("concerts")
     .delete()
@@ -193,7 +193,7 @@ export async function deleteOwnDraft(supabase: SupabaseClient, id: string) {
 }
 
 export async function submitConcert(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
   input: ConcertSubmission,
 ) {
