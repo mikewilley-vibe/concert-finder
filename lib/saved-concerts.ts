@@ -1,20 +1,21 @@
-import type { SupabaseClient, User } from "@supabase/supabase-js";
-import type { SampleItem } from "../data/sample-items";
+import type { User } from "@supabase/supabase-js";
+import type { ListingItem } from "./listing-item";
+import type { AppSupabaseClient } from "./supabase/database.types";
 
 export const SAVED_CONCERT_TYPE = "concert";
 
-export function concertItemKey(item: SampleItem) {
+export function concertItemKey(item: ListingItem) {
   return item.id;
 }
 
-export function concertItemLabel(item: SampleItem) {
+export function concertItemLabel(item: ListingItem) {
   return `${item.title} · ${item.place}`;
 }
 
 let pendingAnonymousSignIn: Promise<User> | null = null;
 
 export async function ensureAnonymousUser(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
 ): Promise<User> {
   const {
     data: { session },
@@ -50,7 +51,7 @@ export async function ensureAnonymousUser(
   return pendingAnonymousSignIn;
 }
 
-export async function loadSavedConcertKeys(supabase: SupabaseClient) {
+export async function loadSavedConcertKeys(supabase: AppSupabaseClient) {
   const { data, error } = await supabase
     .from("saved_items")
     .select("item_key")
@@ -68,9 +69,9 @@ export async function loadSavedConcertKeys(supabase: SupabaseClient) {
 }
 
 export async function saveConcert(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
-  item: SampleItem,
+  item: ListingItem,
 ) {
   const { error } = await supabase.from("saved_items").insert({
     user_id: userId,
@@ -85,9 +86,9 @@ export async function saveConcert(
 }
 
 export async function unsaveConcert(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   userId: string,
-  item: SampleItem,
+  item: ListingItem,
 ) {
   const { error } = await supabase
     .from("saved_items")

@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { AppSupabaseClient } from "./supabase/database.types";
 
 export const WATCH_STATE_TABLE = "ticketmaster_watch_state";
 
@@ -17,7 +17,7 @@ function asIdList(value: unknown) {
     : [];
 }
 
-export async function loadOwnWatchState(supabase: SupabaseClient) {
+export async function loadOwnWatchState(supabase: AppSupabaseClient) {
   const { data, error } = await supabase
     .from(WATCH_STATE_TABLE)
     .select("id, item_label, item_type, new_event_ids, last_checked_at, initialized_at")
@@ -43,13 +43,13 @@ export async function loadOwnWatchState(supabase: SupabaseClient) {
 }
 
 export async function markOwnWatchStateSeen(
-  supabase: SupabaseClient,
+  supabase: AppSupabaseClient,
   rowId: string,
 ) {
-  const { error } = await supabase
-    .from(WATCH_STATE_TABLE)
-    .update({ new_event_ids: [] })
-    .eq("id", rowId);
+  const { error } = await supabase.rpc(
+    "mark_ticketmaster_watch_state_seen",
+    { target_id: rowId },
+  );
 
   if (error) {
     throw error;
