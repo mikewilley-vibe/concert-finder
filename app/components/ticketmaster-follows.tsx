@@ -5,6 +5,7 @@ import {
   FOLLOWED_ATTRACTION_TYPE,
   FOLLOWED_VENUE_TYPE,
   FOLLOWS_CHANGED_EVENT,
+  MAX_MONITORED_FOLLOWS,
   followItem,
   loadFollowedItems,
   notifyFollowsChanged,
@@ -194,6 +195,16 @@ function useSavedFollows() {
   ) {
     const pendingId = `${itemType}:${item.item_key}`;
     if (!ready || pendingKeysRef.current.has(pendingId)) {
+      return;
+    }
+
+    if (
+      !currentlyFollowed &&
+      bands.length + venues.length >= MAX_MONITORED_FOLLOWS
+    ) {
+      setFollowError(
+        `Automatic tracking currently supports up to ${MAX_MONITORED_FOLLOWS} artists and venues combined. Unfollow one before adding another.`,
+      );
       return;
     }
 
@@ -451,6 +462,10 @@ export function TicketmasterFollows() {
       <p className="mt-2 max-w-xl text-sm leading-6 text-mute sm:text-base">
         Follow is for artists and venues. Save show is for a concert card. This
         app does not sell tickets.
+      </p>
+      <p className="mt-2 max-w-xl text-sm leading-6 text-mute">
+        Automatic new-show tracking currently supports up to {MAX_MONITORED_FOLLOWS}{" "}
+        artists and venues combined.
       </p>
 
       {followError ? (
