@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { kindLabels, type ItemKind, type SampleItem } from "../../data/sample-items";
+import {
+  kindLabels,
+  type ItemKind,
+  type ListingItem,
+} from "../../lib/listing-item";
 
 const kindStyles: Record<ItemKind, string> = {
   concert: "bg-accent/15 text-accent",
@@ -11,7 +15,7 @@ const kindStyles: Record<ItemKind, string> = {
 };
 
 type ShowCardProps = {
-  item: SampleItem;
+  item: ListingItem;
   saved?: boolean;
   favoriteBusy?: boolean;
   favoritesReady?: boolean;
@@ -32,7 +36,7 @@ export function ShowCard({
   const canFavorite = item.kind === "concert" && Boolean(onToggleFavorite);
   const favoriteLabel =
     !favoritesReady && !favoritesUnavailable
-      ? "Loading…"
+      ? "Loading\u2026"
       : saved
         ? "Saved"
         : "Save show";
@@ -114,7 +118,7 @@ export function ShowCard({
                 : "inline-flex min-h-12 w-full touch-manipulation items-center justify-center rounded-full border border-line px-5 text-sm font-semibold text-foreground transition-colors hover:bg-panel-hover focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-70 sm:min-h-11 sm:w-auto"
             }
           >
-            {favoriteBusy ? "Loading…" : favoriteLabel}
+            {favoriteBusy ? "Loading\u2026" : favoriteLabel}
           </button>
         ) : null}
       </div>
