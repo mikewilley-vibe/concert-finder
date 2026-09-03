@@ -17,6 +17,10 @@ import {
   upgradeEmailMessage,
   verifiedEmail,
 } from "../../lib/account";
+import {
+  mergeRememberedAnonymousData,
+  rememberAnonymousSession,
+} from "../../lib/account-transfer";
 import { ensureAnonymousUser } from "../../lib/saved-concerts";
 import { getSupabaseBrowserClient } from "../../lib/supabase/browser-client";
 
@@ -60,20 +64,38 @@ export function AccountScreen() {
       try {
         const redirectNotice = await consumeAuthRedirect(supabase);
         await ensureAnonymousUser(supabase);
-        const { data, error: userError } = await supabase.auth.getUser();
+        const [userResult, sessionResult] = await Promise.all([
+          supabase.auth.getUser(),
+          supabase.auth.getSession(),
+        ]);
 
         if (cancelled) {
           return;
         }
 
-        if (userError) {
+        if (userResult.error) {
           setError(
-            confirmationMessage(userError.message) ||
+            confirmationMessage(userResult.error.message) ||
               "Could not load your account. Refresh the page.",
           );
         }
 
-        setUser(data.user);
+        setUser(userResult.data.user);
+        if (userResult.data.user?.is_anonymous === false) {
+          try {
+            const merged = await mergeRememberedAnonymousData(
+              sessionResult.data.session,
+              userResult.data.user,
+            );
+            if (merged) {
+              setNotice("Your temporary follows, saved shows, and drafts were moved to this account.");
+            }
+          } catch {
+            setError(
+              "You are signed in, but temporary data could not be moved yet. Refresh this page to retry.",
+            );
+          }
+        }
         if (redirectNotice) {
           setError(redirectNotice);
         }
@@ -257,6 +279,8 @@ export function AccountScreen() {
 
     try {
       const supabase = getSupabaseBrowserClient();
+      const previousSession = await supabase.auth.getSession();
+      rememberAnonymousSession(previousSession.data.session);
       const { data, error: signInError } =
         await supabase.auth.signInWithPassword({
           email: nextEmail,
@@ -265,6 +289,15 @@ export function AccountScreen() {
 
       if (signInError) {
         throw signInError;
+      }
+
+      let merged = false;
+      try {
+        merged = await mergeRememberedAnonymousData(data.session, data.user);
+      } catch {
+        setNotice(
+          "You are signed in, but temporary data could not be moved yet. Refresh this page to retry.",
+        );
       }
 
       if (data.user && !hasPasswordSet(data.user)) {
@@ -281,6 +314,11 @@ export function AccountScreen() {
 
       setSignInEmail("");
       setSignInPassword("");
+      if (merged) {
+        setNotice(
+          "Signed in. Your temporary follows, saved shows, and drafts were moved to this account.",
+        );
+      }
     } catch (signInError) {
       setError(signInMessage(signInError));
     } finally {
@@ -337,7 +375,7 @@ export function AccountScreen() {
           className={`${panelClass} max-w-xl text-sm leading-6 text-mute`}
           aria-live="polite"
         >
-          Loading account…
+          Loading account\u2026
         </p>
       ) : (
         <div className="flex max-w-xl flex-col gap-8">
@@ -375,7 +413,7 @@ export function AccountScreen() {
                 disabled={signOutPending}
                 className={`${secondaryButtonClass} mt-5`}
               >
-                {signOutPending ? "Signing out…" : "Sign out"}
+                {signOutPending ? "Signing out\u2026" : "Sign out"}
               </button>
             </section>
           ) : null}
@@ -430,7 +468,7 @@ export function AccountScreen() {
                   disabled={passwordPending}
                   className={primaryButtonClass}
                 >
-                  {passwordPending ? "Saving…" : "Save password"}
+                  {passwordPending ? "Saving\u2026" : "Save password"}
                 </button>
               </form>
             </section>
@@ -476,7 +514,7 @@ export function AccountScreen() {
                     disabled={upgradePending}
                     className={primaryButtonClass}
                   >
-                    {upgradePending ? "Sending…" : "Send verification email"}
+                    {upgradePending ? "Sending\u2026" : "Send verification email"}
                   </button>
                   {waitingEmail ? (
                     <button
@@ -503,8 +541,8 @@ export function AccountScreen() {
                 I already have an account
               </h2>
               <p className="mt-2 text-sm leading-6 text-mute sm:text-base">
-                Sign in with email and password. This replaces a temporary
-                session on this browser and does not merge saved data.
+                Sign in with email and password. Temporary follows, saved
+                shows, and drafts from this browser will move with you.
               </p>
               <form onSubmit={signIn} className="mt-5 flex flex-col gap-4">
                 <div>
@@ -546,7 +584,7 @@ export function AccountScreen() {
                   disabled={signInPending}
                   className={primaryButtonClass}
                 >
-                  {signInPending ? "Signing in…" : "Sign in"}
+                  {signInPending ? "Signing in\u2026" : "Sign in"}
                 </button>
               </form>
             </section>
