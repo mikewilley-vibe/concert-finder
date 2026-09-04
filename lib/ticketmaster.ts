@@ -5,7 +5,17 @@ import {
   nameSimilarity,
   normalizeNameForComparison,
   SUGGEST_NAME_SIMILARITY,
-} from "./name-similarity";
+} from "./name-similarity.ts";
+import { EVENT_SEARCH_FOLLOW_LIMIT } from "../shared/api/v1.ts";
+import type {
+  ArtistSummary,
+  ConcertEvent,
+  EventDateStatus,
+  EventSearchPage,
+  FollowedReference,
+  SaleWindow,
+  VenueSummary,
+} from "../shared/api/v1.ts";
 
 const TICKETMASTER_HOST = "https://app.ticketmaster.com";
 const ATTRACTIONS_PATH = "/discovery/v2/attractions.json";
@@ -14,46 +24,22 @@ const VENUES_PATH = "/discovery/v2/venues.json";
 const EVENTS_PATH = "/discovery/v2/events.json";
 const RESULT_LIMIT = 8;
 const FALLBACK_CANDIDATE_LIMIT = 24;
-const EVENT_PAGE_SIZE = 20;
-export const MAX_FOLLOWED_IDS = 8;
+export const DEFAULT_EVENT_PAGE_SIZE = 20;
+export const MAX_EVENT_PAGE_SIZE = 50;
+export const MAX_EVENT_PAGE = 49;
 const MIN_KEYWORD_LENGTH = 2;
 const MAX_KEYWORD_LENGTH = 80;
 const ID_PATTERN = /^[A-Za-z0-9_-]{4,64}$/;
 
-export type TicketmasterAttraction = {
-  id: string;
-  name: string;
-  image?: string;
-};
-
-export type TicketmasterVenue = {
-  id: string;
-  name: string;
-  city?: string;
-  state?: string;
-};
-
-export type TicketmasterShow = {
-  id: string;
-  name: string;
-  dateLabel: string;
-  timeLabel?: string;
-  venueName: string;
-  city: string;
-  state: string;
-  url?: string;
-  image?: string;
-  matchedLabels: string[];
-};
+export type TicketmasterAttraction = ArtistSummary;
+export type TicketmasterVenue = VenueSummary;
+export type TicketmasterShow = ConcertEvent;
 
 export type UpcomingShowsResult =
-  | { ok: true; shows: TicketmasterShow[] }
+  | { ok: true; shows: TicketmasterShow[]; page: EventSearchPage }
   | { ok: false; status: number; message: string };
 
-export type FollowedRef = {
-  id: string;
-  label: string;
-};
+export type FollowedRef = FollowedReference;
 
 export type AttractionSearchResult =
   | { ok: true; attractions: TicketmasterAttraction[] }
@@ -116,17 +102,19 @@ function readName(value: unknown) {
   return typeof name === "string" ? name.trim() : "";
 }
 
-function readState(value: unknown) {
-  if (!value || typeof value !== "object") {
-    return "";
-  }
+function readString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
 
-  const record = value as { stateCode?: unknown; name?: unknown };
-  if (typeof record.stateCode === "string" && record.stateCode.trim()) {
-    return record.stateCode.trim();
+function readNumber(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
   }
-
-  return typeof record.name === "string" ? record.name.trim() : "";
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
 }
 
 function pickImage(images: unknown) {
@@ -195,19 +183,87 @@ function mapAttractions(
     }
 
     seen.add(id);
-    const attraction: TicketmasterAttraction = { id, name };
-    const image = pickImage(record.images);
-    if (image) {
-      attraction.image = image;
-    }
-
-    attractions.push(attraction);
+    attractions.push({
+      id,
+      name,
+      imageUrl: pickImage(record.images) ?? null,
+    });
     if (attractions.length >= limit) {
       break;
     }
   }
 
   return attractions;
+}
+
+function mapVenue(row: unknown): TicketmasterVenue | null {
+  if (!row || typeof row !== "object") {
+    return null;
+  }
+
+  const record = row as {
+    id?: unknown;
+    name?: unknown;
+    address?: unknown;
+    city?: unknown;
+    state?: unknown;
+    postalCode?: unknown;
+    country?: unknown;
+    location?: unknown;
+    timezone?: unknown;
+  };
+  const id = typeof record.id === "string" ? record.id.trim() : "";
+  const name = typeof record.name === "string" ? record.name.trim() : "";
+  if (!id || !name) {
+    return null;
+  }
+
+  const address =
+    record.address && typeof record.address === "object"
+      ? (record.address as { line1?: unknown }).line1
+      : null;
+  const state =
+    record.state && typeof record.state === "object"
+      ? (record.state as { name?: unknown; stateCode?: unknown })
+      : null;
+  const country =
+    record.country && typeof record.country === "object"
+      ? (record.country as { countryCode?: unknown }).countryCode
+      : null;
+  const location =
+    record.location && typeof record.location === "object"
+      ? (record.location as { latitude?: unknown; longitude?: unknown })
+      : null;
+
+  return {
+    id,
+    name,
+    addressLine: readString(address),
+    city: readString(readName(record.city)),
+    state: readString(state?.name) ?? readString(state?.stateCode),
+    stateCode: readString(state?.stateCode),
+    postalCode: readString(record.postalCode),
+    countryCode: readString(country),
+    timezone: readString(record.timezone),
+    latitude: readNumber(location?.latitude),
+    longitude: readNumber(location?.longitude),
+  };
+}
+
+function emptyVenue(): TicketmasterVenue {
+  return {
+    id: "",
+    name: "",
+    addressLine: null,
+    city: null,
+    state: null,
+    stateCode: null,
+    postalCode: null,
+    countryCode: null,
+    timezone: null,
+    latitude: null,
+    longitude: null,
+  };
 }
 
 function mapVenues(payload: unknown): TicketmasterVenue[] {
@@ -220,30 +276,9 @@ function mapVenues(payload: unknown): TicketmasterVenue[] {
   const venues: TicketmasterVenue[] = [];
 
   for (const row of rows) {
-    if (!row || typeof row !== "object") {
+    const venue = mapVenue(row);
+    if (!venue) {
       continue;
-    }
-
-    const record = row as {
-      id?: unknown;
-      name?: unknown;
-      city?: unknown;
-      state?: unknown;
-    };
-    const id = typeof record.id === "string" ? record.id.trim() : "";
-    const name = typeof record.name === "string" ? record.name.trim() : "";
-    if (!id || !name) {
-      continue;
-    }
-
-    const venue: TicketmasterVenue = { id, name };
-    const city = readName(record.city);
-    const state = readState(record.state);
-    if (city) {
-      venue.city = city;
-    }
-    if (state) {
-      venue.state = state;
     }
 
     venues.push(venue);
@@ -463,7 +498,11 @@ function parseFollowedRefs(value: unknown): FollowedRef[] | null {
   const refs: FollowedRef[] = [];
   const seen = new Set<string>();
 
-  for (const row of value.slice(0, MAX_FOLLOWED_IDS)) {
+  if (value.length > EVENT_SEARCH_FOLLOW_LIMIT) {
+    return null;
+  }
+
+  for (const row of value) {
     if (!row || typeof row !== "object") {
       return null;
     }
@@ -507,6 +546,93 @@ function parsePostalCode(value: unknown) {
   return { ok: true as const, postalCode };
 }
 
+function parseOptionalKeyword(value: unknown) {
+  if (value === undefined || value === null || value === "") {
+    return { ok: true as const, keyword: "" };
+  }
+  if (typeof value !== "string") {
+    return { ok: false as const };
+  }
+  const keyword = normalizeKeyword(value);
+  if (
+    keyword &&
+    (keyword.length < MIN_KEYWORD_LENGTH || keyword.length > MAX_KEYWORD_LENGTH)
+  ) {
+    return { ok: false as const };
+  }
+  return { ok: true as const, keyword };
+}
+
+function parseBoundedInteger(
+  value: unknown,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+) {
+  if (value === undefined || value === null) {
+    return fallback;
+  }
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    return null;
+  }
+  return value >= minimum && value <= maximum ? value : null;
+}
+
+function parseLocation(value: unknown, legacyPostalCode: unknown) {
+  if (value !== undefined && value !== null && typeof value !== "object") {
+    return { ok: false as const };
+  }
+
+  const record = (value ?? {}) as {
+    postalCode?: unknown;
+    latitude?: unknown;
+    longitude?: unknown;
+    radiusMiles?: unknown;
+  };
+  const postal = parsePostalCode(record.postalCode ?? legacyPostalCode);
+  if (!postal.ok) {
+    return { ok: false as const };
+  }
+
+  const hasLatitude = record.latitude !== undefined;
+  const hasLongitude = record.longitude !== undefined;
+  if (hasLatitude !== hasLongitude) {
+    return { ok: false as const };
+  }
+
+  let latitude: number | null = null;
+  let longitude: number | null = null;
+  if (hasLatitude && hasLongitude) {
+    if (
+      typeof record.latitude !== "number" ||
+      !Number.isFinite(record.latitude) ||
+      record.latitude < -90 ||
+      record.latitude > 90 ||
+      typeof record.longitude !== "number" ||
+      !Number.isFinite(record.longitude) ||
+      record.longitude < -180 ||
+      record.longitude > 180
+    ) {
+      return { ok: false as const };
+    }
+    latitude = record.latitude;
+    longitude = record.longitude;
+  }
+
+  const radiusMiles = parseBoundedInteger(record.radiusMiles, 50, 1, 500);
+  if (radiusMiles === null) {
+    return { ok: false as const };
+  }
+
+  return {
+    ok: true as const,
+    postalCode: postal.postalCode,
+    latitude,
+    longitude,
+    radiusMiles,
+  };
+}
+
 export function parseUpcomingShowsRequest(body: unknown) {
   if (!body || typeof body !== "object") {
     return {
@@ -519,13 +645,32 @@ export function parseUpcomingShowsRequest(body: unknown) {
   const record = body as {
     attractions?: unknown;
     venues?: unknown;
+    keyword?: unknown;
+    location?: unknown;
     postalCode?: unknown;
+    page?: unknown;
+    pageSize?: unknown;
   };
 
   const attractions = parseFollowedRefs(record.attractions);
   const venues = parseFollowedRefs(record.venues);
-  const postal = parsePostalCode(record.postalCode);
-  if (!attractions || !venues || !postal.ok) {
+  const keyword = parseOptionalKeyword(record.keyword);
+  const location = parseLocation(record.location, record.postalCode);
+  const page = parseBoundedInteger(record.page, 0, 0, MAX_EVENT_PAGE);
+  const pageSize = parseBoundedInteger(
+    record.pageSize,
+    DEFAULT_EVENT_PAGE_SIZE,
+    1,
+    MAX_EVENT_PAGE_SIZE,
+  );
+  if (
+    !attractions ||
+    !venues ||
+    !keyword.ok ||
+    !location.ok ||
+    page === null ||
+    pageSize === null
+  ) {
     return {
       ok: false as const,
       status: 400,
@@ -533,11 +678,17 @@ export function parseUpcomingShowsRequest(body: unknown) {
     };
   }
 
-  if (attractions.length === 0 && venues.length === 0) {
+  if (
+    attractions.length === 0 &&
+    venues.length === 0 &&
+    !keyword.keyword &&
+    !location.postalCode &&
+    location.latitude === null
+  ) {
     return {
       ok: false as const,
       status: 400,
-      message: "Follow an artist or venue first.",
+      message: "Add an artist, venue, keyword, or location to search.",
     };
   }
 
@@ -545,12 +696,22 @@ export function parseUpcomingShowsRequest(body: unknown) {
     ok: true as const,
     attractions,
     venues,
-    postalCode: postal.postalCode,
+    keyword: keyword.keyword,
+    location: {
+      postalCode: location.postalCode,
+      latitude: location.latitude,
+      longitude: location.longitude,
+      radiusMiles: location.radiusMiles,
+    },
+    page,
+    pageSize,
   };
 }
 
 function startDateTimeNow() {
-  return new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+  const date = new Date();
+  date.setUTCMinutes(Math.floor(date.getUTCMinutes() / 5) * 5, 0, 0);
+  return date.toISOString().replace(/\.\d{3}Z$/, "Z");
 }
 
 function formatDateLabel(localDate: string) {
@@ -619,17 +780,85 @@ function relatedIds(event: Record<string, unknown>, key: "attractions" | "venues
 
 function firstVenue(event: Record<string, unknown>) {
   const rows = relatedRows(event, "venues");
-  const row = rows[0];
-  if (!row || typeof row !== "object") {
-    return { name: "", city: "", state: "" };
+  return mapVenue(rows[0]) ?? emptyVenue();
+}
+
+function eventAttractions(event: Record<string, unknown>) {
+  return relatedRows(event, "attractions").flatMap((row) => {
+    if (!row || typeof row !== "object") {
+      return [];
+    }
+    const record = row as { id?: unknown; name?: unknown; images?: unknown };
+    const id = readString(record.id);
+    const name = readString(record.name);
+    if (!id || !name) {
+      return [];
+    }
+    return [{ id, name, imageUrl: pickImage(record.images) ?? null }];
+  });
+}
+
+function eventDateDetails(event: Record<string, unknown>) {
+  const dates = event.dates;
+  const dateRecord =
+    dates && typeof dates === "object"
+      ? (dates as { start?: unknown; timezone?: unknown })
+      : null;
+  const start = dateRecord?.start;
+  const record =
+    start && typeof start === "object"
+      ? (start as {
+          dateTime?: unknown;
+          localDate?: unknown;
+          localTime?: unknown;
+          dateTBA?: unknown;
+          dateTBD?: unknown;
+        })
+      : null;
+
+  let dateStatus: EventDateStatus = "scheduled";
+  if (record?.dateTBA === true) {
+    dateStatus = "date_tba";
+  } else if (record?.dateTBD === true) {
+    dateStatus = "date_tbd";
   }
 
-  const record = row as { name?: unknown; city?: unknown; state?: unknown };
   return {
-    name: typeof record.name === "string" ? record.name.trim() : "",
-    city: readName(record.city),
-    state: readState(record.state),
+    startsAt: readString(record?.dateTime),
+    localDate: readString(record?.localDate),
+    localTime: readString(record?.localTime),
+    timezone: readString(dateRecord?.timezone),
+    dateStatus,
   };
+}
+
+function eventStatus(event: Record<string, unknown>) {
+  const dates = event.dates;
+  if (!dates || typeof dates !== "object") {
+    return null;
+  }
+  const status = (dates as { status?: unknown }).status;
+  return status && typeof status === "object"
+    ? readString((status as { code?: unknown }).code)
+    : null;
+}
+
+function eventSaleWindow(event: Record<string, unknown>): SaleWindow | null {
+  const sales = event.sales;
+  if (!sales || typeof sales !== "object") {
+    return null;
+  }
+  const publicSale = (sales as { public?: unknown }).public;
+  if (!publicSale || typeof publicSale !== "object") {
+    return null;
+  }
+  const record = publicSale as {
+    startDateTime?: unknown;
+    endDateTime?: unknown;
+  };
+  const startsAt = readString(record.startDateTime);
+  const endsAt = readString(record.endDateTime);
+  return startsAt || endsAt ? { startsAt, endsAt } : null;
 }
 
 function eventSortKey(event: Record<string, unknown>) {
@@ -704,60 +933,47 @@ function isUpcomingEvent(event: Record<string, unknown>) {
   return false;
 }
 
-function mapShow(
+export function mapTicketmasterEvent(
   event: Record<string, unknown>,
-  matchedLabels: string[],
+  matchedLabels: string[] = [],
 ): TicketmasterShow | null {
   const id = typeof event.id === "string" ? event.id.trim() : "";
   const name = typeof event.name === "string" ? event.name.trim() : "";
-  if (!id || !name || matchedLabels.length === 0) {
+  if (!id || !name) {
     return null;
   }
 
-  const dates = event.dates;
-  const start =
-    dates && typeof dates === "object"
-      ? (dates as { start?: unknown }).start
-      : null;
-  const startRecord =
-    start && typeof start === "object"
-      ? (start as { localDate?: unknown; localTime?: unknown })
-      : {};
-  const localDate =
-    typeof startRecord.localDate === "string" ? startRecord.localDate : "";
-  const localTime =
-    typeof startRecord.localTime === "string" ? startRecord.localTime : "";
+  const date = eventDateDetails(event);
   const venue = firstVenue(event);
   const show: TicketmasterShow = {
     id,
     name,
-    dateLabel: localDate ? formatDateLabel(localDate) : "Date TBA",
-    venueName: venue.name,
-    city: venue.city,
-    state: venue.state,
+    startsAt: date.startsAt,
+    localDate: date.localDate,
+    localTime: date.localTime,
+    timezone: date.timezone ?? venue.timezone,
+    dateStatus: date.dateStatus,
+    dateLabel: date.localDate ? formatDateLabel(date.localDate) : "Date TBA",
+    timeLabel: date.localTime ? formatTimeLabel(date.localTime) || null : null,
+    status: eventStatus(event),
+    ticketUrl: null,
+    imageUrl: pickImage(event.images) ?? null,
+    venue,
+    attractions: eventAttractions(event),
     matchedLabels,
+    sales: eventSaleWindow(event),
   };
-
-  const timeLabel = localTime ? formatTimeLabel(localTime) : "";
-  if (timeLabel) {
-    show.timeLabel = timeLabel;
-  }
 
   const url = typeof event.url === "string" ? event.url.trim() : "";
   if (isHttpUrl(url)) {
-    show.url = url;
-  }
-
-  const image = pickImage(event.images);
-  if (image) {
-    show.image = image;
+    show.ticketUrl = url;
   }
 
   return show;
 }
 
 function mergeShows(
-  batches: { source: "attraction" | "venue"; payload: unknown }[],
+  batches: { source: "attraction" | "venue" | "discover"; payload: unknown }[],
   attractions: FollowedRef[],
   venues: FollowedRef[],
 ) {
@@ -794,11 +1010,7 @@ function mergeShows(
       }
 
       const matchedLabels = [...labels];
-      if (matchedLabels.length === 0) {
-        continue;
-      }
-
-      const show = mapShow(event, matchedLabels);
+      const show = mapTicketmasterEvent(event, matchedLabels);
       if (!show) {
         continue;
       }
@@ -818,51 +1030,122 @@ function mergeShows(
 
   return [...shows.values()]
     .sort((a, b) => a.sortAt.localeCompare(b.sortAt))
-    .map(({ sortAt: _sortAt, ...show }) => show);
+    .map((show) => ({
+      id: show.id,
+      name: show.name,
+      startsAt: show.startsAt,
+      localDate: show.localDate,
+      localTime: show.localTime,
+      timezone: show.timezone,
+      dateStatus: show.dateStatus,
+      dateLabel: show.dateLabel,
+      timeLabel: show.timeLabel,
+      status: show.status,
+      ticketUrl: show.ticketUrl,
+      imageUrl: show.imageUrl,
+      venue: show.venue,
+      attractions: show.attractions,
+      matchedLabels: show.matchedLabels,
+      sales: show.sales,
+    }));
+}
+
+function payloadHasMore(payload: unknown, requestedPage: number) {
+  if (!payload || typeof payload !== "object") {
+    return false;
+  }
+  const page = (payload as { page?: unknown }).page;
+  if (!page || typeof page !== "object") {
+    return false;
+  }
+  const record = page as { number?: unknown; totalPages?: unknown };
+  const number =
+    typeof record.number === "number" ? record.number : requestedPage;
+  return (
+    typeof record.totalPages === "number" &&
+    Number.isFinite(record.totalPages) &&
+    number + 1 < record.totalPages
+  );
+}
+
+function addLocationParams(
+  params: Record<string, string>,
+  location: {
+    postalCode: string;
+    latitude: number | null;
+    longitude: number | null;
+    radiusMiles: number;
+  },
+) {
+  if (location.latitude !== null && location.longitude !== null) {
+    params.latlong = `${location.latitude},${location.longitude}`;
+    params.radius = String(location.radiusMiles);
+    params.unit = "miles";
+    return;
+  }
+  if (location.postalCode) {
+    params.postalCode = location.postalCode;
+    params.radius = String(location.radiusMiles);
+    params.unit = "miles";
+  }
 }
 
 export async function searchUpcomingShows(input: {
   attractions: FollowedRef[];
   venues: FollowedRef[];
-  postalCode: string;
+  keyword: string;
+  location: {
+    postalCode: string;
+    latitude: number | null;
+    longitude: number | null;
+    radiusMiles: number;
+  };
+  page: number;
+  pageSize: number;
 }): Promise<UpcomingShowsResult> {
   const startDateTime = startDateTimeNow();
   const requests: Promise<{ ok: true; payload: unknown } | TicketmasterFailure>[] =
     [];
+  const sources: ("attraction" | "venue" | "discover")[] = [];
 
-  if (input.attractions.length > 0) {
+  function eventParams() {
     const params: Record<string, string> = {
-      attractionId: input.attractions.map((item) => item.id).join(","),
-      size: String(EVENT_PAGE_SIZE),
+      size: String(input.pageSize),
+      page: String(input.page),
       sort: "date,asc",
       startDateTime,
     };
-    if (input.postalCode) {
-      params.postalCode = input.postalCode;
+    if (input.keyword) {
+      params.keyword = input.keyword;
     }
+    addLocationParams(params, input.location);
+    return params;
+  }
+
+  if (input.attractions.length > 0) {
+    const params = eventParams();
+    params.attractionId = input.attractions.map((item) => item.id).join(",");
     requests.push(ticketmasterGet(EVENTS_PATH, params));
+    sources.push("attraction");
   }
 
   if (input.venues.length > 0) {
-    requests.push(
-      ticketmasterGet(EVENTS_PATH, {
-        venueId: input.venues.map((item) => item.id).join(","),
-        size: String(EVENT_PAGE_SIZE),
-        sort: "date,asc",
-        startDateTime,
-      }),
-    );
+    const params = eventParams();
+    params.venueId = input.venues.map((item) => item.id).join(",");
+    requests.push(ticketmasterGet(EVENTS_PATH, params));
+    sources.push("venue");
+  }
+
+  if (input.attractions.length === 0 && input.venues.length === 0) {
+    requests.push(ticketmasterGet(EVENTS_PATH, eventParams()));
+    sources.push("discover");
   }
 
   const results = await Promise.all(requests);
-  const batches: { source: "attraction" | "venue"; payload: unknown }[] = [];
-  const sources: ("attraction" | "venue")[] = [];
-  if (input.attractions.length > 0) {
-    sources.push("attraction");
-  }
-  if (input.venues.length > 0) {
-    sources.push("venue");
-  }
+  const batches: {
+    source: "attraction" | "venue" | "discover";
+    payload: unknown;
+  }[] = [];
 
   for (const [index, result] of results.entries()) {
     if (!result.ok) {
@@ -871,9 +1154,20 @@ export async function searchUpcomingShows(input: {
     batches.push({ source: sources[index], payload: result.payload });
   }
 
+  const shows = mergeShows(batches, input.attractions, input.venues);
+  const hasMore = batches.some((batch) =>
+    payloadHasMore(batch.payload, input.page),
+  );
   return {
     ok: true,
-    shows: mergeShows(batches, input.attractions, input.venues),
+    shows,
+    page: {
+      page: input.page,
+      pageSize: input.pageSize,
+      resultCount: shows.length,
+      hasMore,
+      nextPage: hasMore ? input.page + 1 : null,
+    },
   };
 }
 
@@ -886,7 +1180,7 @@ export async function searchFollowedEventIds(input: {
   itemKey: string;
 }): Promise<FollowedEventIdsResult> {
   const params: Record<string, string> = {
-    size: String(EVENT_PAGE_SIZE),
+    size: String(MAX_EVENT_PAGE_SIZE),
     sort: "date,asc",
     startDateTime: startDateTimeNow(),
   };
@@ -988,11 +1282,24 @@ export async function lookupEventsByIds(
       continue;
     }
     const labels = attractionNames(event);
-    const show = mapShow(event, labels.length > 0 ? labels : ["New show"]);
+    const show = mapTicketmasterEvent(
+      event,
+      labels.length > 0 ? labels : ["New show"],
+    );
     if (show) {
       shows.push(show);
     }
   }
 
-  return { ok: true, shows };
+  return {
+    ok: true,
+    shows,
+    page: {
+      page: 0,
+      pageSize: ids.length,
+      resultCount: shows.length,
+      hasMore: false,
+      nextPage: null,
+    },
+  };
 }

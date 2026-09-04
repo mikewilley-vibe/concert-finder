@@ -30,14 +30,17 @@ type SavedItemRow = {
 };
 
 type SavedEventRow = {
+  attractions: Json;
   city: string;
   created_at: string;
   date_label: string;
+  date_status: string;
   event_status: string | null;
   id: string;
   image_url: string | null;
   local_date: string | null;
   local_time: string | null;
+  matched_labels: string[];
   name: string;
   provider: string;
   provider_event_id: string;
@@ -50,7 +53,14 @@ type SavedEventRow = {
   timezone: string | null;
   updated_at: string;
   user_id: string;
+  venue_address_line: string | null;
+  venue_country_code: string | null;
+  venue_id: string | null;
+  venue_latitude: number | null;
+  venue_longitude: number | null;
   venue_name: string;
+  venue_postal_code: string | null;
+  venue_state_code: string | null;
 };
 
 type WatchStateRow = {
@@ -98,14 +108,17 @@ export type Database = {
         Row: SavedEventRow;
         Insert: Insert<
           SavedEventRow,
+          | "attractions"
           | "city"
           | "created_at"
           | "date_label"
+          | "date_status"
           | "event_status"
           | "id"
           | "image_url"
           | "local_date"
           | "local_time"
+          | "matched_labels"
           | "provider"
           | "sale_ends_at"
           | "sale_starts_at"
@@ -115,7 +128,14 @@ export type Database = {
           | "time_label"
           | "timezone"
           | "updated_at"
+          | "venue_address_line"
+          | "venue_country_code"
+          | "venue_id"
+          | "venue_latitude"
+          | "venue_longitude"
           | "venue_name"
+          | "venue_postal_code"
+          | "venue_state_code"
         >;
         Update: Partial<SavedEventRow>;
         Relationships: [];
@@ -137,6 +157,18 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      get_ticketmaster_watch_batch: {
+        Args: { requested_limit?: number };
+        Returns: {
+          item_key: string;
+          item_label: string;
+          item_type: string;
+          initialized_at: string | null;
+          known_event_ids: string[];
+          new_event_ids: string[];
+          user_id: string;
+        }[];
+      };
       mark_ticketmaster_watch_state_seen: {
         Args: { target_id: string };
         Returns: undefined;

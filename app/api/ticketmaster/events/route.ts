@@ -4,6 +4,7 @@ import {
   searchUpcomingShows,
 } from "../../../../lib/ticketmaster";
 import { ticketmasterRateLimitResponse } from "../../../../lib/api-rate-limit";
+import { legacyShow } from "../../../../lib/ticketmaster-legacy";
 
 export async function POST(request: NextRequest) {
   const limited = ticketmasterRateLimitResponse(
@@ -31,11 +32,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = await searchUpcomingShows({
-    attractions: parsed.attractions,
-    venues: parsed.venues,
-    postalCode: parsed.postalCode,
-  });
+  const result = await searchUpcomingShows(parsed);
 
   if (!result.ok) {
     return Response.json(
@@ -44,5 +41,5 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  return Response.json({ shows: result.shows });
+  return Response.json({ shows: result.shows.map(legacyShow) });
 }
