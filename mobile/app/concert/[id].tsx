@@ -199,7 +199,7 @@ export default function ConcertScreen() {
           <Strong>Save or follow</Strong>
           <Button
             label={isSaved ? "Saved" : "Save this concert"}
-            variant={isSaved ? "secondary" : "primary"}
+            variant={isSaved ? "secondary" : "action"}
             disabled={
               !saved.configured ||
               !saved.ready ||
@@ -227,7 +227,7 @@ export default function ConcertScreen() {
                     ? `Following ${artist.name}`
                     : `Follow ${artist.name}`
                 }
-                variant={followed ? "secondary" : "primary"}
+                variant={followed ? "secondary" : "action"}
                 disabled={
                   !follows.configured ||
                   !follows.ready ||
