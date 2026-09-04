@@ -35,8 +35,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accentDeep,
   },
   label: {
-    color: colors.background,
+    color: colors.onAccent,
     fontFamily: fonts.semibold,
-    fontSize: 15,
+    fontSize: 16,
   },
 });
