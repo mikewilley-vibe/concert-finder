@@ -1,8 +1,6 @@
 # Local Shows
 
 Expo / React Native client for Concert Finder. Display name is **Local Shows**.
-This is a Phase 2 navigation scaffold — tabs, detail stacks, and thin API/auth
-clients — not the finished native 1.0.
 
 The Next.js website at the repository root stays the public site, Ticketmaster
 gateway, Supabase-backed service, and community submission UI. The app does
@@ -41,12 +39,28 @@ Ticketmaster, cron, and the Supabase secret key stay on the Vercel app. Do not
 put `TICKETMASTER_API_KEY`, `SUPABASE_SECRET_KEY`, or `CRON_SECRET` in Expo
 config, app code, `.env`, logs, or examples.
 
-## What this scaffold includes
+## What works now
 
-- Four tabs: Home, Discover, Saved, Profile
-- Stack screens for concert, artist, and venue details
+- **Discover** — artist and venue search through the website Ticketmaster
+  proxy, with loading / empty / error / retry
+- **Follow / unfollow** — `saved_items` rows (`ticketmaster_attraction` /
+  `ticketmaster_venue`) under RLS
+- **Save / remove** — Ticketmaster concerts in `saved_events` using Phase 1
+  live columns only (no Phase 2 `venue_id` / `date_status` / `attractions`)
+- **Home** — upcoming shows for follows, plus a new-show inbox when
+  `ticketmaster_watch_state.new_event_ids` is readable
+- **Saved** — saved events and follows with remove actions
+- **Profile** — guest bootstrap, email/password sign-in and sign-up, sign-out,
+  password recovery (reset finishes on the website), and merge-anonymous after
+  permanent sign-in
+- Concert, artist, and venue stack screens with follow/save and Ticketmaster
+  links
+
+Account deletion stays an honest stub (no publishable-client user delete).
+Push, location radius, calendar, and community submission are not in the app.
+
+## What this client talks to
+
 - Fetch helpers in `lib/api.ts` aimed at the website API
-- Browser/mobile Supabase client in `lib/supabase.ts`
-- Anonymous session bootstrap in `lib/auth.ts`
-
-Community concert submission is website-only.
+- Browser/mobile Supabase client in `lib/supabase.ts` (publishable key only)
+- Anonymous session bootstrap and merge helpers in `lib/auth.ts`

@@ -136,3 +136,17 @@ export function mergeAnonymousAccount(options: {
     }),
   });
 }
+
+export function apiErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof ApiError) {
+    if (error.status === 429) {
+      return "Too many Ticketmaster searches. Wait a moment and try again.";
+    }
+    if (error.status === 401 || error.status === 500) {
+      return error.message || "Search is not configured on the server yet.";
+    }
+    return error.message || fallback;
+  }
+
+  return fallback;
+}
