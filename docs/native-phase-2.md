@@ -31,13 +31,25 @@ and the initial Expo Router scaffold, but does not change the live deployment.
       persistence
 - [x] Add anonymous-session bootstrap and account-transfer helpers
 
+## Shared-backend blockers (repository only)
+
+A follow-up additive migration,
+`20260905000000_transactional_imports_and_rls.sql`, hardens public-data RLS
+and makes cron/account-transfer watch writes transactional. See
+`docs/shared-backend-blockers.md`.
+
+Apply that file on a **development** project first. Do not push it to
+production Concert Finder (`cihldmomtbunpdrsbrms`). Production migration
+history still needs a separate reconciliation.
+
 ## Verification still required before deployment
 
 - [x] Run and reconcile `supabase/audit/current-security.sql` against the live
       Supabase project
 - [x] Review the expanded migration after that comparison
-- [ ] Apply the migration to a development Supabase project
-- [ ] Test the work-queue RPC and follow trigger with real rows
+- [ ] Apply the reviewed migrations to a development Supabase project
+      (including `20260905000000_transactional_imports_and_rls.sql`)
+- [ ] Test the work-queue RPC, apply RPC, and follow trigger with real rows
 - [ ] Test saving and loading a complete Ticketmaster event with RLS enabled
 - [ ] Smoke-test every `/api/v1` route with the real development Ticketmaster
       key

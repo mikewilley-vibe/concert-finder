@@ -116,6 +116,7 @@ export async function loadConcerts(supabase: AppSupabaseClient) {
   const { data, error } = await supabase
     .from("concerts")
     .select(CONCERT_SELECT)
+    .eq("is_published", true)
     .order("event_date", { ascending: true });
 
   if (error) {

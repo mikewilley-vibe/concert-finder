@@ -65,7 +65,7 @@ type SavedEventRow = {
 
 type WatchStateRow = {
   id: string;
-  initialized_at: string;
+  initialized_at: string | null;
   item_key: string;
   item_label: string | null;
   item_type: string;
@@ -157,6 +157,16 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      apply_ticketmaster_watch_check: {
+        Args: {
+          target_user_id: string;
+          target_item_type: string;
+          target_item_key: string;
+          discovered_event_ids?: string[];
+          check_error?: string | null;
+        };
+        Returns: Json;
+      };
       get_ticketmaster_watch_batch: {
         Args: { requested_limit?: number };
         Returns: {

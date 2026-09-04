@@ -1,4 +1,3 @@
-import { findNewEventIds, mergeEventIds } from "./find-new-event-ids";
 import { chunkRows } from "./chunk-rows";
 import {
   FOLLOWED_ATTRACTION_TYPE,
@@ -8,7 +7,6 @@ import {
 import { AdminConfigError, getSupabaseAdminClient } from "./supabase/admin-client";
 import { searchFollowedEventIds } from "./ticketmaster";
 
-const WATCH_STATE_TABLE = "ticketmaster_watch_state";
 export const CHECK_BATCH_SIZE = 40;
 export const CHECK_CONCURRENCY = 4;
 export const CHECK_TIME_BUDGET_MS = 45_000;
@@ -17,10 +15,6 @@ type FollowedRow = {
   user_id: string;
   item_type: FollowedItemType;
   item_key: string;
-  item_label: string;
-  known_event_ids: string[];
-  new_event_ids: string[];
-  initialized_at: string | null;
 };
 
 type ItemResult = {
@@ -44,12 +38,6 @@ function isFollowedType(value: string): value is FollowedItemType {
   return (
     value === FOLLOWED_ATTRACTION_TYPE || value === FOLLOWED_VENUE_TYPE
   );
-}
-
-function asIdList(value: string[] | null | undefined) {
-  return Array.isArray(value)
-    ? value.filter((id) => typeof id === "string" && id.trim())
-    : [];
 }
 
 function safeLastError(result: { status: number; cause?: "auth" | "rate_limit" }) {
@@ -77,8 +65,6 @@ async function loadFollowedRows() {
     const userId = typeof row.user_id === "string" ? row.user_id : "";
     const itemType = typeof row.item_type === "string" ? row.item_type : "";
     const itemKey = typeof row.item_key === "string" ? row.item_key.trim() : "";
-    const itemLabel =
-      typeof row.item_label === "string" ? row.item_label.trim() : itemKey;
     if (!userId || !itemKey || !isFollowedType(itemType)) {
       continue;
     }
@@ -86,39 +72,44 @@ async function loadFollowedRows() {
       user_id: userId,
       item_type: itemType,
       item_key: itemKey,
-      item_label: itemLabel || itemKey,
-      known_event_ids: asIdList(row.known_event_ids),
-      new_event_ids: asIdList(row.new_event_ids),
-      initialized_at:
-        typeof row.initialized_at === "string" ? row.initialized_at : null,
     });
   }
   return rows;
 }
 
-async function updateWatchState(
+function asApplyResult(data: unknown) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    return { checked: 0, newEvents: 0 };
+  }
+
+  const row = data as { checked?: unknown; new_events?: unknown };
+  return {
+    checked: typeof row.checked === "number" ? row.checked : 0,
+    newEvents: typeof row.new_events === "number" ? row.new_events : 0,
+  };
+}
+
+async function applyWatchCheck(
   item: FollowedRow,
   values: {
-    known_event_ids?: string[];
-    new_event_ids?: string[];
-    initialized_at?: string;
-    last_error: string | null;
+    discoveredEventIds?: string[];
+    checkError?: string | null;
   },
 ) {
   const admin = getSupabaseAdminClient();
-  const { error } = await admin
-    .from(WATCH_STATE_TABLE)
-    .update({
-      ...values,
-      last_checked_at: new Date().toISOString(),
-    })
-    .eq("user_id", item.user_id)
-    .eq("item_type", item.item_type)
-    .eq("item_key", item.item_key);
+  const { data, error } = await admin.rpc("apply_ticketmaster_watch_check", {
+    target_user_id: item.user_id,
+    target_item_type: item.item_type,
+    target_item_key: item.item_key,
+    discovered_event_ids: values.discoveredEventIds ?? [],
+    check_error: values.checkError ?? null,
+  });
 
   if (error) {
     throw error;
   }
+
+  return asApplyResult(data);
 }
 
 async function checkOne(item: FollowedRow): Promise<ItemResult> {
@@ -128,7 +119,7 @@ async function checkOne(item: FollowedRow): Promise<ItemResult> {
   });
 
   if (!result.ok) {
-    await updateWatchState(item, { last_error: safeLastError(result) });
+    await applyWatchCheck(item, { checkError: safeLastError(result) });
     return {
       checked: 0,
       newEvents: 0,
@@ -137,26 +128,12 @@ async function checkOne(item: FollowedRow): Promise<ItemResult> {
     };
   }
 
-  const now = new Date().toISOString();
-  if (!item.initialized_at) {
-    await updateWatchState(item, {
-      known_event_ids: result.ids,
-      new_event_ids: [],
-      initialized_at: now,
-      last_error: null,
-    });
-    return { checked: 1, newEvents: 0, failed: 0, rateLimited: false };
-  }
-
-  const discovered = findNewEventIds(item.known_event_ids, result.ids);
-  await updateWatchState(item, {
-    known_event_ids: mergeEventIds(item.known_event_ids, discovered),
-    new_event_ids: mergeEventIds(item.new_event_ids, discovered),
-    last_error: null,
+  const applied = await applyWatchCheck(item, {
+    discoveredEventIds: result.ids,
   });
   return {
-    checked: 1,
-    newEvents: discovered.length,
+    checked: applied.checked,
+    newEvents: applied.newEvents,
     failed: 0,
     rateLimited: false,
   };
