@@ -89,6 +89,7 @@ export function ShowsForYou() {
   const [venueResultHeading, setVenueResultHeading] = useState("");
   const artistRequestRef = useRef<AbortController | null>(null);
   const venueRequestRef = useRef<AbortController | null>(null);
+  const autoLoadedArtistKey = useRef("");
 
   async function refreshFollows() {
     const supabase = getSupabaseBrowserClient();
@@ -278,6 +279,28 @@ export function ShowsForYou() {
       }
     }
   }
+
+  const artistKeys = artists.map((artist) => artist.item_key).join(",");
+
+  useEffect(() => {
+    if (!followsReady) {
+      return;
+    }
+
+    if (artists.length === 0) {
+      autoLoadedArtistKey.current = "";
+      setArtistShows(null);
+      setArtistResultHeading("");
+      return;
+    }
+
+    if (autoLoadedArtistKey.current === artistKeys) {
+      return;
+    }
+
+    autoLoadedArtistKey.current = artistKeys;
+    void runArtistSearch("");
+  }, [artistKeys, artists.length, followsReady]);
 
   return (
     <div

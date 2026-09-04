@@ -48,6 +48,12 @@ export default function Home() {
         tabIndex={-1}
         className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 pb-20 outline-none sm:px-8 sm:pb-16"
       >
+        <div className="flex flex-col gap-12 pt-8 sm:gap-16 sm:pt-12">
+          <ShowsForYou />
+
+          <NewShows />
+        </div>
+
         <section className="flex max-w-2xl flex-col gap-4 py-8 sm:gap-6 sm:py-16">
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-accent sm:text-sm">
             For music fans
@@ -79,8 +85,6 @@ export default function Home() {
         <div className="flex flex-col gap-12 sm:gap-16">
           <TicketmasterFollows />
 
-          <ShowsForYou />
-
           <SavedTicketmasterShows />
 
           <section id="whats-coming" className="scroll-mt-24">
@@ -94,8 +98,6 @@ export default function Home() {
           </section>
 
           <FollowedItemsManage />
-
-          <NewShows />
         </div>
       </main>
 
