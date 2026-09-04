@@ -1,6 +1,7 @@
 export const colors = {
   background: "#0c0b09",
   foreground: "#f6f1e8",
+  onAccent: "#000000",
   accent: "#d8ff3e",
   accentDeep: "#c2eb24",
   panel: "#171512",
