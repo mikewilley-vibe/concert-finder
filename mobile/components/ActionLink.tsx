@@ -29,13 +29,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 16,
     borderRadius: 999,
-    backgroundColor: "#ffffff",
+    backgroundColor: colors.panelHover,
+    borderWidth: 1,
+    borderColor: colors.mute,
   },
   pressed: {
-    backgroundColor: "#e8e8e8",
+    backgroundColor: colors.panel,
   },
   label: {
-    color: colors.onAccent,
+    color: colors.foreground,
     fontFamily: fonts.semibold,
     fontSize: 16,
   },
