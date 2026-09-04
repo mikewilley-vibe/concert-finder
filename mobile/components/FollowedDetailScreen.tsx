@@ -91,7 +91,7 @@ export function FollowedDetailScreen({
         {id ? (
           <Button
             label={followed ? "Following" : "Follow"}
-            variant={followed ? "secondary" : "primary"}
+            variant={followed ? "secondary" : "action"}
             disabled={
               !follows.configured ||
               !follows.ready ||
@@ -151,7 +151,7 @@ export function FollowedDetailScreen({
                 trailing={
                   <Button
                     label={isSaved ? "Saved" : "Save"}
-                    variant={isSaved ? "secondary" : "primary"}
+                    variant={isSaved ? "secondary" : "action"}
                     disabled={
                       !saved.configured ||
                       !saved.ready ||
