@@ -36,7 +36,7 @@ export async function GET(request: Request) {
       );
     }
 
-    console.error("Scheduled show check failed");
+    console.error("Scheduled show check failed", error);
     return Response.json(
       { error: "Unable to run scheduled check." },
       { status: 500 },
