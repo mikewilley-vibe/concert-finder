@@ -200,11 +200,7 @@ export default function ConcertScreen() {
           <Button
             label={isSaved ? "Saved" : "Save this concert"}
             variant={isSaved ? "secondary" : "action"}
-            disabled={
-              !saved.configured ||
-              !saved.ready ||
-              saved.isPending(show.id)
-            }
+            disabled={saved.isPending(show.id)}
             accessibilityLabel={
               isSaved
                 ? `Remove ${show.name} from saved`
@@ -228,11 +224,10 @@ export default function ConcertScreen() {
                     : `Follow ${artist.name}`
                 }
                 variant={followed ? "secondary" : "action"}
-                disabled={
-                  !follows.configured ||
-                  !follows.ready ||
-                  follows.isPending(FOLLOWED_ATTRACTION_TYPE, artist.id)
-                }
+                disabled={follows.isPending(
+                  FOLLOWED_ATTRACTION_TYPE,
+                  artist.id,
+                )}
                 onPress={() => {
                   void follows.toggleFollow(
                     FOLLOWED_ATTRACTION_TYPE,
