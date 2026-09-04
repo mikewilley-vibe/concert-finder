@@ -148,7 +148,7 @@ export function FollowedDetailScreen({
                   saved.configured ? (
                     <Button
                       label={isSaved ? "Saved" : "Save"}
-                      variant="secondary"
+                      variant={isSaved ? "secondary" : "primary"}
                       disabled={!saved.ready || saved.isPending(show.id)}
                       accessibilityLabel={
                         isSaved
