@@ -92,8 +92,9 @@ export default function DiscoverScreen() {
         <Eyebrow>Discover</Eyebrow>
         <Title>Search artists, venues, and upcoming shows.</Title>
         <Body>
-          Search talks to the Concert Finder website API, not Ticketmaster
-          from this device. Community concert submission stays on the website.
+          Search for an artist or venue, then tap the bright Follow button.
+          Upcoming concerts will appear on Home, where you can open and save
+          them.
         </Body>
       </ScreenBlock>
 
@@ -186,7 +187,7 @@ export default function DiscoverScreen() {
                   follows.configured ? (
                     <Button
                       label={followed ? "Following" : "Follow"}
-                      variant="secondary"
+                      variant={followed ? "secondary" : "primary"}
                       disabled={
                         !follows.ready ||
                         follows.isPending(FOLLOWED_ATTRACTION_TYPE, artist.id)
@@ -241,7 +242,7 @@ export default function DiscoverScreen() {
                   follows.configured ? (
                     <Button
                       label={followed ? "Following" : "Follow"}
-                      variant="secondary"
+                      variant={followed ? "secondary" : "primary"}
                       disabled={
                         !follows.ready ||
                         follows.isPending(FOLLOWED_VENUE_TYPE, venue.id)
@@ -280,7 +281,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.panel,
-    color: colors.foreground,
+    color: "#ffffff",
     fontFamily: fonts.body,
     fontSize: 16,
     paddingHorizontal: 16,
@@ -296,7 +297,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accentDeep,
   },
   buttonLabel: {
-    color: colors.background,
+    color: colors.onAccent,
     fontFamily: fonts.semibold,
     fontSize: 16,
   },
