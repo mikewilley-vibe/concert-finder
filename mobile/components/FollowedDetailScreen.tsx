@@ -92,11 +92,7 @@ export function FollowedDetailScreen({
           <Button
             label={followed ? "Following" : "Follow"}
             variant={followed ? "secondary" : "action"}
-            disabled={
-              !follows.configured ||
-              !follows.ready ||
-              follows.isPending(itemType, id)
-            }
+            disabled={follows.isPending(itemType, id)}
             accessibilityLabel={
               followed ? `Unfollow ${label}` : `Follow ${label}`
             }
@@ -152,11 +148,7 @@ export function FollowedDetailScreen({
                   <Button
                     label={isSaved ? "Saved" : "Save"}
                     variant={isSaved ? "secondary" : "action"}
-                    disabled={
-                      !saved.configured ||
-                      !saved.ready ||
-                      saved.isPending(show.id)
-                    }
+                    disabled={saved.isPending(show.id)}
                     accessibilityLabel={
                       isSaved
                         ? `Remove ${show.name} from saved`
