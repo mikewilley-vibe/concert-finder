@@ -299,11 +299,7 @@ export default function HomeScreen() {
                   <Button
                     label={isSaved ? "Saved" : "Save"}
                     variant={isSaved ? "secondary" : "action"}
-                    disabled={
-                      !saved.configured ||
-                      !saved.ready ||
-                      saved.isPending(show.id)
-                    }
+                    disabled={saved.isPending(show.id)}
                     accessibilityLabel={
                       isSaved
                         ? `Remove ${show.name} from saved`
