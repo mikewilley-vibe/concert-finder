@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
@@ -9,18 +8,25 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 
+import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
 import { ListRow } from "@/components/ListRow";
+import { LoadingBlock } from "@/components/LoadingBlock";
 import { Screen, ScreenBlock } from "@/components/Screen";
 import { Body, Eyebrow, Strong, Title } from "@/components/Typography";
 import { colors, fonts } from "@/constants/theme";
+import { useFollows } from "@/hooks/useFollows";
 import {
-  ApiError,
+  apiErrorMessage,
   searchAttractions,
   searchVenues,
   type TicketmasterAttraction,
   type TicketmasterVenue,
 } from "@/lib/api";
+import {
+  FOLLOWED_ATTRACTION_TYPE,
+  FOLLOWED_VENUE_TYPE,
+} from "@/lib/follows";
 
 type SearchState =
   | { status: "idle" }
@@ -32,8 +38,13 @@ type SearchState =
       venues: TicketmasterVenue[];
     };
 
+function venueSubtitle(venue: TicketmasterVenue) {
+  return [venue.city, venue.state].filter(Boolean).join(", ") || "Venue";
+}
+
 export default function DiscoverScreen() {
   const router = useRouter();
+  const follows = useFollows();
   const [keyword, setKeyword] = useState("");
   const [state, setState] = useState<SearchState>({ status: "idle" });
 
@@ -54,18 +65,23 @@ export default function DiscoverScreen() {
         searchAttractions(query),
         searchVenues(query),
       ]);
+      const seen = new Set(attractionsResult.attractions.map((item) => item.id));
+      const attractions = [
+        ...attractionsResult.attractions,
+        ...attractionsResult.suggestions.filter((item) => !seen.has(item.id)),
+      ];
       setState({
         status: "ready",
-        attractions: attractionsResult.attractions,
+        attractions,
         venues: venuesResult.venues,
       });
     } catch (error) {
       setState({
         status: "error",
-        message:
-          error instanceof ApiError
-            ? error.message
-            : "Could not reach the concert API. Try again.",
+        message: apiErrorMessage(
+          error,
+          "Could not reach the concert API. Try again.",
+        ),
       });
     }
   }
@@ -108,22 +124,34 @@ export default function DiscoverScreen() {
         </Pressable>
       </View>
 
+      {follows.error ? (
+        <EmptyState title="Follows didn’t load" body={follows.error} />
+      ) : null}
+
       {state.status === "idle" ? (
         <EmptyState
           title="Search to get started"
-          body="Results open artist, venue, and concert screens on the stack. Upcoming-show lists for a follow come in a later pass."
+          body="Open an artist or venue to follow it and load upcoming Ticketmaster dates."
         />
       ) : null}
 
       {state.status === "loading" ? (
-        <View style={styles.loading}>
-          <ActivityIndicator color={colors.accent} />
-          <Body>Searching the website API…</Body>
-        </View>
+        <LoadingBlock label="Searching the website API…" />
       ) : null}
 
       {state.status === "error" ? (
-        <EmptyState title="Search didn’t finish" body={state.message} />
+        <EmptyState
+          title="Search didn’t finish"
+          body={state.message}
+          action={
+            <Button
+              label="Try again"
+              onPress={() => {
+                void onSearch();
+              }}
+            />
+          }
+        />
       ) : null}
 
       {state.status === "ready" &&
@@ -138,38 +166,104 @@ export default function DiscoverScreen() {
       {state.status === "ready" && state.attractions.length > 0 ? (
         <ScreenBlock>
           <Strong>Artists</Strong>
-          {state.attractions.map((artist) => (
-            <ListRow
-              key={artist.id}
-              title={artist.name}
-              subtitle="Artist"
-              onPress={() =>
-                router.push({
-                  pathname: "/artist/[id]",
-                  params: { id: artist.id, name: artist.name },
-                })
-              }
-            />
-          ))}
+          {state.attractions.map((artist) => {
+            const followed = follows.isFollowed(
+              FOLLOWED_ATTRACTION_TYPE,
+              artist.id,
+            );
+            return (
+              <ListRow
+                key={artist.id}
+                title={artist.name}
+                subtitle="Artist"
+                onPress={() =>
+                  router.push({
+                    pathname: "/artist/[id]",
+                    params: { id: artist.id, name: artist.name },
+                  })
+                }
+                trailing={
+                  follows.configured ? (
+                    <Button
+                      label={followed ? "Following" : "Follow"}
+                      variant="secondary"
+                      disabled={
+                        !follows.ready ||
+                        follows.isPending(FOLLOWED_ATTRACTION_TYPE, artist.id)
+                      }
+                      accessibilityLabel={
+                        followed
+                          ? `Unfollow ${artist.name}`
+                          : `Follow ${artist.name}`
+                      }
+                      onPress={() => {
+                        void follows.toggleFollow(
+                          FOLLOWED_ATTRACTION_TYPE,
+                          { item_key: artist.id, item_label: artist.name },
+                          followed,
+                        );
+                      }}
+                    />
+                  ) : null
+                }
+              />
+            );
+          })}
         </ScreenBlock>
       ) : null}
 
       {state.status === "ready" && state.venues.length > 0 ? (
         <ScreenBlock>
           <Strong>Venues</Strong>
-          {state.venues.map((venue) => (
-            <ListRow
-              key={venue.id}
-              title={venue.name}
-              subtitle={[venue.city, venue.state].filter(Boolean).join(", ")}
-              onPress={() =>
-                router.push({
-                  pathname: "/venue/[id]",
-                  params: { id: venue.id, name: venue.name },
-                })
-              }
-            />
-          ))}
+          {state.venues.map((venue) => {
+            const followed = follows.isFollowed(
+              FOLLOWED_VENUE_TYPE,
+              venue.id,
+            );
+            const place = venueSubtitle(venue);
+            return (
+              <ListRow
+                key={venue.id}
+                title={venue.name}
+                subtitle={place}
+                onPress={() =>
+                  router.push({
+                    pathname: "/venue/[id]",
+                    params: {
+                      id: venue.id,
+                      name: venue.name,
+                      city: venue.city ?? "",
+                      state: venue.state ?? "",
+                    },
+                  })
+                }
+                trailing={
+                  follows.configured ? (
+                    <Button
+                      label={followed ? "Following" : "Follow"}
+                      variant="secondary"
+                      disabled={
+                        !follows.ready ||
+                        follows.isPending(FOLLOWED_VENUE_TYPE, venue.id)
+                      }
+                      accessibilityLabel={
+                        followed
+                          ? `Unfollow ${venue.name}`
+                          : `Follow ${venue.name}`
+                      }
+                      onPress={() => {
+                        void follows.toggleFollow(
+                          FOLLOWED_VENUE_TYPE,
+                          { item_key: venue.id, item_label: venue.name },
+                          followed,
+                        );
+                      }}
+                    />
+                  ) : null
+                }
+              />
+            );
+          })}
         </ScreenBlock>
       ) : null}
     </Screen>
@@ -205,10 +299,5 @@ const styles = StyleSheet.create({
     color: colors.background,
     fontFamily: fonts.semibold,
     fontSize: 16,
-  },
-  loading: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
   },
 });

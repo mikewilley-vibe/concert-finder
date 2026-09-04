@@ -6,31 +6,42 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { User } from "@supabase/supabase-js";
+import type { Session, User } from "@supabase/supabase-js";
 
-import { ensureAnonymousUser } from "@/lib/auth";
+import {
+  ensureAnonymousUser,
+  isPermanentUser,
+  mergeRememberedAnonymousData,
+  rememberAnonymousSession,
+} from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/config";
 import { getSupabaseClient } from "@/lib/supabase";
 
 type AuthContextValue = {
   user: User | null;
+  session: Session | null;
   ready: boolean;
   configured: boolean;
   error: string | null;
+  transferNotice: string | null;
 };
 
 const AuthContext = createContext<AuthContextValue>({
   user: null,
+  session: null,
   ready: false,
   configured: false,
   error: null,
+  transferNotice: null,
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const configured = isSupabaseConfigured();
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(!configured);
   const [error, setError] = useState<string | null>(null);
+  const [transferNotice, setTransferNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (!configured) {
@@ -43,9 +54,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void (async () => {
       try {
         const next = await ensureAnonymousUser(supabase);
-        if (!cancelled) {
-          setUser(next);
-          setError(null);
+        const { data } = await supabase.auth.getSession();
+        if (cancelled) {
+          return;
+        }
+
+        setUser(next);
+        setSession(data.session);
+        setError(null);
+        await rememberAnonymousSession(data.session);
+
+        if (isPermanentUser(next)) {
+          try {
+            const merged = await mergeRememberedAnonymousData(
+              data.session,
+              next,
+            );
+            if (!cancelled && merged) {
+              setTransferNotice(
+                "Your guest follows and saved shows were moved to this account.",
+              );
+            }
+          } catch {
+            if (!cancelled) {
+              setTransferNotice(
+                "You are signed in, but guest data could not be moved yet. Sign out and back in to retry.",
+              );
+            }
+          }
         }
       } catch {
         if (!cancelled) {
@@ -60,8 +96,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     })();
 
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+    const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === "INITIAL_SESSION") {
+        return;
+      }
+
+      setUser(nextSession?.user ?? null);
+      setSession(nextSession);
+      if (nextSession?.user?.is_anonymous) {
+        void rememberAnonymousSession(nextSession);
+      }
     });
 
     return () => {
@@ -71,8 +115,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [configured]);
 
   const value = useMemo(
-    () => ({ user, ready, configured, error }),
-    [user, ready, configured, error],
+    () => ({
+      user,
+      session,
+      ready,
+      configured,
+      error,
+      transferNotice,
+    }),
+    [user, session, ready, configured, error, transferNotice],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
