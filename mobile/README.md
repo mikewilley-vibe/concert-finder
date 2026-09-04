@@ -21,6 +21,10 @@ npx expo start
 
 Then open Expo Go, an emulator, or the web target from the CLI.
 
+Ticketmaster search from Expo web on localhost may fail CORS. Native
+iOS/Android builds do not use CORS. Point `EXPO_PUBLIC_API_BASE_URL` at a
+same-origin host if you need the web target to search.
+
 ```bash
 npm run typecheck
 ```

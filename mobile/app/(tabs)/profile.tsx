@@ -1,4 +1,5 @@
-import { Alert, Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useAuth } from "@/components/AuthProvider";
 import { EmptyState } from "@/components/EmptyState";
@@ -45,14 +46,14 @@ export default function ProfileScreen() {
   const { user, ready, configured, error } = useAuth();
   const anonymous = isAnonymousUser(user);
   const permanent = isPermanentUser(user);
+  const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
 
   function openWebsite(path: string) {
     void Linking.openURL(websiteUrl(path));
   }
 
   function onDeleteAccount() {
-    Alert.alert(
-      "Delete account",
+    setDeleteNotice(
       "Account deletion is not implemented in this scaffold. It will ask for confirmation and remove the signed-in account once email sign-in ships.",
     );
   }
@@ -133,6 +134,7 @@ export default function ProfileScreen() {
         >
           <Text style={styles.dangerLabel}>Delete account</Text>
         </Pressable>
+        {deleteNotice ? <Body>{deleteNotice}</Body> : null}
       </View>
     </Screen>
   );
