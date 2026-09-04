@@ -298,7 +298,7 @@ export default function HomeScreen() {
                 trailing={
                   <Button
                     label={isSaved ? "Saved" : "Save"}
-                    variant={isSaved ? "secondary" : "primary"}
+                    variant={isSaved ? "secondary" : "action"}
                     disabled={
                       !saved.configured ||
                       !saved.ready ||
