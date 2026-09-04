@@ -29,10 +29,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 16,
     borderRadius: 999,
-    backgroundColor: colors.accent,
+    backgroundColor: "#ffffff",
   },
   pressed: {
-    backgroundColor: colors.accentDeep,
+    backgroundColor: "#e8e8e8",
   },
   label: {
     color: colors.onAccent,
