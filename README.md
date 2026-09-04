@@ -5,9 +5,8 @@ and venues, finding upcoming shows, saving events, and submitting community
 concert listings. This repository will remain the web, administration, cron,
 and secure API service when the Expo mobile client is added.
 
-The customer-facing name is still **My Shows** in the current interface. The
-final choice between **My Shows** and **Concert Finder** is intentionally left
-open until branding is selected.
+The website interface still says **My Shows**. The Expo client in `mobile/`
+is named **Local Shows**. Community concert submission stays on the website.
 
 ## Stack
 
@@ -76,5 +75,5 @@ npm run build
 - Automatic new-show checking supports eight followed artists and venues
   combined and now discloses that limit in the interface.
 - Ticketmaster event queries currently return the first 20 matching events.
-- Push notifications, location discovery, and the Expo client are later native
-  phases.
+- Push notifications, location discovery, calendar, and sharing are later
+  native work. The Local Shows Expo scaffold lives in `mobile/`.

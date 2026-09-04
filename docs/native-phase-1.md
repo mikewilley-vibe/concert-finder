@@ -38,8 +38,10 @@ The packaged migration was rewritten against live project
 
 ## Product decisions still open
 
-- [ ] Choose the permanent name: `Concert Finder` or `My Shows`
-- [ ] Approve the first native release scope
+- [x] Native app name: **Local Shows** (website remains Concert Finder / My Shows)
+- [ ] Approve the first native release scope in `docs/native-mvp.md`
+
+Phase 2 Expo scaffolding has started in `mobile/`. See `docs/native-phase-2.md`.
 
 ## Deferred until later phases
 
