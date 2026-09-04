@@ -188,11 +188,10 @@ export default function DiscoverScreen() {
                   <Button
                     label={followed ? "Following" : "Follow"}
                     variant={followed ? "secondary" : "action"}
-                    disabled={
-                      !follows.configured ||
-                      !follows.ready ||
-                      follows.isPending(FOLLOWED_ATTRACTION_TYPE, artist.id)
-                    }
+                    disabled={follows.isPending(
+                      FOLLOWED_ATTRACTION_TYPE,
+                      artist.id,
+                    )}
                     accessibilityLabel={
                       followed
                         ? `Unfollow ${artist.name}`
@@ -242,11 +241,10 @@ export default function DiscoverScreen() {
                   <Button
                     label={followed ? "Following" : "Follow"}
                     variant={followed ? "secondary" : "action"}
-                    disabled={
-                      !follows.configured ||
-                      !follows.ready ||
-                      follows.isPending(FOLLOWED_VENUE_TYPE, venue.id)
-                    }
+                    disabled={follows.isPending(
+                      FOLLOWED_VENUE_TYPE,
+                      venue.id,
+                    )}
                     accessibilityLabel={
                       followed
                         ? `Unfollow ${venue.name}`
