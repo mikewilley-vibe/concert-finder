@@ -15,21 +15,9 @@
 - [x] Add initial tests for matching, event detection, and throttling
 - [x] Define the recommended version 1.0 native scope
 
-## Migration reconciliation (2026-09-03)
-
-The packaged migration was rewritten against live project
-`cihldmomtbunpdrsbrms` (Concert Finder). It has **not** been applied.
-
-- Keeps `concerts.event_date` as `timestamptz`
-- Keeps `concerts.venue` / `city` and label columns nullable where live is
-- Drops live policy names before creating replacements
-- Preserves permanent-user-only draft update/delete
-- Adds missing `user_id` FKs and creates `saved_events` + transfer helpers
-- Revokes broad `anon` grants on `saved_items`
-
 ## Verification required before production deployment
 
-- [x] Compare the live Supabase schema and every existing policy with the
+- [ ] Compare the live Supabase schema and every existing policy with the
       migration; remove any older permissive policies before deployment
 - [ ] Apply the migration in a development Supabase project
 - [ ] Test anonymous-to-existing-account transfer with real sessions
@@ -45,5 +33,6 @@ The packaged migration was rewritten against live project
 
 - Pagination beyond the first 20 Ticketmaster events
 - Durable, distributed rate-limit counters for higher traffic
-- A scalable notification queue beyond the current eight-follow MVP limit
+- A durable distributed notification queue for traffic beyond the current
+  bounded serverless worker
 - Location, push notifications, calendar access, deep links, and native sharing

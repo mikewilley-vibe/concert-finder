@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { TicketmasterShow } from "../../lib/ticketmaster";
+import {
+  ConcertFinderApiError,
+  createConcertFinderApiClient,
+} from "../../shared/api/client";
+import type {
+  ConcertEvent,
+  EventSearchRequest,
+} from "../../shared/api/v1";
 import {
   loadSavedTicketmasterEventIds,
   saveTicketmasterEvent,
@@ -11,13 +18,10 @@ import {
 import { ensureAnonymousUser } from "../../lib/saved-concerts";
 import { getSupabaseBrowserClient } from "../../lib/supabase/browser-client";
 
-export type ShowResult = TicketmasterShow;
+export type ShowResult = ConcertEvent;
+export type UpcomingShowsRequest = EventSearchRequest;
 
-export type UpcomingShowsRequest = {
-  attractions?: { id: string; label: string }[];
-  venues?: { id: string; label: string }[];
-  postalCode?: string;
-};
+const concertFinderApi = createConcertFinderApiClient();
 
 export function showsMessage(status: number, fallback: string) {
   if (status === 400) {
@@ -39,61 +43,41 @@ export async function fetchUpcomingShows(
   body: UpcomingShowsRequest,
   signal?: AbortSignal,
 ) {
-  const payload: UpcomingShowsRequest = {
-    attractions: body.attractions ?? [],
-    venues: body.venues ?? [],
-  };
-  const postalCode = body.postalCode?.trim();
-  if (postalCode) {
-    payload.postalCode = postalCode;
-  }
-
-  const response = await fetch("/api/ticketmaster/events", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    signal,
-    body: JSON.stringify(payload),
-  });
-  const data = (await response.json()) as {
-    shows?: ShowResult[];
-    error?: string;
-  };
-
-  if (!response.ok) {
+  try {
+    const data = await concertFinderApi.searchEvents(body, signal);
+    return { ok: true as const, shows: data.events, page: data.page };
+  } catch (error) {
+    if (!(error instanceof ConcertFinderApiError)) {
+      throw error;
+    }
     return {
       ok: false as const,
-      status: response.status,
-      error: showsMessage(response.status, data.error ?? ""),
+      status: error.status,
+      error: showsMessage(error.status, error.message),
     };
   }
-
-  return { ok: true as const, shows: data.shows ?? [] };
 }
 
 export async function fetchEventDetails(ids: string[], signal?: AbortSignal) {
-  const params = new URLSearchParams({ ids: ids.join(",") });
-  const response = await fetch(`/api/ticketmaster/event-details?${params}`, {
-    method: "GET",
-    signal,
-  });
-  const data = (await response.json()) as {
-    shows?: ShowResult[];
-    error?: string;
-  };
-
-  if (!response.ok) {
+  try {
+    const data = await concertFinderApi.eventDetails(ids, signal);
+    return { ok: true as const, shows: data.events };
+  } catch (error) {
+    if (!(error instanceof ConcertFinderApiError)) {
+      throw error;
+    }
     return {
       ok: false as const,
-      status: response.status,
-      error: showsMessage(response.status, data.error ?? ""),
+      status: error.status,
+      error: showsMessage(error.status, error.message),
     };
   }
-
-  return { ok: true as const, shows: data.shows ?? [] };
 }
 
 function placeLabel(show: ShowResult) {
-  return [show.city, show.state].filter(Boolean).join(", ");
+  return [show.venue.city, show.venue.stateCode ?? show.venue.state]
+    .filter(Boolean)
+    .join(", ");
 }
 
 export function TicketmasterShowCard({
@@ -115,7 +99,7 @@ export function TicketmasterShowCard({
     <li className="flex flex-col rounded-3xl border border-line bg-panel p-4 shadow-[0_12px_32px_rgba(0,0,0,0.32)] sm:p-5">
       {show.matchedLabels.length > 0 ? (
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">
-          {show.matchedLabels.join(" \u00b7 ")}
+          {show.matchedLabels.join(" · ")}
         </p>
       ) : null}
       <h3 className="mt-2 font-display text-xl leading-tight tracking-tight">
@@ -126,10 +110,10 @@ export function TicketmasterShowCard({
       ) : null}
       <p className="mt-2 text-sm text-accent">
         {show.dateLabel}
-        {show.timeLabel ? ` \u00b7 ${show.timeLabel}` : ""}
+        {show.timeLabel ? ` · ${show.timeLabel}` : ""}
       </p>
-      {show.venueName ? (
-        <p className="mt-1 text-sm text-foreground">{show.venueName}</p>
+      {show.venue.name ? (
+        <p className="mt-1 text-sm text-foreground">{show.venue.name}</p>
       ) : null}
       {place ? <p className="mt-0.5 text-sm text-mute">{place}</p> : null}
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
@@ -142,12 +126,12 @@ export function TicketmasterShowCard({
             onClick={onToggleSaved}
             className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-accent px-4 text-sm font-semibold text-background transition-colors hover:bg-accent-deep focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-70 sm:w-fit"
           >
-            {savePending ? "Saving\u2026" : saved ? "Saved" : "Save show"}
+            {savePending ? "Saving…" : saved ? "Saved" : "Save show"}
           </button>
         ) : null}
-        {show.url ? (
+        {show.ticketUrl ? (
           <a
-            href={show.url}
+            href={show.ticketUrl}
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`View ${show.name} on Ticketmaster`}

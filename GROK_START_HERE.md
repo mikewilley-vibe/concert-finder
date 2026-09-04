@@ -9,8 +9,9 @@ and future administration interface.
 
 Original repository: <https://github.com/mikewilley-vibe/concert-finder>
 
-The files in this package include a completed **first Phase 1 stabilization
-pass** that has not yet been pushed, deployed, or applied to the live database.
+The files in this package include a completed **Phase 1 stabilization pass**
+and a local **Phase 2 shared web/mobile foundation** that have not yet been
+pushed, deployed, or applied to the live database.
 Treat the packaged files—not the original GitHub main branch—as the current
 source of truth.
 
@@ -30,6 +31,14 @@ source of truth.
 - Added `.env.example` and real project documentation
 - Added initial tests for event detection, name matching, and rate limiting
 - Defined a recommended four-tab native MVP
+- Added shared API v1 contracts and a cross-platform web/Expo client
+- Added versioned Ticketmaster and account-transfer endpoints
+- Moved the website onto the shared versioned client
+- Expanded events and saved snapshots with native-ready time, location,
+  coordinate, status, sale, artwork, artist, and ticket fields
+- Added keyword, radius, coordinate, and paginated event discovery
+- Replaced the eight-follow cap with a bounded rotating cron work queue
+- Centralized bearer-token verification for user-specific server operations
 
 ## Verification already completed
 
@@ -42,7 +51,7 @@ npm test
 npm run build
 ```
 
-The test suite currently has three passing tests. The Next.js production build
+The test suite currently has eight passing tests. The Next.js production build
 includes the new `/api/account/merge-anonymous` route.
 
 ## Critical deployment order
@@ -93,6 +102,8 @@ Ticketmaster concerts.
 
 - `docs/native-phase-1.md` — Phase 1 status and remaining verification
 - `docs/native-mvp.md` — recommended native screens, scope, and acceptance path
+- `docs/native-phase-2.md` — shared foundation status and Phase 3 gate
+- `docs/api-v1.md` — native-ready API routes, request shapes, and limits
 - `supabase/audit/current-security.sql` — read-only live database inventory
 - `supabase/migrations/20260903000000_initial_schema.sql` — proposed baseline
 - `lib/supabase/database.types.ts` — typed database contract
@@ -104,8 +115,7 @@ Ticketmaster concerts.
 
 ## Requested next action for Grok
 
-Package tests/`tsc` were repaired, the live audit was completed, and the
-migration was reconciled to the live schema (not applied). Next approved step
-should be applying that migration on a **development** Supabase project and
-testing RLS / saves / anonymous transfer there. Do not push, deploy, begin
-Expo, or apply the migration to production without explicit user approval.
+First inspect the package and confirm the existing tests still pass. Then help
+the user perform the read-only Supabase audit and review its output. Do not
+rewrite the project, begin Expo, apply database changes, or deploy until that
+audit has been reconciled and the user has approved the next action.

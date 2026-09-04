@@ -1,6 +1,8 @@
 import type { Session, User } from "@supabase/supabase-js";
+import { createConcertFinderApiClient } from "../shared/api/client";
 
 const PENDING_ANONYMOUS_TOKEN_KEY = "my-shows:pending-anonymous-token";
+const concertFinderApi = createConcertFinderApiClient();
 
 export function rememberAnonymousSession(session: Session | null) {
   if (!session?.user.is_anonymous || !session.access_token) {
@@ -28,18 +30,10 @@ export async function mergeRememberedAnonymousData(
     return false;
   }
 
-  const response = await fetch("/api/account/merge-anonymous", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ previousAccessToken }),
-  });
-
-  if (!response.ok) {
-    throw new Error("Could not transfer the temporary account data.");
-  }
+  await concertFinderApi.mergeAnonymousAccount(
+    session.access_token,
+    previousAccessToken,
+  );
 
   window.sessionStorage.removeItem(PENDING_ANONYMOUS_TOKEN_KEY);
   return true;
