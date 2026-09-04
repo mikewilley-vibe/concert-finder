@@ -1,8 +1,8 @@
 # Native conversion: Phase 2
 
 Phase 2 prepares the Next.js project to support both the existing website and
-the future Expo application. It does not create the Expo project or change the
-live deployment.
+the **Local Shows** Expo application. It includes the shared backend contract
+and the initial Expo Router scaffold, but does not change the live deployment.
 
 ## Completed locally
 
@@ -24,12 +24,18 @@ live deployment.
 - [x] Replace the eight-follow ceiling with a least-recently-checked work queue
 - [x] Bound each cron run by batch size, concurrency, and time budget
 - [x] Add contract, client-error, and worker-batching tests
+- [x] Scaffold the Local Shows Expo SDK app in `mobile/`
+- [x] Add four-tab navigation: Home, Discover, Saved, and Profile
+- [x] Add concert, artist, and venue detail routes
+- [x] Add a native Supabase client using publishable values and secure session
+      persistence
+- [x] Add anonymous-session bootstrap and account-transfer helpers
 
 ## Verification still required before deployment
 
-- [ ] Run and reconcile `supabase/audit/current-security.sql` against the live
+- [x] Run and reconcile `supabase/audit/current-security.sql` against the live
       Supabase project
-- [ ] Review the expanded migration after that comparison
+- [x] Review the expanded migration after that comparison
 - [ ] Apply the migration to a development Supabase project
 - [ ] Test the work-queue RPC and follow trigger with real rows
 - [ ] Test saving and loading a complete Ticketmaster event with RLS enabled
@@ -46,9 +52,24 @@ live deployment.
 - Supabase remains the account and user-data system, protected by RLS.
 - The Ticketmaster key and Supabase secret remain server-only.
 
-## Gate before Phase 3
+## Still to build in the native app
 
-Do not scaffold Expo or deploy these database-dependent changes until the live
-Supabase audit has been compared with the migration. After the development
-database tests pass, Phase 3 can create the Expo Router application and secure
-native Supabase session storage.
+- Follow, save, and new-show inbox implementations
+- Email/password sign-in, recovery, and real account deletion
+- Push notifications, location radius, calendar, and sharing
+- Community submission UI
+- Supabase migrations, Vercel deploys, or EAS builds
+
+## Safety
+
+Ticketmaster stays on the website API. Never put `TICKETMASTER_API_KEY`,
+`SUPABASE_SECRET_KEY`, or `CRON_SECRET` in Expo config, app code, committed
+`.env` files, logs, or README examples.
+
+See `docs/native-mvp.md` for the version 1.0 acceptance journey.
+
+## Gate before database-dependent native features
+
+Apply the reviewed migrations to a development Supabase project and complete
+the real-session RLS, save, queue, and account-transfer tests before wiring
+those features into the Expo client or deploying the web changes.

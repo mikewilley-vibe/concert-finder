@@ -5,9 +5,8 @@ and venues, finding upcoming shows, saving events, and submitting community
 concert listings. This repository will remain the web, administration, cron,
 and secure API service when the Expo mobile client is added.
 
-The customer-facing name is still **My Shows** in the current interface. The
-final choice between **My Shows** and **Concert Finder** is intentionally left
-open until branding is selected.
+The website interface still says **My Shows**. The Expo client in `mobile/`
+is named **Local Shows**. Community concert submission stays on the website.
 
 ## Stack
 
@@ -90,6 +89,6 @@ npm run build
 - Event-search requests accept up to 50 results per page and expose `hasMore`
   and `nextPage` metadata.
 - A single event request accepts up to 25 followed artist/venue references.
-- Native location permission/UI, push notifications, and the Expo client are
-  later native phases; the shared API already accepts postal or coordinate
-  radius searches.
+- Native location permission/UI, push notifications, calendar, and sharing are
+  later native work. The shared API already accepts postal or coordinate radius
+  searches, and the Local Shows Expo scaffold lives in `mobile/`.

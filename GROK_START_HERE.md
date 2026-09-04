@@ -9,11 +9,10 @@ and future administration interface.
 
 Original repository: <https://github.com/mikewilley-vibe/concert-finder>
 
-The files in this package include a completed **Phase 1 stabilization pass**
-and a local **Phase 2 shared web/mobile foundation** that have not yet been
-pushed, deployed, or applied to the live database.
-Treat the packaged files—not the original GitHub main branch—as the current
-source of truth.
+Phase 1 website stabilization and the Phase 2 shared API foundation are in the
+repository. The **Local Shows** Expo app is scaffolded in `mobile/`. The
+Supabase migrations are still not applied to the live database. Do not treat
+unfinished native features as done.
 
 ## Work completed in this package
 
@@ -82,17 +81,19 @@ inserted.
 - Do not add or manufacture seed concerts.
 - Keep `.env`, `.env.local`, dependencies, build artifacts, and credentials out
   of source control and handoff files.
-- Keep Ticketmaster requests server-side. The future native app should call the
-  versioned Vercel API, not Ticketmaster directly.
+- Keep Ticketmaster requests server-side. Local Shows must call the Vercel API
+  routes, not Ticketmaster Discovery from the device.
 - Preserve owner-only access to follows, saved events, watch state, and drafts.
 - Do not apply the additive migration blindly to production; its comments and
   README explicitly require comparison with the existing live schema first.
 - Do not push or deploy without the user's approval.
 
-## Product decisions still needed
+## Product decisions
 
-1. Permanent customer-facing name: **Concert Finder** or **My Shows**
-2. Approval of the proposed first native release in `docs/native-mvp.md`
+1. Native app name is **Local Shows**. The website remains Concert Finder /
+   My Shows until web branding is revisited.
+2. Approval of the proposed first native release in `docs/native-mvp.md` is
+   still open.
 
 The recommended 1.0 keeps community submission and moderation on the website
 while the native app focuses on discovering, following, saving, and tracking
@@ -101,9 +102,10 @@ Ticketmaster concerts.
 ## Important files
 
 - `docs/native-phase-1.md` — Phase 1 status and remaining verification
+- `docs/native-phase-2.md` — shared foundation and Expo scaffold status
 - `docs/native-mvp.md` — recommended native screens, scope, and acceptance path
-- `docs/native-phase-2.md` — shared foundation status and Phase 3 gate
 - `docs/api-v1.md` — native-ready API routes, request shapes, and limits
+- `mobile/README.md` — how to run the Expo app
 - `supabase/audit/current-security.sql` — read-only live database inventory
 - `supabase/migrations/20260903000000_initial_schema.sql` — proposed baseline
 - `lib/supabase/database.types.ts` — typed database contract
@@ -113,9 +115,17 @@ Ticketmaster concerts.
 - `lib/api-rate-limit.ts` — current application-level throttling
 - `tests/core-logic.test.mjs` — initial automated tests
 
-## Requested next action for Grok
+## Phase 2 status
 
-First inspect the package and confirm the existing tests still pass. Then help
-the user perform the read-only Supabase audit and review its output. Do not
-rewrite the project, begin Expo, apply database changes, or deploy until that
-audit has been reconciled and the user has approved the next action.
+The versioned web/mobile API foundation and the Local Shows Expo navigation
+scaffold are both present. The Expo app is still a skeleton: follow/save/inbox,
+email auth, push, location, and EAS are not done. See
+`docs/native-phase-2.md` and `mobile/README.md`.
+
+## Requested next action
+
+Phase 1 website work is in this repository. The Local Shows Expo scaffold is
+the start of the native client. Remaining foundation work still includes applying the
+reviewed migration on a **development** Supabase project and testing RLS /
+saves / anonymous transfer there. Do not push, deploy, or apply the migration
+to production without explicit user approval.
