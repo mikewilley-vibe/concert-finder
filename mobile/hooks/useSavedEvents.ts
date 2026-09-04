@@ -71,12 +71,21 @@ export function useSavedEvents() {
   }, [authReady, refresh, user?.id]);
 
   async function toggleSaved(show: TicketmasterShow) {
-    if (!configured || !ready || pendingIdsRef.current.has(show.id)) {
+    if (pendingIdsRef.current.has(show.id)) {
+      return;
+    }
+
+    if (!configured) {
+      setError(
+        "Saving is not connected. Check the Supabase values in mobile/.env and restart Expo.",
+      );
       return;
     }
 
     if (!user?.id) {
-      setError("Couldn't start a session. Try reopening the app.");
+      setError(
+        "Your guest account is still connecting. Wait a moment and tap Save again.",
+      );
       return;
     }
 
