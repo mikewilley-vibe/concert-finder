@@ -99,6 +99,7 @@ export default function DiscoverScreen() {
       </ScreenBlock>
 
       <View style={styles.search}>
+        <Strong>Search artists and venues</Strong>
         <TextInput
           value={keyword}
           onChangeText={setKeyword}
@@ -184,28 +185,27 @@ export default function DiscoverScreen() {
                   })
                 }
                 trailing={
-                  follows.configured ? (
-                    <Button
-                      label={followed ? "Following" : "Follow"}
-                      variant={followed ? "secondary" : "primary"}
-                      disabled={
-                        !follows.ready ||
-                        follows.isPending(FOLLOWED_ATTRACTION_TYPE, artist.id)
-                      }
-                      accessibilityLabel={
-                        followed
-                          ? `Unfollow ${artist.name}`
-                          : `Follow ${artist.name}`
-                      }
-                      onPress={() => {
-                        void follows.toggleFollow(
-                          FOLLOWED_ATTRACTION_TYPE,
-                          { item_key: artist.id, item_label: artist.name },
-                          followed,
-                        );
-                      }}
-                    />
-                  ) : null
+                  <Button
+                    label={followed ? "Following" : "Follow"}
+                    variant={followed ? "secondary" : "primary"}
+                    disabled={
+                      !follows.configured ||
+                      !follows.ready ||
+                      follows.isPending(FOLLOWED_ATTRACTION_TYPE, artist.id)
+                    }
+                    accessibilityLabel={
+                      followed
+                        ? `Unfollow ${artist.name}`
+                        : `Follow ${artist.name}`
+                    }
+                    onPress={() => {
+                      void follows.toggleFollow(
+                        FOLLOWED_ATTRACTION_TYPE,
+                        { item_key: artist.id, item_label: artist.name },
+                        followed,
+                      );
+                    }}
+                  />
                 }
               />
             );
@@ -239,28 +239,27 @@ export default function DiscoverScreen() {
                   })
                 }
                 trailing={
-                  follows.configured ? (
-                    <Button
-                      label={followed ? "Following" : "Follow"}
-                      variant={followed ? "secondary" : "primary"}
-                      disabled={
-                        !follows.ready ||
-                        follows.isPending(FOLLOWED_VENUE_TYPE, venue.id)
-                      }
-                      accessibilityLabel={
-                        followed
-                          ? `Unfollow ${venue.name}`
-                          : `Follow ${venue.name}`
-                      }
-                      onPress={() => {
-                        void follows.toggleFollow(
-                          FOLLOWED_VENUE_TYPE,
-                          { item_key: venue.id, item_label: venue.name },
-                          followed,
-                        );
-                      }}
-                    />
-                  ) : null
+                  <Button
+                    label={followed ? "Following" : "Follow"}
+                    variant={followed ? "secondary" : "primary"}
+                    disabled={
+                      !follows.configured ||
+                      !follows.ready ||
+                      follows.isPending(FOLLOWED_VENUE_TYPE, venue.id)
+                    }
+                    accessibilityLabel={
+                      followed
+                        ? `Unfollow ${venue.name}`
+                        : `Follow ${venue.name}`
+                    }
+                    onPress={() => {
+                      void follows.toggleFollow(
+                        FOLLOWED_VENUE_TYPE,
+                        { item_key: venue.id, item_label: venue.name },
+                        followed,
+                      );
+                    }}
+                  />
                 }
               />
             );
