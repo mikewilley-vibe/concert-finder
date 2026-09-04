@@ -8,10 +8,14 @@
 -- * concerts.event_date stays timestamptz (live), not date
 -- * concerts.venue / city stay nullable (live has at least one null city)
 -- * saved_items.item_label stays nullable; live currently has no nulls
+-- * saved_items.user_id keeps DEFAULT auth.uid()
+-- * length CHECKs are applied idempotently for existing DBs
 -- * ticketmaster_watch_state.initialized_at stays NOT NULL DEFAULT now()
 -- * Existing live RLS policy names are dropped before replacements
 -- * Draft update/delete keep the live permanent-user (non-anonymous) rule
 -- * Broad anon grants on saved_items are revoked
+-- * anon execute revoked on mark_ticketmaster_watch_state_seen
+-- * extra authenticated privileges (references/trigger/truncate) revoked on saved_items/saved_events
 -- * user_id FKs are added when missing (live has zero orphans today)
 
 create extension if not exists pgcrypto;
@@ -41,9 +45,53 @@ create index if not exists concerts_public_date_idx
 create index if not exists concerts_created_by_idx
   on public.concerts (created_by, created_at desc);
 
+-- Length CHECKs may be missing when the table already exists.
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'concerts_artist_check'
+      and conrelid = 'public.concerts'::regclass
+  ) then
+    alter table public.concerts
+      add constraint concerts_artist_check
+      check (char_length(artist) between 1 and 120);
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'concerts_venue_check'
+      and conrelid = 'public.concerts'::regclass
+  ) then
+    alter table public.concerts
+      add constraint concerts_venue_check
+      check (venue is null or char_length(venue) <= 120);
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'concerts_city_check'
+      and conrelid = 'public.concerts'::regclass
+  ) then
+    alter table public.concerts
+      add constraint concerts_city_check
+      check (city is null or char_length(city) <= 80);
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'concerts_description_check'
+      and conrelid = 'public.concerts'::regclass
+  ) then
+    alter table public.concerts
+      add constraint concerts_description_check
+      check (description is null or char_length(description) <= 600);
+  end if;
+end $$;
+
 create table if not exists public.saved_items (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   item_type text not null default 'concert' check (item_type in (
     'concert',
     'ticketmaster_attraction',
@@ -58,6 +106,8 @@ create table if not exists public.saved_items (
 );
 
 -- Align live defaults / checks when the table already exists.
+alter table public.saved_items
+  alter column user_id set default auth.uid();
 alter table public.saved_items
   alter column item_type set default 'concert';
 
@@ -75,6 +125,26 @@ begin
         'ticketmaster_attraction',
         'ticketmaster_venue'
       ));
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'saved_items_item_key_check'
+      and conrelid = 'public.saved_items'::regclass
+  ) then
+    alter table public.saved_items
+      add constraint saved_items_item_key_check
+      check (char_length(item_key) between 1 and 128);
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'saved_items_item_label_check'
+      and conrelid = 'public.saved_items'::regclass
+  ) then
+    alter table public.saved_items
+      add constraint saved_items_item_label_check
+      check (item_label is null or char_length(item_label) between 1 and 300);
   end if;
 end $$;
 
@@ -135,6 +205,29 @@ create table if not exists public.ticketmaster_watch_state (
 
 create index if not exists ticketmaster_watch_state_user_idx
   on public.ticketmaster_watch_state (user_id, last_checked_at desc);
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'ticketmaster_watch_state_item_key_check'
+      and conrelid = 'public.ticketmaster_watch_state'::regclass
+  ) then
+    alter table public.ticketmaster_watch_state
+      add constraint ticketmaster_watch_state_item_key_check
+      check (char_length(item_key) between 1 and 128);
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'ticketmaster_watch_state_item_label_check'
+      and conrelid = 'public.ticketmaster_watch_state'::regclass
+  ) then
+    alter table public.ticketmaster_watch_state
+      add constraint ticketmaster_watch_state_item_label_check
+      check (item_label is null or char_length(item_label) between 1 and 300);
+  end if;
+end $$;
 
 -- Add missing user_id FKs on the live prototype (skipped when already present).
 do $$
@@ -269,6 +362,11 @@ grant select, insert, update, delete on public.saved_items to authenticated;
 grant select, insert, update, delete on public.saved_events to authenticated;
 grant select on public.ticketmaster_watch_state to authenticated;
 
+revoke references, trigger, truncate on table public.saved_items from authenticated;
+revoke references, trigger, truncate on table public.saved_events from authenticated;
+revoke insert, update, delete, references, trigger, truncate
+  on table public.ticketmaster_watch_state from authenticated;
+
 -- ---------------------------------------------------------------------------
 -- Functions / triggers
 -- ---------------------------------------------------------------------------
@@ -304,6 +402,7 @@ as $$
 $$;
 
 revoke all on function public.mark_ticketmaster_watch_state_seen(text) from public;
+revoke all on function public.mark_ticketmaster_watch_state_seen(text) from anon;
 grant execute on function public.mark_ticketmaster_watch_state_seen(text) to authenticated;
 
 -- Called only by the server after it verifies both the anonymous source token
