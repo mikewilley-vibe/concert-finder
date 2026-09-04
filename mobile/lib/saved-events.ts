@@ -33,6 +33,7 @@ function rowToShow(raw: SavedEventRow): TicketmasterShow | null {
     venueName: optionalString(raw.venue_name) ?? "",
     city: optionalString(raw.city) ?? "",
     state: optionalString(raw.state) ?? "",
+    attractions: [],
     matchedLabels: [],
   };
   const timeLabel = optionalString(raw.time_label);
