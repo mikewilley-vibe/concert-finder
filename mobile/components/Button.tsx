@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   primaryLabel: {
-    color: colors.background,
+    color: colors.onAccent,
   },
   mutedLabel: {
     color: colors.foreground,
