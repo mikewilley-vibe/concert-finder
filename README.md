@@ -61,6 +61,17 @@ shared durable store before traffic grows across many server instances.
 The Ticketmaster API key and Supabase secret key must never be sent to either
 the website browser bundle or the future Expo application.
 
+## Shared web and mobile API
+
+The versioned API contract is defined in `shared/api/v1.ts`, and the
+cross-platform client is in `shared/api/client.ts`. The existing website now
+uses `/api/v1`; the original Ticketmaster routes remain as compatibility
+endpoints. See `docs/api-v1.md` for request shapes and limits.
+
+Event responses include native-ready timing, timezone, status, sale, artwork,
+artist, venue-address, and coordinate fields. Event discovery accepts keyword,
+postal code, latitude/longitude, radius, and pagination inputs.
+
 ## Commands
 
 ```bash
@@ -72,8 +83,12 @@ npm run build
 
 ## Current product limits
 
-- Automatic new-show checking supports eight followed artists and venues
-  combined and now discloses that limit in the interface.
-- Ticketmaster event queries currently return the first 20 matching events.
-- Push notifications, location discovery, calendar, and sharing are later
-  native work. The Local Shows Expo scaffold lives in `mobile/`.
+- A cron run selects up to 40 least-recently checked follows, processes four at
+  a time, and stops before the serverless time limit. Later runs continue with
+  the oldest unchecked records.
+- Event-search requests accept up to 50 results per page and expose `hasMore`
+  and `nextPage` metadata.
+- A single event request accepts up to 25 followed artist/venue references.
+- Native location permission/UI, push notifications, calendar, and sharing are
+  later native work. The shared API already accepts postal or coordinate radius
+  searches, and the Local Shows Expo scaffold lives in `mobile/`.

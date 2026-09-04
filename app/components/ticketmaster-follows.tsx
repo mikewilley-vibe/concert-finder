@@ -5,7 +5,6 @@ import {
   FOLLOWED_ATTRACTION_TYPE,
   FOLLOWED_VENUE_TYPE,
   FOLLOWS_CHANGED_EVENT,
-  MAX_MONITORED_FOLLOWS,
   followItem,
   loadFollowedItems,
   notifyFollowsChanged,
@@ -15,19 +14,16 @@ import {
 } from "../../lib/saved-follows";
 import { ensureAnonymousUser } from "../../lib/saved-concerts";
 import { getSupabaseBrowserClient } from "../../lib/supabase/browser-client";
+import {
+  ConcertFinderApiError,
+  createConcertFinderApiClient,
+} from "../../shared/api/client";
+import type { ArtistSummary, VenueSummary } from "../../shared/api/v1";
 
-type AttractionResult = {
-  id: string;
-  name: string;
-  image?: string;
-};
+type AttractionResult = ArtistSummary;
+type VenueResult = VenueSummary;
 
-type VenueResult = {
-  id: string;
-  name: string;
-  city?: string;
-  state?: string;
-};
+const concertFinderApi = createConcertFinderApiClient();
 
 const fieldClass =
   "min-h-12 w-full rounded-full border border-line bg-panel px-4 text-base text-foreground outline-none placeholder:text-mute/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
@@ -53,10 +49,10 @@ function ArtistFollowRow({
 }) {
   return (
     <li className="flex items-center gap-3 rounded-3xl border border-line bg-panel p-3">
-      {attraction.image ? (
+      {attraction.imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={attraction.image}
+          src={attraction.imageUrl}
           alt=""
           width={48}
           height={48}
@@ -123,7 +119,9 @@ function followsMessage(error: unknown) {
 }
 
 function venuePlace(venue: VenueResult) {
-  return [venue.city, venue.state].filter(Boolean).join(", ");
+  return [venue.city, venue.stateCode ?? venue.state]
+    .filter(Boolean)
+    .join(", ");
 }
 
 function useSavedFollows() {
@@ -195,16 +193,6 @@ function useSavedFollows() {
   ) {
     const pendingId = `${itemType}:${item.item_key}`;
     if (!ready || pendingKeysRef.current.has(pendingId)) {
-      return;
-    }
-
-    if (
-      !currentlyFollowed &&
-      bands.length + venues.length >= MAX_MONITORED_FOLLOWS
-    ) {
-      setFollowError(
-        `Automatic tracking currently supports up to ${MAX_MONITORED_FOLLOWS} artists and venues combined. Unfollow one before adding another.`,
-      );
       return;
     }
 
@@ -371,32 +359,23 @@ export function TicketmasterFollows() {
     setArtistError(null);
 
     try {
-      const response = await fetch(
-        `/api/ticketmaster/attractions?keyword=${encodeURIComponent(nextKeyword)}`,
-        { signal: controller.signal },
+      const data = await concertFinderApi.searchArtists(
+        nextKeyword,
+        controller.signal,
       );
-      const payload = (await response.json()) as {
-        attractions?: AttractionResult[];
-        suggestions?: AttractionResult[];
-        error?: string;
-      };
-
-      if (!response.ok) {
-        setArtistResults(null);
-        setArtistSuggestions([]);
-        setArtistError(searchMessage(response.status, payload.error ?? ""));
-        return;
-      }
-
-      setArtistResults(payload.attractions ?? []);
-      setArtistSuggestions(payload.suggestions ?? []);
+      setArtistResults(data.artists);
+      setArtistSuggestions(data.suggestions);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         return;
       }
       setArtistResults(null);
       setArtistSuggestions([]);
-      setArtistError("Could not search Ticketmaster right now. Try again.");
+      setArtistError(
+        error instanceof ConcertFinderApiError
+          ? searchMessage(error.status, error.message)
+          : "Could not search Ticketmaster right now. Try again.",
+      );
     } finally {
       if (artistRequestRef.current === controller) {
         artistRequestRef.current = null;
@@ -421,28 +400,21 @@ export function TicketmasterFollows() {
     setVenueError(null);
 
     try {
-      const response = await fetch(
-        `/api/ticketmaster/venues?keyword=${encodeURIComponent(nextKeyword)}`,
-        { signal: controller.signal },
+      const data = await concertFinderApi.searchVenues(
+        nextKeyword,
+        controller.signal,
       );
-      const payload = (await response.json()) as {
-        venues?: VenueResult[];
-        error?: string;
-      };
-
-      if (!response.ok) {
-        setVenueResults(null);
-        setVenueError(searchMessage(response.status, payload.error ?? ""));
-        return;
-      }
-
-      setVenueResults(payload.venues ?? []);
+      setVenueResults(data.venues);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         return;
       }
       setVenueResults(null);
-      setVenueError("Could not search Ticketmaster right now. Try again.");
+      setVenueError(
+        error instanceof ConcertFinderApiError
+          ? searchMessage(error.status, error.message)
+          : "Could not search Ticketmaster right now. Try again.",
+      );
     } finally {
       if (venueRequestRef.current === controller) {
         venueRequestRef.current = null;
@@ -464,8 +436,8 @@ export function TicketmasterFollows() {
         app does not sell tickets.
       </p>
       <p className="mt-2 max-w-xl text-sm leading-6 text-mute">
-        Automatic new-show tracking currently supports up to {MAX_MONITORED_FOLLOWS}{" "}
-        artists and venues combined.
+        Follow as many as you like. Automatic checks rotate through the oldest
+        results first in safe batches.
       </p>
 
       {followError ? (
