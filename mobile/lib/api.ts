@@ -215,6 +215,16 @@ export function mergeAnonymousAccount(options: {
   });
 }
 
+export function deleteAccount(accessToken: string) {
+  return apiFetch<{ deleted: true }>("/api/v1/account/delete", {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ confirmation: "DELETE" }),
+  });
+}
+
 export function apiErrorMessage(error: unknown, fallback: string) {
   if (error instanceof ApiError) {
     if (error.status === 429) {

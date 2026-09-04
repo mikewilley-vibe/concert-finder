@@ -183,3 +183,12 @@ export async function signOutToGuest(supabase: SupabaseClient) {
 
   return ensureAnonymousUser(supabase);
 }
+
+export async function resetAfterAccountDeletion(supabase: SupabaseClient) {
+  await AsyncStorage.removeItem(PENDING_ANONYMOUS_TOKEN_KEY);
+  const { error } = await supabase.auth.signOut({ scope: "local" });
+  if (error) {
+    throw error;
+  }
+  return ensureAnonymousUser(supabase);
+}

@@ -46,12 +46,14 @@ export function useSavedEvents() {
 
     let cancelled = false;
 
-    void refresh().catch(() => {
-      if (!cancelled) {
-        setError("Could not load saved shows.");
-        setReady(true);
-      }
-    });
+    const timer = setTimeout(() => {
+      void refresh().catch(() => {
+        if (!cancelled) {
+          setError("Could not load saved shows.");
+          setReady(true);
+        }
+      });
+    }, 0);
 
     const unsubscribe = subscribeUserLibrary(() => {
       void refresh().catch(() => {
@@ -63,6 +65,7 @@ export function useSavedEvents() {
 
     return () => {
       cancelled = true;
+      clearTimeout(timer);
       unsubscribe();
     };
   }, [authReady, refresh, user?.id]);

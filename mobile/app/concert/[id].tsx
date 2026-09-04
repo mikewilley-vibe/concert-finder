@@ -126,8 +126,11 @@ export default function ConcertScreen() {
   }, [eventId, snapshot]);
 
   useEffect(() => {
-    setShow(snapshot);
-    void loadDetails();
+    const timer = setTimeout(() => {
+      setShow(snapshot);
+      void loadDetails();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [eventId, loadDetails, snapshot]);
 
   if (eventId === "preview") {
@@ -163,6 +166,7 @@ export default function ConcertScreen() {
       {show?.image ? (
         <Image
           source={{ uri: show.image }}
+          alt={`${show.name} concert artwork`}
           accessibilityIgnoresInvertColors
           accessibilityLabel={`${show.name} artwork`}
           style={styles.art}

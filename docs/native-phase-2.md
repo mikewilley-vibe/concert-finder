@@ -64,10 +64,11 @@ history still needs a separate reconciliation.
 - Supabase remains the account and user-data system, protected by RLS.
 - The Ticketmaster key and Supabase secret remain server-only.
 
-## Still to build in the native app
+## Continued in Phase 3
 
-- Follow, save, and new-show inbox implementations
-- Email/password sign-in, recovery, and real account deletion
+- Follow, save, and new-show inbox implementations are now present
+- Email/password sign-in, recovery, account transfer, and account deletion are
+  now present
 - Push notifications, location radius, calendar, and sharing
 - Community submission UI
 - Supabase migrations, Vercel deploys, or EAS builds

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useEffectEvent, useRef, useState } from "react";
 import {
   FOLLOWED_ATTRACTION_TYPE,
   FOLLOWED_VENUE_TYPE,
@@ -281,6 +281,7 @@ export function ShowsForYou() {
   }
 
   const artistKeys = artists.map((artist) => artist.item_key).join(",");
+  const autoLoadArtists = useEffectEvent(() => runArtistSearch(""));
 
   useEffect(() => {
     if (!followsReady) {
@@ -289,8 +290,6 @@ export function ShowsForYou() {
 
     if (artists.length === 0) {
       autoLoadedArtistKey.current = "";
-      setArtistShows(null);
-      setArtistResultHeading("");
       return;
     }
 
@@ -299,7 +298,10 @@ export function ShowsForYou() {
     }
 
     autoLoadedArtistKey.current = artistKeys;
-    void runArtistSearch("");
+    const timer = window.setTimeout(() => {
+      void autoLoadArtists();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [artistKeys, artists.length, followsReady]);
 
   return (

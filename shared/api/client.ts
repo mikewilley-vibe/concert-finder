@@ -2,6 +2,7 @@ import type {
   ApiFailure,
   ApiSuccess,
   ArtistSearchData,
+  DeleteAccountData,
   EventDetailsData,
   EventSearchData,
   EventSearchRequest,
@@ -115,6 +116,22 @@ export function createConcertFinderApiClient(options?: {
         },
       );
       return readJson<MergeAnonymousData>(response);
+    },
+
+    async deleteAccount(accessToken: string, signal?: AbortSignal) {
+      const response = await fetchImpl(
+        apiUrl(baseUrl, "/api/v1/account/delete"),
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          signal,
+          body: JSON.stringify({ confirmation: "DELETE" }),
+        },
+      );
+      return readJson<DeleteAccountData>(response);
     },
   };
 }
