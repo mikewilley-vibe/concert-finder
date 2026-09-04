@@ -13,6 +13,12 @@ export type TicketmasterVenue = {
   state?: string;
 };
 
+export type TicketmasterArtistRef = {
+  id: string;
+  name: string;
+  image?: string;
+};
+
 export type TicketmasterShow = {
   id: string;
   name: string;
@@ -23,6 +29,7 @@ export type TicketmasterShow = {
   state: string;
   url?: string;
   image?: string;
+  attractions: TicketmasterArtistRef[];
   matchedLabels: string[];
 };
 
@@ -38,6 +45,11 @@ type NativeApiShow = {
   timeLabel: string | null;
   ticketUrl: string | null;
   imageUrl: string | null;
+  attractions: Array<{
+    id: string;
+    name: string;
+    imageUrl: string | null;
+  }>;
   matchedLabels: string[];
   venue: {
     name: string;
@@ -196,6 +208,11 @@ function mapShow(show: NativeApiShow): TicketmasterShow {
     state: show.venue.stateCode ?? "",
     url: show.ticketUrl ?? undefined,
     image: show.imageUrl ?? undefined,
+    attractions: show.attractions.map((artist) => ({
+      id: artist.id,
+      name: artist.name,
+      image: artist.imageUrl ?? undefined,
+    })),
     matchedLabels: show.matchedLabels,
   };
 }
