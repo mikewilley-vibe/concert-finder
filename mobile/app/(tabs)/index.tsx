@@ -296,21 +296,23 @@ export default function HomeScreen() {
                 key={show.id}
                 show={show}
                 trailing={
-                  saved.configured ? (
-                    <Button
-                      label={isSaved ? "Saved" : "Save"}
-                      variant={isSaved ? "secondary" : "primary"}
-                      disabled={!saved.ready || saved.isPending(show.id)}
-                      accessibilityLabel={
-                        isSaved
-                          ? `Remove ${show.name} from saved`
-                          : `Save ${show.name}`
-                      }
-                      onPress={() => {
-                        void saved.toggleSaved(show);
-                      }}
-                    />
-                  ) : null
+                  <Button
+                    label={isSaved ? "Saved" : "Save"}
+                    variant={isSaved ? "secondary" : "primary"}
+                    disabled={
+                      !saved.configured ||
+                      !saved.ready ||
+                      saved.isPending(show.id)
+                    }
+                    accessibilityLabel={
+                      isSaved
+                        ? `Remove ${show.name} from saved`
+                        : `Save ${show.name}`
+                    }
+                    onPress={() => {
+                      void saved.toggleSaved(show);
+                    }}
+                  />
                 }
               />
             );
