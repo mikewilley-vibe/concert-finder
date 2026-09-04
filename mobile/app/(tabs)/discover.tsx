@@ -187,7 +187,7 @@ export default function DiscoverScreen() {
                 trailing={
                   <Button
                     label={followed ? "Following" : "Follow"}
-                    variant={followed ? "secondary" : "primary"}
+                    variant={followed ? "secondary" : "action"}
                     disabled={
                       !follows.configured ||
                       !follows.ready ||
@@ -241,7 +241,7 @@ export default function DiscoverScreen() {
                 trailing={
                   <Button
                     label={followed ? "Following" : "Follow"}
-                    variant={followed ? "secondary" : "primary"}
+                    variant={followed ? "secondary" : "action"}
                     disabled={
                       !follows.configured ||
                       !follows.ready ||
