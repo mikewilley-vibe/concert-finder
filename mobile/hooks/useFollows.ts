@@ -89,7 +89,14 @@ export function useFollows() {
     currentlyFollowed: boolean,
   ) {
     const pendingId = `${itemType}:${item.item_key}`;
-    if (!configured || !ready || pendingKeysRef.current.has(pendingId)) {
+    if (pendingKeysRef.current.has(pendingId)) {
+      return;
+    }
+
+    if (!configured) {
+      setError(
+        "Following is not connected. Check the Supabase values in mobile/.env and restart Expo.",
+      );
       return;
     }
 
@@ -104,7 +111,9 @@ export function useFollows() {
     }
 
     if (!user?.id) {
-      setError("Couldn't start a session. Try reopening the app.");
+      setError(
+        "Your guest account is still connecting. Wait a moment and tap Follow again.",
+      );
       return;
     }
 
