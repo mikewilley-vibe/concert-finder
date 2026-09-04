@@ -9,9 +9,9 @@ import {
   TicketmasterFollows,
 } from "./components/ticketmaster-follows";
 
-const homeTitle = "My Shows \u00b7 Concerts for the bands and rooms you follow";
+const homeTitle = "My Shows · Concerts for the bands and rooms you follow";
 const homeDescription =
-  "Follow artists and venues, see upcoming concerts, and keep a listings board \u2014 for music fans who want to stay aware of what's coming.";
+  "Follow artists and venues, see upcoming concerts, and keep a listings board — for music fans who want to stay aware of what's coming.";
 
 export const metadata: Metadata = {
   title: {
@@ -101,7 +101,7 @@ export default function Home() {
 
       <footer className="relative z-10 border-t border-line pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         <p className="mx-auto max-w-6xl px-4 py-6 text-sm text-mute sm:px-8">
-          My Shows \u00b7 Community submissions remain drafts until they are
+          My Shows · Community submissions remain drafts until they are
           published. This app does not sell tickets.
         </p>
       </footer>

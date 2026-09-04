@@ -11,6 +11,7 @@ import {
 import { ensureAnonymousUser } from "../../lib/saved-concerts";
 import { getSupabaseBrowserClient } from "../../lib/supabase/browser-client";
 import { FollowedArtistSelect, ALL_FOLLOWED_ARTISTS } from "./followed-artist-select";
+import { EVENT_SEARCH_FOLLOW_LIMIT } from "../../shared/api/v1";
 import {
   fetchUpcomingShows,
   TicketmasterShowResults,
@@ -23,7 +24,7 @@ const fieldClass =
   "min-h-12 min-w-0 w-full rounded-full border border-line bg-panel px-4 text-base text-foreground outline-none placeholder:text-mute/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
 function toRefs(items: FollowedItem[]) {
-  return items.map((item) => ({
+  return items.slice(0, EVENT_SEARCH_FOLLOW_LIMIT).map((item) => ({
     id: item.item_key,
     label: item.item_label,
   }));
@@ -133,23 +134,16 @@ export function ShowsForYou() {
     };
   }, []);
 
-  useEffect(() => {
-    if (
-      selectedArtist !== ALL &&
-      !artists.some((artist) => artist.item_key === selectedArtist)
-    ) {
-      setSelectedArtist(ALL);
-    }
-  }, [artists, selectedArtist]);
-
-  useEffect(() => {
-    if (
-      selectedVenue !== ALL &&
-      !venues.some((venue) => venue.item_key === selectedVenue)
-    ) {
-      setSelectedVenue(ALL);
-    }
-  }, [venues, selectedVenue]);
+  const currentArtistSelection =
+    selectedArtist === ALL ||
+    artists.some((artist) => artist.item_key === selectedArtist)
+      ? selectedArtist
+      : ALL;
+  const currentVenueSelection =
+    selectedVenue === ALL ||
+    venues.some((venue) => venue.item_key === selectedVenue)
+      ? selectedVenue
+      : ALL;
 
   async function runArtistSearch(nextPostalCode: string) {
     if (artistPending) {
@@ -166,7 +160,12 @@ export function ShowsForYou() {
 
     try {
       const { nextArtists } = await refreshFollows();
-      const chosen = pickFollowed(nextArtists, selectedArtist);
+      const selection =
+        selectedArtist === ALL ||
+        nextArtists.some((artist) => artist.item_key === selectedArtist)
+          ? selectedArtist
+          : ALL;
+      const chosen = pickFollowed(nextArtists, selection);
       if (chosen.length === 0) {
         setSelectedArtist(ALL);
         setArtistShows(null);
@@ -178,7 +177,7 @@ export function ShowsForYou() {
         {
           attractions: toRefs(chosen),
           venues: [],
-          ...(zip ? { postalCode: zip } : {}),
+          ...(zip ? { location: { postalCode: zip } } : {}),
         },
         controller.signal,
       );
@@ -191,7 +190,10 @@ export function ShowsForYou() {
 
       setArtistUsedZip(Boolean(zip));
       setArtistResultHeading(
-        upcomingArtistHeading(artistHeadingLabel(nextArtists, selectedArtist), Boolean(zip)),
+        upcomingArtistHeading(
+          artistHeadingLabel(nextArtists, selection),
+          Boolean(zip),
+        ),
       );
       setArtistShows(result.shows);
     } catch (error) {
@@ -232,7 +234,12 @@ export function ShowsForYou() {
 
     try {
       const { nextVenues } = await refreshFollows();
-      const chosen = pickFollowed(nextVenues, selectedVenue);
+      const selection =
+        selectedVenue === ALL ||
+        nextVenues.some((venue) => venue.item_key === selectedVenue)
+          ? selectedVenue
+          : ALL;
+      const chosen = pickFollowed(nextVenues, selection);
       if (chosen.length === 0) {
         setSelectedVenue(ALL);
         setVenueShows(null);
@@ -255,7 +262,7 @@ export function ShowsForYou() {
       }
 
       setVenueResultHeading(
-        upcomingVenueHeading(venueHeadingLabel(nextVenues, selectedVenue)),
+        upcomingVenueHeading(venueHeadingLabel(nextVenues, selection)),
       );
       setVenueShows(result.shows);
     } catch (error) {
@@ -307,7 +314,7 @@ export function ShowsForYou() {
           >
             <FollowedArtistSelect
               artists={artists}
-              value={selectedArtist}
+              value={currentArtistSelection}
               onChange={setSelectedArtist}
             />
             <div>
@@ -397,7 +404,7 @@ export function ShowsForYou() {
               </label>
               <select
                 id="upcoming-venue-select"
-                value={selectedVenue}
+                value={currentVenueSelection}
                 onChange={(event) => setSelectedVenue(event.target.value)}
                 className={fieldClass}
               >

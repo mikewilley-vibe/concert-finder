@@ -4,6 +4,7 @@ import {
   searchTicketmasterVenues,
 } from "../../../../lib/ticketmaster";
 import { ticketmasterRateLimitResponse } from "../../../../lib/api-rate-limit";
+import { legacyVenue } from "../../../../lib/ticketmaster-legacy";
 
 export async function GET(request: NextRequest) {
   const limited = ticketmasterRateLimitResponse(
@@ -30,5 +31,5 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  return Response.json({ venues: result.venues });
+  return Response.json({ venues: result.venues.map(legacyVenue) });
 }

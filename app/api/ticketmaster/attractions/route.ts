@@ -4,6 +4,7 @@ import {
   searchTicketmasterAttractionsForFollow,
 } from "../../../../lib/ticketmaster";
 import { ticketmasterRateLimitResponse } from "../../../../lib/api-rate-limit";
+import { legacyAttraction } from "../../../../lib/ticketmaster-legacy";
 
 export async function GET(request: NextRequest) {
   const limited = ticketmasterRateLimitResponse(
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
   }
 
   return Response.json({
-    attractions: result.attractions,
-    suggestions: result.suggestions,
+    attractions: result.attractions.map(legacyAttraction),
+    suggestions: result.suggestions.map(legacyAttraction),
   });
 }
