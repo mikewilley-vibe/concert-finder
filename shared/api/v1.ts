@@ -126,3 +126,7 @@ export type EventDetailsData = {
 export type MergeAnonymousData = {
   merged: true;
 };
+
+export type DeleteAccountData = {
+  deleted: true;
+};

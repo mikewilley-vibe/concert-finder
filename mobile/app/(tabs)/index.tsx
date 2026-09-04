@@ -155,11 +155,17 @@ export default function HomeScreen() {
   }, [authReady, configured, permanent]);
 
   useEffect(() => {
-    void loadUpcoming();
+    const timer = setTimeout(() => {
+      void loadUpcoming();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [loadUpcoming]);
 
   useEffect(() => {
-    void loadInbox();
+    const timer = setTimeout(() => {
+      void loadInbox();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [loadInbox]);
 
   async function markAllSeen() {

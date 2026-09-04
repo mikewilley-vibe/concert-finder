@@ -72,7 +72,10 @@ export function FollowedDetailScreen({
   }, [id, kind, label]);
 
   useEffect(() => {
-    void loadShows();
+    const timer = setTimeout(() => {
+      void loadShows();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [loadShows]);
 
   return (

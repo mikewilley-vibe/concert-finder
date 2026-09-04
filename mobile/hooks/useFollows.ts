@@ -59,12 +59,14 @@ export function useFollows() {
 
     let cancelled = false;
 
-    void refresh().catch((loadError: unknown) => {
-      if (!cancelled) {
-        setError(followsMessage(loadError));
-        setReady(true);
-      }
-    });
+    const timer = setTimeout(() => {
+      void refresh().catch((loadError: unknown) => {
+        if (!cancelled) {
+          setError(followsMessage(loadError));
+          setReady(true);
+        }
+      });
+    }, 0);
 
     const unsubscribe = subscribeUserLibrary(() => {
       void refresh().catch((loadError: unknown) => {
@@ -76,6 +78,7 @@ export function useFollows() {
 
     return () => {
       cancelled = true;
+      clearTimeout(timer);
       unsubscribe();
     };
   }, [authReady, refresh, user?.id]);

@@ -203,3 +203,31 @@ test("the shared client exposes stable API errors", async () => {
       error.code === "rate_limited",
   );
 });
+
+test("account deletion requires an authenticated explicit DELETE request", async () => {
+  let capturedUrl = "";
+  let capturedMethod = "";
+  let capturedAuthorization = "";
+  let capturedBody = "";
+  const client = createConcertFinderApiClient({
+    baseUrl: "https://concert-finder.example",
+    fetchImpl: async (url, init) => {
+      capturedUrl = String(url);
+      capturedMethod = String(init?.method ?? "");
+      capturedAuthorization = new Headers(init?.headers).get("authorization") ?? "";
+      capturedBody = String(init?.body ?? "");
+      return Response.json({
+        apiVersion: "v1",
+        data: { deleted: true },
+        meta: { requestId: "test-request" },
+      });
+    },
+  });
+
+  const result = await client.deleteAccount("access-token");
+  assert.equal(capturedUrl, "https://concert-finder.example/api/v1/account/delete");
+  assert.equal(capturedMethod, "DELETE");
+  assert.equal(capturedAuthorization, "Bearer access-token");
+  assert.deepEqual(JSON.parse(capturedBody), { confirmation: "DELETE" });
+  assert.equal(result.deleted, true);
+});

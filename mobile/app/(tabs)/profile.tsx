@@ -29,10 +29,12 @@ import {
   isAnonymousUser,
   isPermanentUser,
   requestPasswordReset,
+  resetAfterAccountDeletion,
   setAccountPassword,
   signInWithEmailPassword,
   signOutToGuest,
 } from "@/lib/auth";
+import { deleteAccount } from "@/lib/api";
 import { websiteUrl } from "@/lib/config";
 import { getSupabaseClient } from "@/lib/supabase";
 
@@ -70,7 +72,7 @@ function Field({
 }
 
 export default function ProfileScreen() {
-  const { user, ready, configured, error, transferNotice } = useAuth();
+  const { user, session, ready, configured, error, transferNotice } = useAuth();
   const anonymous = isAnonymousUser(user);
   const permanent = isPermanentUser(user);
   const email = verifiedEmail(user);
@@ -94,6 +96,8 @@ export default function ProfileScreen() {
   const [resetPending, setResetPending] = useState(false);
   const [signOutPending, setSignOutPending] = useState(false);
   const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
+  const [deleteConfirming, setDeleteConfirming] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
 
   function openWebsite(path: string) {
     void Linking.openURL(websiteUrl(path));
@@ -252,10 +256,27 @@ export default function ProfileScreen() {
     }
   }
 
-  function onDeleteAccount() {
-    setDeleteNotice(
-      "Account deletion is not available from the app. Removing an auth user needs a server-side step, not the publishable key. You can unfollow and unsave from Saved, or sign out of this device.",
-    );
+  async function onDeleteAccount() {
+    if (!session?.access_token || !permanent) {
+      setDeleteNotice("Sign in to a permanent account before deleting it.");
+      return;
+    }
+
+    setDeletePending(true);
+    setDeleteNotice(null);
+    setFormError(null);
+    setNotice(null);
+
+    try {
+      await deleteAccount(session.access_token);
+      await resetAfterAccountDeletion(getSupabaseClient());
+      setDeleteConfirming(false);
+      setNotice("Your account and its saved data were deleted. A new guest session is ready.");
+    } catch {
+      setDeleteNotice("Could not delete the account. Try signing in again, then retry.");
+    } finally {
+      setDeletePending(false);
+    }
   }
 
   return (
@@ -474,16 +495,43 @@ export default function ProfileScreen() {
       <View style={styles.card}>
         <Strong>Delete account</Strong>
         <Body>
-          This control is honest about a missing server delete path. It will
-          not pretend to remove your auth user from the publishable client.
+          Permanently removes your account, follows, saved concerts, watch
+          history, and draft ownership. This cannot be undone.
         </Body>
-        <Button
-          label="Delete account"
-          variant="danger"
-          disabled={!permanent}
-          accessibilityLabel="Delete account"
-          onPress={onDeleteAccount}
-        />
+        {deleteConfirming ? (
+          <>
+            <Body>Are you sure? Your Local Shows account cannot be recovered.</Body>
+            <Button
+              label={deletePending ? "Deleting…" : "Permanently delete account"}
+              variant="danger"
+              disabled={deletePending}
+              accessibilityLabel="Permanently delete account"
+              onPress={() => {
+                void onDeleteAccount();
+              }}
+            />
+            <Button
+              label="Cancel"
+              variant="secondary"
+              disabled={deletePending}
+              onPress={() => {
+                setDeleteConfirming(false);
+                setDeleteNotice(null);
+              }}
+            />
+          </>
+        ) : (
+          <Button
+            label="Delete account"
+            variant="danger"
+            disabled={!permanent}
+            accessibilityLabel="Delete account"
+            onPress={() => {
+              setDeleteConfirming(true);
+              setDeleteNotice(null);
+            }}
+          />
+        )}
         {!permanent ? (
           <Body>Sign in to a permanent account before this can apply.</Body>
         ) : null}
