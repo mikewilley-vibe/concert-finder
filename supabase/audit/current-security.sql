@@ -124,6 +124,7 @@ from pg_proc p
 join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public'
   and p.proname in (
+    'apply_ticketmaster_watch_check',
     'get_ticketmaster_watch_batch',
     'mark_ticketmaster_watch_state_seen',
     'merge_anonymous_account_data',
