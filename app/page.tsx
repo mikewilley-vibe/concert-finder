@@ -9,9 +9,9 @@ import {
   TicketmasterFollows,
 } from "./components/ticketmaster-follows";
 
-const homeTitle = "My Shows \u00b7 Concerts for the bands and rooms you follow";
+const homeTitle = "My Shows · Concerts for the bands and rooms you follow";
 const homeDescription =
-  "Follow artists and venues, see upcoming concerts, and keep a listings board \u2014 for music fans who want to stay aware of what's coming.";
+  "Follow artists and venues, see upcoming concerts, and keep a listings board — for music fans who want to stay aware of what's coming.";
 
 export const metadata: Metadata = {
   title: {
@@ -48,6 +48,12 @@ export default function Home() {
         tabIndex={-1}
         className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 pb-20 outline-none sm:px-8 sm:pb-16"
       >
+        <div className="flex flex-col gap-12 pt-8 sm:gap-16 sm:pt-12">
+          <ShowsForYou />
+
+          <NewShows />
+        </div>
+
         <section className="flex max-w-2xl flex-col gap-4 py-8 sm:gap-6 sm:py-16">
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-accent sm:text-sm">
             For music fans
@@ -79,8 +85,6 @@ export default function Home() {
         <div className="flex flex-col gap-12 sm:gap-16">
           <TicketmasterFollows />
 
-          <ShowsForYou />
-
           <SavedTicketmasterShows />
 
           <section id="whats-coming" className="scroll-mt-24">
@@ -94,14 +98,12 @@ export default function Home() {
           </section>
 
           <FollowedItemsManage />
-
-          <NewShows />
         </div>
       </main>
 
       <footer className="relative z-10 border-t border-line pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         <p className="mx-auto max-w-6xl px-4 py-6 text-sm text-mute sm:px-8">
-          My Shows \u00b7 Community submissions remain drafts until they are
+          My Shows · Community submissions remain drafts until they are
           published. This app does not sell tickets.
         </p>
       </footer>

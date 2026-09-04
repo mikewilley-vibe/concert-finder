@@ -9,10 +9,10 @@ and future administration interface.
 
 Original repository: <https://github.com/mikewilley-vibe/concert-finder>
 
-Phase 1 website stabilization is in the repository. Phase 2 has started: the
-**Local Shows** Expo app is scaffolded in `mobile/`. The Supabase migration
-is still not applied to the live database. Do not treat unfinished native
-features as done.
+Phase 1 website stabilization and the Phase 2 shared API foundation are in the
+repository. The **Local Shows** Expo app is scaffolded in `mobile/`. The
+Supabase migrations are still not applied to the live database. Do not treat
+unfinished native features as done.
 
 ## Work completed in this package
 
@@ -30,6 +30,14 @@ features as done.
 - Added `.env.example` and real project documentation
 - Added initial tests for event detection, name matching, and rate limiting
 - Defined a recommended four-tab native MVP
+- Added shared API v1 contracts and a cross-platform web/Expo client
+- Added versioned Ticketmaster and account-transfer endpoints
+- Moved the website onto the shared versioned client
+- Expanded events and saved snapshots with native-ready time, location,
+  coordinate, status, sale, artwork, artist, and ticket fields
+- Added keyword, radius, coordinate, and paginated event discovery
+- Replaced the eight-follow cap with a bounded rotating cron work queue
+- Centralized bearer-token verification for user-specific server operations
 
 ## Verification already completed
 
@@ -42,7 +50,7 @@ npm test
 npm run build
 ```
 
-The test suite currently has three passing tests. The Next.js production build
+The test suite currently has eight passing tests. The Next.js production build
 includes the new `/api/account/merge-anonymous` route.
 
 ## Critical deployment order
@@ -94,8 +102,9 @@ Ticketmaster concerts.
 ## Important files
 
 - `docs/native-phase-1.md` — Phase 1 status and remaining verification
-- `docs/native-phase-2.md` — Local Shows Expo scaffold status
+- `docs/native-phase-2.md` — shared foundation and Expo scaffold status
 - `docs/native-mvp.md` — recommended native screens, scope, and acceptance path
+- `docs/api-v1.md` — native-ready API routes, request shapes, and limits
 - `mobile/README.md` — how to run the Expo app
 - `supabase/audit/current-security.sql` — read-only live database inventory
 - `supabase/migrations/20260903000000_initial_schema.sql` — proposed baseline
@@ -108,15 +117,15 @@ Ticketmaster concerts.
 
 ## Phase 2 status
 
-Expo scaffolding has started. `mobile/` is the Local Shows app (Expo Router
-tabs + detail stacks, thin API/auth clients). It is a skeleton, not a finished
-native 1.0. Follow/save/inbox, email auth, push, location, and EAS are not
-done. See `docs/native-phase-2.md` and `mobile/README.md`.
+The versioned web/mobile API foundation and the Local Shows Expo navigation
+scaffold are both present. The Expo app is still a skeleton: follow/save/inbox,
+email auth, push, location, and EAS are not done. See
+`docs/native-phase-2.md` and `mobile/README.md`.
 
 ## Requested next action
 
 Phase 1 website work is in this repository. The Local Shows Expo scaffold is
-the start of Phase 2. Remaining website work still includes applying the
+the start of the native client. Remaining foundation work still includes applying the
 reviewed migration on a **development** Supabase project and testing RLS /
 saves / anonymous transfer there. Do not push, deploy, or apply the migration
 to production without explicit user approval.
