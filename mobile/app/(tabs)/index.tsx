@@ -276,7 +276,9 @@ export default function HomeScreen() {
         <EmptyState
           title="No upcoming shows yet"
           body="Follow an artist or venue in Discover. Their next Ticketmaster dates will appear here."
-          action={<ActionLink href="/discover" label="Search to follow" />}
+          action={
+            <ActionLink href="/discover" label="Search artists and venues" />
+          }
         />
       ) : upcoming.shows.length === 0 ? (
         <EmptyState
@@ -297,7 +299,7 @@ export default function HomeScreen() {
                   saved.configured ? (
                     <Button
                       label={isSaved ? "Saved" : "Save"}
-                      variant="secondary"
+                      variant={isSaved ? "secondary" : "primary"}
                       disabled={!saved.ready || saved.isPending(show.id)}
                       accessibilityLabel={
                         isSaved
