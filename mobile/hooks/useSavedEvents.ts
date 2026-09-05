@@ -12,7 +12,12 @@ import { getSupabaseClient } from "@/lib/supabase";
 import { subscribeUserLibrary } from "@/lib/sync";
 
 export function useSavedEvents() {
-  const { user, ready: authReady, configured } = useAuth();
+  const {
+    user,
+    ready: authReady,
+    configured,
+    error: authError,
+  } = useAuth();
   const [shows, setShows] = useState<TicketmasterShow[]>([]);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [ready, setReady] = useState(false);
@@ -147,7 +152,7 @@ export function useSavedEvents() {
     shows,
     savedIds,
     ready,
-    error,
+    error: error ?? authError,
     configured,
     toggleSaved,
     isPending: (id: string) => pendingIds.has(id),
