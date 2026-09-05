@@ -91,6 +91,7 @@ export default function ProfileScreen() {
   const [formError, setFormError] = useState<string | null>(null);
   const [signInEmail, setSignInEmail] = useState("");
   const [signInPassword, setSignInPassword] = useState("");
+  const [signInError, setSignInError] = useState<string | null>(null);
   const [signInPending, setSignInPending] = useState(false);
   const [signUpEmail, setSignUpEmail] = useState("");
   const [signUpError, setSignUpError] = useState<string | null>(null);
@@ -112,13 +113,14 @@ export default function ProfileScreen() {
   async function onSignIn() {
     const nextEmail = signInEmail.trim().toLowerCase();
     if (!emailLooksValid(nextEmail) || !signInPassword) {
-      setFormError("Enter the email and password for your account.");
+      setSignInError("Enter the email and password for your account.");
       setNotice(null);
       return;
     }
 
+    Keyboard.dismiss();
     setSignInPending(true);
-    setFormError(null);
+    setSignInError(null);
     setNotice(null);
 
     try {
@@ -141,8 +143,8 @@ export default function ProfileScreen() {
       } else {
         setNotice("Signed in.");
       }
-    } catch (signInError) {
-      setFormError(signInMessage(signInError));
+    } catch (authSignInError) {
+      setSignInError(signInMessage(authSignInError));
     } finally {
       setSignInPending(false);
     }
@@ -398,19 +400,32 @@ export default function ProfileScreen() {
           <Field
             label="Email"
             value={signInEmail}
-            onChangeText={setSignInEmail}
+            onChangeText={(value) => {
+              setSignInEmail(value);
+              setSignInError(null);
+            }}
             keyboardType="email-address"
             autoComplete="username"
+            textContentType="username"
             autoCapitalize="none"
           />
           <Field
             label="Password"
             value={signInPassword}
-            onChangeText={setSignInPassword}
+            onChangeText={(value) => {
+              setSignInPassword(value);
+              setSignInError(null);
+            }}
             secureTextEntry
-            autoComplete="password"
+            autoComplete="current-password"
+            textContentType="password"
             autoCapitalize="none"
+            returnKeyType="done"
+            onSubmitEditing={() => {
+              if (!signInPending) void onSignIn();
+            }}
           />
+          {signInError ? <Body>{signInError}</Body> : null}
           <Button
             label={signInPending ? "Signing in…" : "Sign in"}
             disabled={signInPending}
