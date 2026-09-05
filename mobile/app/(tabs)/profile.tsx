@@ -36,7 +36,7 @@ import {
   signInWithEmailPassword,
   signOutToGuest,
 } from "@/lib/auth";
-import { deleteAccount } from "@/lib/api";
+import { apiErrorMessage, deleteAccount } from "@/lib/api";
 import { websiteUrl } from "@/lib/config";
 import { getSupabaseClient } from "@/lib/supabase";
 
@@ -262,8 +262,13 @@ export default function ProfileScreen() {
       await resetAfterAccountDeletion(getSupabaseClient());
       setDeleteConfirming(false);
       setNotice("Your account and its saved data were deleted. A new guest session is ready.");
-    } catch {
-      setDeleteNotice("Could not delete the account. Try signing in again, then retry.");
+    } catch (deleteError) {
+      setDeleteNotice(
+        apiErrorMessage(
+          deleteError,
+          "Could not delete the account. Try signing in again, then retry.",
+        ),
+      );
     } finally {
       setDeletePending(false);
     }
