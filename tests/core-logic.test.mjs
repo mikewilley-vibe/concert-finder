@@ -22,6 +22,7 @@ import {
   mapTicketmasterEvent,
   parseUpcomingShowsRequest,
 } from "../lib/ticketmaster.ts";
+import { resolveSupabaseAdminConfig } from "../lib/supabase/admin-client.ts";
 
 test("event IDs are deduplicated while preserving discovery order", () => {
   assert.deepEqual(
@@ -230,4 +231,29 @@ test("account deletion requires an authenticated explicit DELETE request", async
   assert.equal(capturedAuthorization, "Bearer access-token");
   assert.deepEqual(JSON.parse(capturedBody), { confirmation: "DELETE" });
   assert.equal(result.deleted, true);
+});
+
+test("server admin config accepts Supabase integration variable names", () => {
+  assert.deepEqual(
+    resolveSupabaseAdminConfig({
+      SUPABASE_URL: " https://development.supabase.co ",
+      SUPABASE_SERVICE_ROLE_KEY: "eyJheader.payload.signature",
+    }),
+    {
+      url: "https://development.supabase.co",
+      secretKey: "eyJheader.payload.signature",
+    },
+  );
+
+  assert.deepEqual(
+    resolveSupabaseAdminConfig({
+      NEXT_PUBLIC_SUPABASE_URL: "https://development.supabase.co",
+      SUPABASE_SECRET_KEY: "not-a-secret-key",
+      SUPABASE_SERVICE_ROLE_KEY: "eyJheader.payload.signature",
+    }),
+    {
+      url: "https://development.supabase.co",
+      secretKey: "eyJheader.payload.signature",
+    },
+  );
 });
