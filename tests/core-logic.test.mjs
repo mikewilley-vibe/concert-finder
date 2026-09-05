@@ -22,6 +22,7 @@ import {
   mapTicketmasterEvent,
   parseUpcomingShowsRequest,
 } from "../lib/ticketmaster.ts";
+import { resolveSupabaseAdminConfig } from "../lib/supabase/admin-client.ts";
 
 test("event IDs are deduplicated while preserving discovery order", () => {
   assert.deepEqual(
@@ -208,13 +209,16 @@ test("account deletion requires an authenticated explicit DELETE request", async
   let capturedUrl = "";
   let capturedMethod = "";
   let capturedAuthorization = "";
+  let capturedConfirmation = "";
   let capturedBody = "";
   const client = createConcertFinderApiClient({
     baseUrl: "https://concert-finder.example",
     fetchImpl: async (url, init) => {
       capturedUrl = String(url);
       capturedMethod = String(init?.method ?? "");
-      capturedAuthorization = new Headers(init?.headers).get("authorization") ?? "";
+      const headers = new Headers(init?.headers);
+      capturedAuthorization = headers.get("authorization") ?? "";
+      capturedConfirmation = headers.get("x-confirm-account-delete") ?? "";
       capturedBody = String(init?.body ?? "");
       return Response.json({
         apiVersion: "v1",
@@ -226,8 +230,34 @@ test("account deletion requires an authenticated explicit DELETE request", async
 
   const result = await client.deleteAccount("access-token");
   assert.equal(capturedUrl, "https://concert-finder.example/api/v1/account/delete");
-  assert.equal(capturedMethod, "DELETE");
+  assert.equal(capturedMethod, "POST");
   assert.equal(capturedAuthorization, "Bearer access-token");
+  assert.equal(capturedConfirmation, "DELETE");
   assert.deepEqual(JSON.parse(capturedBody), { confirmation: "DELETE" });
   assert.equal(result.deleted, true);
+});
+
+test("server admin config accepts Supabase integration variable names", () => {
+  assert.deepEqual(
+    resolveSupabaseAdminConfig({
+      SUPABASE_URL: " https://development.supabase.co ",
+      SUPABASE_SERVICE_ROLE_KEY: "eyJheader.payload.signature",
+    }),
+    {
+      url: "https://development.supabase.co",
+      secretKey: "eyJheader.payload.signature",
+    },
+  );
+
+  assert.deepEqual(
+    resolveSupabaseAdminConfig({
+      NEXT_PUBLIC_SUPABASE_URL: "https://development.supabase.co",
+      SUPABASE_SECRET_KEY: "not-a-secret-key",
+      SUPABASE_SERVICE_ROLE_KEY: "eyJheader.payload.signature",
+    }),
+    {
+      url: "https://development.supabase.co",
+      secretKey: "eyJheader.payload.signature",
+    },
+  );
 });

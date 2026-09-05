@@ -30,7 +30,7 @@ Required configuration:
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Browser and server |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser; protected by RLS |
-| `SUPABASE_SECRET_KEY` | Server-only account transfer and cron work |
+| `SUPABASE_SECRET_KEY` or `SUPABASE_SERVICE_ROLE_KEY` | Server-only account deletion, transfer, and cron work |
 | `TICKETMASTER_API_KEY` | Server-only Ticketmaster requests |
 | `CRON_SECRET` | Protects the scheduled show-check route |
 
