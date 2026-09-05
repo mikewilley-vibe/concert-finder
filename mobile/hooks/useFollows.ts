@@ -16,7 +16,12 @@ import { getSupabaseClient } from "@/lib/supabase";
 import { subscribeUserLibrary } from "@/lib/sync";
 
 export function useFollows() {
-  const { user, ready: authReady, configured } = useAuth();
+  const {
+    user,
+    ready: authReady,
+    configured,
+    error: authError,
+  } = useAuth();
   const [artists, setArtists] = useState<FollowedItem[]>([]);
   const [venues, setVenues] = useState<FollowedItem[]>([]);
   const [ready, setReady] = useState(false);
@@ -173,7 +178,7 @@ export function useFollows() {
     artists,
     venues,
     ready,
-    error,
+    error: error ?? authError,
     configured,
     toggleFollow,
     isFollowed,
