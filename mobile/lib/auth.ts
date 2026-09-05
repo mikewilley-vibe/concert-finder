@@ -126,14 +126,9 @@ export async function signInWithEmailPassword(
 export async function createAccountFromGuest(
   supabase: SupabaseClient,
   email: string,
-  password: string,
 ) {
   const { error } = await supabase.auth.updateUser(
-    {
-      email,
-      password,
-      data: { [PASSWORD_SET_KEY]: true },
-    },
+    { email },
     { emailRedirectTo: websiteUrl("/account") },
   );
 
