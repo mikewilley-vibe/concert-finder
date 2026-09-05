@@ -1,8 +1,10 @@
 import { useState } from "react";
 import {
+  Keyboard,
   Linking,
   StyleSheet,
   TextInput,
+  type TextInputProps,
   View,
 } from "react-native";
 
@@ -47,12 +49,17 @@ function Field({
   label: string;
   value: string;
   onChangeText: (value: string) => void;
-  placeholder?: string;
-  autoComplete?: "email" | "password" | "new-password" | "username";
-  keyboardType?: "email-address";
-  secureTextEntry?: boolean;
-  autoCapitalize?: "none";
-}) {
+} & Pick<
+  TextInputProps,
+  | "placeholder"
+  | "autoComplete"
+  | "keyboardType"
+  | "secureTextEntry"
+  | "autoCapitalize"
+  | "textContentType"
+  | "returnKeyType"
+  | "onSubmitEditing"
+>) {
   const id = label.replace(/\s+/g, "-").toLowerCase();
   return (
     <View style={styles.field}>
@@ -86,11 +93,10 @@ export default function ProfileScreen() {
   const [signInPassword, setSignInPassword] = useState("");
   const [signInPending, setSignInPending] = useState(false);
   const [signUpEmail, setSignUpEmail] = useState("");
-  const [signUpPassword, setSignUpPassword] = useState("");
-  const [signUpConfirm, setSignUpConfirm] = useState("");
+  const [signUpError, setSignUpError] = useState<string | null>(null);
   const [signUpPending, setSignUpPending] = useState(false);
   const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordPending, setPasswordPending] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetPending, setResetPending] = useState(false);
@@ -145,38 +151,25 @@ export default function ProfileScreen() {
   async function onCreateAccount() {
     const nextEmail = signUpEmail.trim().toLowerCase();
     if (!emailLooksValid(nextEmail)) {
-      setFormError("Enter a valid email address.");
-      setNotice(null);
-      return;
-    }
-    if (signUpPassword.length < MIN_PASSWORD_LENGTH) {
-      setFormError(
-        `Use at least ${MIN_PASSWORD_LENGTH} characters for your password.`,
-      );
-      setNotice(null);
-      return;
-    }
-    if (signUpPassword !== signUpConfirm) {
-      setFormError("Those passwords do not match.");
+      setSignUpError("Enter a valid email address.");
       setNotice(null);
       return;
     }
 
+    Keyboard.dismiss();
     setSignUpPending(true);
-    setFormError(null);
+    setSignUpError(null);
     setNotice(null);
 
     try {
       const supabase = getSupabaseClient();
-      await createAccountFromGuest(supabase, nextEmail, signUpPassword);
+      await createAccountFromGuest(supabase, nextEmail);
       setSignUpEmail("");
-      setSignUpPassword("");
-      setSignUpConfirm("");
       setNotice(
-        "Check that inbox if we sent a verification email. Finish it on the website account page if asked, then return here.",
+        "Verification email sent. Open it, verify your address, then return here to create your password.",
       );
     } catch (createError) {
-      setFormError(upgradeEmailMessage(createError));
+      setSignUpError(upgradeEmailMessage(createError));
     } finally {
       setSignUpPending(false);
     }
@@ -184,30 +177,25 @@ export default function ProfileScreen() {
 
   async function onSavePassword() {
     if (newPassword.length < MIN_PASSWORD_LENGTH) {
-      setFormError(
+      setPasswordError(
         `Use at least ${MIN_PASSWORD_LENGTH} characters for your password.`,
       );
       setNotice(null);
       return;
     }
-    if (newPassword !== confirmPassword) {
-      setFormError("Those passwords do not match.");
-      setNotice(null);
-      return;
-    }
 
+    Keyboard.dismiss();
     setPasswordPending(true);
-    setFormError(null);
+    setPasswordError(null);
     setNotice(null);
 
     try {
       const supabase = getSupabaseClient();
       await setAccountPassword(supabase, newPassword);
       setNewPassword("");
-      setConfirmPassword("");
       setNotice("Password saved.");
     } catch (updateError) {
-      setFormError(passwordMessage(updateError));
+      setPasswordError(passwordMessage(updateError));
     } finally {
       setPasswordPending(false);
     }
@@ -341,19 +329,20 @@ export default function ProfileScreen() {
           <Field
             label="Password"
             value={newPassword}
-            onChangeText={setNewPassword}
+            onChangeText={(value) => {
+              setNewPassword(value);
+              setPasswordError(null);
+            }}
             secureTextEntry
             autoComplete="new-password"
+            textContentType="newPassword"
             autoCapitalize="none"
+            returnKeyType="done"
+            onSubmitEditing={() => {
+              if (!passwordPending) void onSavePassword();
+            }}
           />
-          <Field
-            label="Confirm password"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-            autoComplete="new-password"
-            autoCapitalize="none"
-          />
+          {passwordError ? <Body>{passwordError}</Body> : null}
           <Button
             label={passwordPending ? "Saving…" : "Save password"}
             disabled={passwordPending}
@@ -368,36 +357,29 @@ export default function ProfileScreen() {
         <View style={styles.card}>
           <Strong>Create account</Strong>
           <Body>
-            Keep this guest session. Email and password convert it into an
-            account you can reopen later.
+            First verify your email. Your follows and saved shows stay with
+            this guest session while you finish setup.
           </Body>
           <Field
             label="Email"
             value={signUpEmail}
-            onChangeText={setSignUpEmail}
+            onChangeText={(value) => {
+              setSignUpEmail(value);
+              setSignUpError(null);
+            }}
             keyboardType="email-address"
             autoComplete="email"
+            textContentType="emailAddress"
             autoCapitalize="none"
             placeholder="you@email.com"
+            returnKeyType="done"
+            onSubmitEditing={() => {
+              if (!signUpPending) void onCreateAccount();
+            }}
           />
-          <Field
-            label="Password"
-            value={signUpPassword}
-            onChangeText={setSignUpPassword}
-            secureTextEntry
-            autoComplete="new-password"
-            autoCapitalize="none"
-          />
-          <Field
-            label="Confirm password"
-            value={signUpConfirm}
-            onChangeText={setSignUpConfirm}
-            secureTextEntry
-            autoComplete="new-password"
-            autoCapitalize="none"
-          />
+          {signUpError ? <Body>{signUpError}</Body> : null}
           <Button
-            label={signUpPending ? "Creating…" : "Create account"}
+            label={signUpPending ? "Sending…" : "Send verification email"}
             disabled={signUpPending}
             onPress={() => {
               void onCreateAccount();
