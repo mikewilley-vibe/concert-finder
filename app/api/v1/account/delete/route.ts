@@ -7,23 +7,43 @@ import {
 
 export const dynamic = "force-dynamic";
 
-function isConfirmed(body: unknown) {
+export const ACCOUNT_DELETE_CONFIRMATION_HEADER = "x-confirm-account-delete";
+
+function headerConfirmed(request: Request) {
   return (
-    Boolean(body) &&
-    typeof body === "object" &&
-    (body as { confirmation?: unknown }).confirmation === "DELETE"
+    request.headers.get(ACCOUNT_DELETE_CONFIRMATION_HEADER)?.trim() ===
+    "DELETE"
   );
 }
 
-export async function DELETE(request: Request) {
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return apiV1Error(request, 400, "bad_request", "Invalid request.");
+async function isConfirmed(request: Request) {
+  if (headerConfirmed(request)) {
+    return { ok: true as const };
   }
 
-  if (!isConfirmed(body)) {
+  const text = await request.text();
+  if (!text.trim()) {
+    return { ok: false as const, invalidJson: false };
+  }
+
+  try {
+    const body: unknown = JSON.parse(text);
+    const confirmed =
+      Boolean(body) &&
+      typeof body === "object" &&
+      (body as { confirmation?: unknown }).confirmation === "DELETE";
+    return { ok: confirmed, invalidJson: false };
+  } catch {
+    return { ok: false as const, invalidJson: true };
+  }
+}
+
+async function deleteAccount(request: Request) {
+  const confirmation = await isConfirmed(request);
+  if (confirmation.invalidJson) {
+    return apiV1Error(request, 400, "bad_request", "Invalid request.");
+  }
+  if (!confirmation.ok) {
     return apiV1Error(
       request,
       400,
@@ -76,4 +96,12 @@ export async function DELETE(request: Request) {
       "Could not delete the account.",
     );
   }
+}
+
+export async function DELETE(request: Request) {
+  return deleteAccount(request);
+}
+
+export async function POST(request: Request) {
+  return deleteAccount(request);
 }

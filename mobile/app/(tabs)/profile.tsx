@@ -36,7 +36,7 @@ import {
   signInWithEmailPassword,
   signOutToGuest,
 } from "@/lib/auth";
-import { apiErrorMessage, deleteAccount } from "@/lib/api";
+import { ApiError, deleteAccount } from "@/lib/api";
 import { websiteUrl } from "@/lib/config";
 import { getSupabaseClient } from "@/lib/supabase";
 
@@ -79,7 +79,7 @@ function Field({
 }
 
 export default function ProfileScreen() {
-  const { user, session, ready, configured, error, transferNotice } = useAuth();
+  const { user, ready, configured, error, transferNotice } = useAuth();
   const anonymous = isAnonymousUser(user);
   const permanent = isPermanentUser(user);
   const email = verifiedEmail(user);
@@ -246,8 +246,28 @@ export default function ProfileScreen() {
     }
   }
 
+  function deleteAccountMessage(error: unknown) {
+    if (error instanceof ApiError) {
+      if (error.status === 401) {
+        return "Your sign-in expired. Sign in again, then retry.";
+      }
+      if (error.status === 403) {
+        return "Only a finished email-and-password account can be deleted.";
+      }
+      if (error.code === "not_configured") {
+        return "The website is missing its Supabase admin key, so deletion cannot finish.";
+      }
+      return (
+        error.message ||
+        "Could not delete the account. Try signing in again, then retry."
+      );
+    }
+
+    return "Could not delete the account. Try signing in again, then retry.";
+  }
+
   async function onDeleteAccount() {
-    if (!session?.access_token || !permanent) {
+    if (!permanent) {
       setDeleteNotice("Sign in to a permanent account before deleting it.");
       return;
     }
@@ -258,17 +278,32 @@ export default function ProfileScreen() {
     setNotice(null);
 
     try {
-      await deleteAccount(session.access_token);
-      await resetAfterAccountDeletion(getSupabaseClient());
+      const supabase = getSupabaseClient();
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user || userData.user.is_anonymous !== false) {
+        setDeleteNotice("Sign in to a permanent account before deleting it.");
+        return;
+      }
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) {
+        setDeleteNotice("Your sign-in expired. Sign in again, then retry.");
+        return;
+      }
+
+      await deleteAccount(accessToken);
+      try {
+        await resetAfterAccountDeletion(supabase);
+      } catch {
+        // The remote account is already gone. A later launch can start a guest session.
+      }
       setDeleteConfirming(false);
-      setNotice("Your account and its saved data were deleted. A new guest session is ready.");
-    } catch (deleteError) {
-      setDeleteNotice(
-        apiErrorMessage(
-          deleteError,
-          "Could not delete the account. Try signing in again, then retry.",
-        ),
+      setNotice(
+        "Your account and its saved data were deleted. A new guest session is ready.",
       );
+    } catch (deleteError) {
+      setDeleteNotice(deleteAccountMessage(deleteError));
     } finally {
       setDeletePending(false);
     }

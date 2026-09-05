@@ -232,14 +232,32 @@ export function mergeAnonymousAccount(options: {
   });
 }
 
-export function deleteAccount(accessToken: string) {
-  return apiFetch<{ deleted: true }>("/api/v1/account/delete", {
-    method: "DELETE",
+export async function deleteAccount(accessToken: string) {
+  const init = {
     headers: {
       Authorization: `Bearer ${accessToken}`,
+      "X-Confirm-Account-Delete": "DELETE",
     },
     body: JSON.stringify({ confirmation: "DELETE" }),
-  });
+  };
+
+  try {
+    return await apiFetch<{ deleted: true }>("/api/v1/account/delete", {
+      method: "POST",
+      ...init,
+    });
+  } catch (error) {
+    if (
+      error instanceof ApiError &&
+      (error.status === 404 || error.status === 405)
+    ) {
+      return apiFetch<{ deleted: true }>("/api/v1/account/delete", {
+        method: "DELETE",
+        ...init,
+      });
+    }
+    throw error;
+  }
 }
 
 export function apiErrorMessage(error: unknown, fallback: string) {

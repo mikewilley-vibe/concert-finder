@@ -122,10 +122,11 @@ export function createConcertFinderApiClient(options?: {
       const response = await fetchImpl(
         apiUrl(baseUrl, "/api/v1/account/delete"),
         {
-          method: "DELETE",
+          method: "POST",
           headers: {
             Authorization: `Bearer ${accessToken}`,
             "Content-Type": "application/json",
+            "X-Confirm-Account-Delete": "DELETE",
           },
           signal,
           body: JSON.stringify({ confirmation: "DELETE" }),

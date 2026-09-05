@@ -22,18 +22,21 @@ function configured(value: string | undefined) {
 }
 
 function isSupportedAdminKey(value: string) {
-  return value.startsWith("sb_secret_") ||
-    (value.startsWith("eyJ") && value.split(".").length === 3);
+  return (
+    value.startsWith("sb_secret_") ||
+    (value.startsWith("eyJ") && value.split(".").length === 3)
+  );
 }
 
 export function resolveSupabaseAdminConfig(environment: AdminEnvironment) {
   const url =
     configured(environment.NEXT_PUBLIC_SUPABASE_URL) ||
     configured(environment.SUPABASE_URL);
-  const secretKey = [
-    configured(environment.SUPABASE_SECRET_KEY),
-    configured(environment.SUPABASE_SERVICE_ROLE_KEY),
-  ].find(isSupportedAdminKey) ?? "";
+  const secretKey =
+    [
+      configured(environment.SUPABASE_SECRET_KEY),
+      configured(environment.SUPABASE_SERVICE_ROLE_KEY),
+    ].find(isSupportedAdminKey) ?? "";
 
   return { url, secretKey };
 }
