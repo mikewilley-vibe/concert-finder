@@ -8,12 +8,14 @@ import { LoadingBlock } from "@/components/LoadingBlock";
 import { Screen, ScreenBlock } from "@/components/Screen";
 import { Body, Eyebrow, Strong, Title } from "@/components/Typography";
 import { colors } from "@/constants/theme";
+import { useFollows } from "@/hooks/useFollows";
 import { useSavedEvents } from "@/hooks/useSavedEvents";
 import {
   apiErrorMessage,
   getEventDetails,
   type TicketmasterShow,
 } from "@/lib/api";
+import { FOLLOWED_ATTRACTION_TYPE } from "@/lib/follows";
 import { showPlace, showWhen } from "@/lib/show-format";
 
 function firstString(value: string | string[] | undefined) {
@@ -44,6 +46,7 @@ function showFromParams(params: {
     venueName: firstString(params.venueName) ?? "",
     city: firstString(params.city) ?? "",
     state: firstString(params.state) ?? "",
+    attractions: [],
     matchedLabels: [],
   };
   const timeLabel = firstString(params.timeLabel);
@@ -94,6 +97,7 @@ export default function ConcertScreen() {
     ],
   );
   const saved = useSavedEvents();
+  const follows = useFollows();
   const [show, setShow] = useState<TicketmasterShow | null>(snapshot);
   const [loading, setLoading] = useState(eventId !== "preview");
   const [error, setError] = useState<string | null>(null);
@@ -192,6 +196,57 @@ export default function ConcertScreen() {
 
       {show ? (
         <View style={styles.card}>
+          <Strong>Save or follow</Strong>
+          <Button
+            label={isSaved ? "Saved" : "Save this concert"}
+            variant={isSaved ? "secondary" : "action"}
+            disabled={saved.isPending(show.id)}
+            accessibilityLabel={
+              isSaved
+                ? `Remove ${show.name} from saved`
+                : `Save ${show.name}`
+            }
+            onPress={() => {
+              void saved.toggleSaved(show);
+            }}
+          />
+          {show.attractions.map((artist) => {
+            const followed = follows.isFollowed(
+              FOLLOWED_ATTRACTION_TYPE,
+              artist.id,
+            );
+            return (
+              <Button
+                key={artist.id}
+                label={
+                  followed
+                    ? `Following ${artist.name}`
+                    : `Follow ${artist.name}`
+                }
+                variant={followed ? "secondary" : "action"}
+                disabled={follows.isPending(
+                  FOLLOWED_ATTRACTION_TYPE,
+                  artist.id,
+                )}
+                onPress={() => {
+                  void follows.toggleFollow(
+                    FOLLOWED_ATTRACTION_TYPE,
+                    { item_key: artist.id, item_label: artist.name },
+                    followed,
+                  );
+                }}
+              />
+            );
+          })}
+          {!saved.configured || !follows.configured ? (
+            <Body>
+              Account actions are unavailable until Supabase finishes loading.
+            </Body>
+          ) : null}
+          {saved.error ? <Body>{saved.error}</Body> : null}
+          {follows.error ? <Body>{follows.error}</Body> : null}
+
+          <Strong>Event details</Strong>
           <Strong>{when || "Date TBA"}</Strong>
           {show.venueName ? <Body>{show.venueName}</Body> : null}
           {place ? <Body>{place}</Body> : null}
@@ -200,26 +255,6 @@ export default function ConcertScreen() {
               ? "Status: date to be announced"
               : "Status: scheduled"}
           </Body>
-          {saved.error ? <Body>{saved.error}</Body> : null}
-          {saved.configured ? (
-            <Button
-              label={isSaved ? "Saved" : "Save show"}
-              variant={isSaved ? "secondary" : "primary"}
-              disabled={!saved.ready || saved.isPending(show.id)}
-              accessibilityLabel={
-                isSaved
-                  ? `Remove ${show.name} from saved`
-                  : `Save ${show.name}`
-              }
-              onPress={() => {
-                void saved.toggleSaved(show);
-              }}
-            />
-          ) : (
-            <Body>
-              Add the public Supabase values to save concerts from this screen.
-            </Body>
-          )}
           {show.url ? (
             <Button
               label="View on Ticketmaster"

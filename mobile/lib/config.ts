@@ -1,16 +1,42 @@
+import Constants from "expo-constants";
+
 export const DEFAULT_API_BASE_URL = "https://concert-finder-eta.vercel.app";
 
+type PublicExtra = {
+  apiBaseUrl?: string;
+  supabaseUrl?: string;
+  supabasePublishableKey?: string;
+};
+
+function publicExtra() {
+  return (Constants.expoConfig?.extra ?? {}) as PublicExtra;
+}
+
+function configuredValue(direct: string | undefined, fallback?: string) {
+  return direct?.trim() || fallback?.trim() || "";
+}
+
 export function getApiBaseUrl() {
-  const configured = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
+  const configured = configuredValue(
+    process.env.EXPO_PUBLIC_API_BASE_URL,
+    publicExtra().apiBaseUrl,
+  );
   return configured && configured.length > 0
     ? configured.replace(/\/$/, "")
     : DEFAULT_API_BASE_URL;
 }
 
 export function getSupabasePublicConfig() {
+  const extra = publicExtra();
   return {
-    url: process.env.EXPO_PUBLIC_SUPABASE_URL?.trim() ?? "",
-    publishableKey: process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() ?? "",
+    url: configuredValue(
+      process.env.EXPO_PUBLIC_SUPABASE_URL,
+      extra.supabaseUrl,
+    ),
+    publishableKey: configuredValue(
+      process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+      extra.supabasePublishableKey,
+    ),
   };
 }
 

@@ -17,7 +17,7 @@ export function ShowRow({
 
   return (
     <ListRow
-      title={show.matchedLabels[0] || show.name}
+      title={show.name}
       subtitle={showSubtitle(show)}
       accessibilityLabel={`${show.name}. ${showSubtitle(show)}`}
       onPress={() =>

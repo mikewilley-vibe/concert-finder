@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text } from "react-native";
 
 import { colors, fonts } from "@/constants/theme";
 
-type Variant = "primary" | "secondary" | "danger";
+type Variant = "primary" | "secondary" | "action" | "danger";
 
 export function Button({
   label,
@@ -35,6 +35,7 @@ export function Button({
         style={[
           styles.label,
           variant === "primary" ? styles.primaryLabel : styles.mutedLabel,
+          variant === "action" && styles.actionLabel,
           variant === "danger" && styles.dangerLabel,
         ]}
       >
@@ -68,6 +69,17 @@ const styles = StyleSheet.create({
   secondaryPressed: {
     backgroundColor: colors.panelHover,
   },
+  action: {
+    minHeight: 44,
+    paddingHorizontal: 14,
+    backgroundColor: "#252b1e",
+    borderWidth: 1,
+    borderColor: "#667637",
+  },
+  actionPressed: {
+    backgroundColor: "#303923",
+    borderColor: "#829647",
+  },
   danger: {
     backgroundColor: "transparent",
     borderWidth: 1,
@@ -84,10 +96,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   primaryLabel: {
-    color: colors.background,
+    color: colors.onAccent,
   },
   mutedLabel: {
     color: colors.foreground,
+  },
+  actionLabel: {
+    color: colors.foreground,
+    fontSize: 14,
   },
   dangerLabel: {
     color: colors.danger,
@@ -97,5 +113,6 @@ const styles = StyleSheet.create({
 const pressedStyle = {
   primary: styles.primaryPressed,
   secondary: styles.secondaryPressed,
+  action: styles.actionPressed,
   danger: styles.dangerPressed,
 } as const;

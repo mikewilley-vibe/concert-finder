@@ -88,11 +88,11 @@ export function FollowedDetailScreen({
           Upcoming Ticketmaster dates open as their own concert screens. Follow
           to include them on Home.
         </Body>
-        {id && follows.configured ? (
+        {id ? (
           <Button
             label={followed ? "Following" : "Follow"}
-            variant={followed ? "secondary" : "primary"}
-            disabled={!follows.ready || follows.isPending(itemType, id)}
+            variant={followed ? "secondary" : "action"}
+            disabled={follows.isPending(itemType, id)}
             accessibilityLabel={
               followed ? `Unfollow ${label}` : `Follow ${label}`
             }
@@ -145,21 +145,19 @@ export function FollowedDetailScreen({
                 key={show.id}
                 show={show}
                 trailing={
-                  saved.configured ? (
-                    <Button
-                      label={isSaved ? "Saved" : "Save"}
-                      variant="secondary"
-                      disabled={!saved.ready || saved.isPending(show.id)}
-                      accessibilityLabel={
-                        isSaved
-                          ? `Remove ${show.name} from saved`
-                          : `Save ${show.name}`
-                      }
-                      onPress={() => {
-                        void saved.toggleSaved(show);
-                      }}
-                    />
-                  ) : null
+                  <Button
+                    label={isSaved ? "Saved" : "Save"}
+                    variant={isSaved ? "secondary" : "action"}
+                    disabled={saved.isPending(show.id)}
+                    accessibilityLabel={
+                      isSaved
+                        ? `Remove ${show.name} from saved`
+                        : `Save ${show.name}`
+                    }
+                    onPress={() => {
+                      void saved.toggleSaved(show);
+                    }}
+                  />
                 }
               />
             );

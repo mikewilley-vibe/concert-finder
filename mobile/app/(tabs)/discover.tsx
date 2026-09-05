@@ -92,12 +92,14 @@ export default function DiscoverScreen() {
         <Eyebrow>Discover</Eyebrow>
         <Title>Search artists, venues, and upcoming shows.</Title>
         <Body>
-          Search talks to the Concert Finder website API, not Ticketmaster
-          from this device. Community concert submission stays on the website.
+          Search for an artist or venue, then tap the bright Follow button.
+          Upcoming concerts will appear on Home, where you can open and save
+          them.
         </Body>
       </ScreenBlock>
 
       <View style={styles.search}>
+        <Strong>Search artists and venues</Strong>
         <TextInput
           value={keyword}
           onChangeText={setKeyword}
@@ -183,28 +185,26 @@ export default function DiscoverScreen() {
                   })
                 }
                 trailing={
-                  follows.configured ? (
-                    <Button
-                      label={followed ? "Following" : "Follow"}
-                      variant="secondary"
-                      disabled={
-                        !follows.ready ||
-                        follows.isPending(FOLLOWED_ATTRACTION_TYPE, artist.id)
-                      }
-                      accessibilityLabel={
-                        followed
-                          ? `Unfollow ${artist.name}`
-                          : `Follow ${artist.name}`
-                      }
-                      onPress={() => {
-                        void follows.toggleFollow(
-                          FOLLOWED_ATTRACTION_TYPE,
-                          { item_key: artist.id, item_label: artist.name },
-                          followed,
-                        );
-                      }}
-                    />
-                  ) : null
+                  <Button
+                    label={followed ? "Following" : "Follow"}
+                    variant={followed ? "secondary" : "action"}
+                    disabled={follows.isPending(
+                      FOLLOWED_ATTRACTION_TYPE,
+                      artist.id,
+                    )}
+                    accessibilityLabel={
+                      followed
+                        ? `Unfollow ${artist.name}`
+                        : `Follow ${artist.name}`
+                    }
+                    onPress={() => {
+                      void follows.toggleFollow(
+                        FOLLOWED_ATTRACTION_TYPE,
+                        { item_key: artist.id, item_label: artist.name },
+                        followed,
+                      );
+                    }}
+                  />
                 }
               />
             );
@@ -238,28 +238,26 @@ export default function DiscoverScreen() {
                   })
                 }
                 trailing={
-                  follows.configured ? (
-                    <Button
-                      label={followed ? "Following" : "Follow"}
-                      variant="secondary"
-                      disabled={
-                        !follows.ready ||
-                        follows.isPending(FOLLOWED_VENUE_TYPE, venue.id)
-                      }
-                      accessibilityLabel={
-                        followed
-                          ? `Unfollow ${venue.name}`
-                          : `Follow ${venue.name}`
-                      }
-                      onPress={() => {
-                        void follows.toggleFollow(
-                          FOLLOWED_VENUE_TYPE,
-                          { item_key: venue.id, item_label: venue.name },
-                          followed,
-                        );
-                      }}
-                    />
-                  ) : null
+                  <Button
+                    label={followed ? "Following" : "Follow"}
+                    variant={followed ? "secondary" : "action"}
+                    disabled={follows.isPending(
+                      FOLLOWED_VENUE_TYPE,
+                      venue.id,
+                    )}
+                    accessibilityLabel={
+                      followed
+                        ? `Unfollow ${venue.name}`
+                        : `Follow ${venue.name}`
+                    }
+                    onPress={() => {
+                      void follows.toggleFollow(
+                        FOLLOWED_VENUE_TYPE,
+                        { item_key: venue.id, item_label: venue.name },
+                        followed,
+                      );
+                    }}
+                  />
                 }
               />
             );
@@ -280,7 +278,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.panel,
-    color: colors.foreground,
+    color: "#ffffff",
     fontFamily: fonts.body,
     fontSize: 16,
     paddingHorizontal: 16,
@@ -296,7 +294,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accentDeep,
   },
   buttonLabel: {
-    color: colors.background,
+    color: colors.onAccent,
     fontFamily: fonts.semibold,
     fontSize: 16,
   },

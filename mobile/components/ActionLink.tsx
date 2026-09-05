@@ -29,14 +29,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 16,
     borderRadius: 999,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.panelHover,
+    borderWidth: 1,
+    borderColor: colors.mute,
   },
   pressed: {
-    backgroundColor: colors.accentDeep,
+    backgroundColor: colors.panel,
   },
   label: {
-    color: colors.background,
+    color: colors.foreground,
     fontFamily: fonts.semibold,
-    fontSize: 15,
+    fontSize: 16,
   },
 });

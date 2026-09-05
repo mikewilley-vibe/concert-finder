@@ -12,7 +12,12 @@ import { getSupabaseClient } from "@/lib/supabase";
 import { subscribeUserLibrary } from "@/lib/sync";
 
 export function useSavedEvents() {
-  const { user, ready: authReady, configured } = useAuth();
+  const {
+    user,
+    ready: authReady,
+    configured,
+    error: authError,
+  } = useAuth();
   const [shows, setShows] = useState<TicketmasterShow[]>([]);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [ready, setReady] = useState(false);
@@ -71,12 +76,21 @@ export function useSavedEvents() {
   }, [authReady, refresh, user?.id]);
 
   async function toggleSaved(show: TicketmasterShow) {
-    if (!configured || !ready || pendingIdsRef.current.has(show.id)) {
+    if (pendingIdsRef.current.has(show.id)) {
+      return;
+    }
+
+    if (!configured) {
+      setError(
+        "Saving is not connected. Check the Supabase values in mobile/.env and restart Expo.",
+      );
       return;
     }
 
     if (!user?.id) {
-      setError("Couldn't start a session. Try reopening the app.");
+      setError(
+        "Your guest account is still connecting. Wait a moment and tap Save again.",
+      );
       return;
     }
 
@@ -138,7 +152,7 @@ export function useSavedEvents() {
     shows,
     savedIds,
     ready,
-    error,
+    error: error ?? authError,
     configured,
     toggleSaved,
     isPending: (id: string) => pendingIds.has(id),

@@ -276,7 +276,9 @@ export default function HomeScreen() {
         <EmptyState
           title="No upcoming shows yet"
           body="Follow an artist or venue in Discover. Their next Ticketmaster dates will appear here."
-          action={<ActionLink href="/discover" label="Search to follow" />}
+          action={
+            <ActionLink href="/discover" label="Search artists and venues" />
+          }
         />
       ) : upcoming.shows.length === 0 ? (
         <EmptyState
@@ -294,21 +296,19 @@ export default function HomeScreen() {
                 key={show.id}
                 show={show}
                 trailing={
-                  saved.configured ? (
-                    <Button
-                      label={isSaved ? "Saved" : "Save"}
-                      variant="secondary"
-                      disabled={!saved.ready || saved.isPending(show.id)}
-                      accessibilityLabel={
-                        isSaved
-                          ? `Remove ${show.name} from saved`
-                          : `Save ${show.name}`
-                      }
-                      onPress={() => {
-                        void saved.toggleSaved(show);
-                      }}
-                    />
-                  ) : null
+                  <Button
+                    label={isSaved ? "Saved" : "Save"}
+                    variant={isSaved ? "secondary" : "action"}
+                    disabled={saved.isPending(show.id)}
+                    accessibilityLabel={
+                      isSaved
+                        ? `Remove ${show.name} from saved`
+                        : `Save ${show.name}`
+                    }
+                    onPress={() => {
+                      void saved.toggleSaved(show);
+                    }}
+                  />
                 }
               />
             );

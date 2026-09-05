@@ -8,6 +8,7 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 
+import { authErrorFields } from "@/lib/account";
 import {
   ensureAnonymousUser,
   isPermanentUser,
@@ -36,15 +37,55 @@ const AuthContext = createContext<AuthContextValue>({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const configured = isSupabaseConfigured();
+  const [configState, setConfigState] = useState<
+    "checking" | "configured" | "missing"
+  >("checking");
+  const configured = configState === "configured";
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [ready, setReady] = useState(!configured);
+  const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [transferNotice, setTransferNotice] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!configured) {
+    let cancelled = false;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const checkConfiguration = () => {
+      if (cancelled) {
+        return;
+      }
+      if (isSupabaseConfigured()) {
+        setConfigState("configured");
+        return;
+      }
+      attempts += 1;
+      if (attempts >= 20) {
+        setConfigState("missing");
+        setError(
+          "Expo could not read the Supabase configuration after startup. Restart Expo from the mobile folder.",
+        );
+        setReady(true);
+        return;
+      }
+      timer = setTimeout(checkConfiguration, 100);
+    };
+
+    checkConfiguration();
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (configState === "checking") {
+      return;
+    }
+
+    if (configState === "missing") {
       return;
     }
 
@@ -83,10 +124,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           }
         }
-      } catch {
+      } catch (authError) {
         if (!cancelled) {
+          const { message, code } = authErrorFields(authError);
+          const detail = message || code;
           setError(
-            "Couldn't start a guest session. Check the public Supabase values in mobile/.env.",
+            detail
+              ? `Couldn't start a guest session: ${detail}`
+              : "Couldn't start a guest session. Check the public Supabase values in mobile/.env.",
           );
         }
       } finally {
@@ -112,7 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       data.subscription.unsubscribe();
     };
-  }, [configured]);
+  }, [configState]);
 
   const value = useMemo(
     () => ({
