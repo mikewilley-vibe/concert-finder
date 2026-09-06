@@ -7,6 +7,7 @@ import { Screen, ScreenBlock } from "@/components/Screen";
 import { ShowRow } from "@/components/ShowRow";
 import { Body, Eyebrow, Strong, Title } from "@/components/Typography";
 import { useFollows } from "@/hooks/useFollows";
+import { useHomeLocation } from "@/hooks/useHomeLocation";
 import { useSavedEvents } from "@/hooks/useSavedEvents";
 import {
   apiErrorMessage,
@@ -18,6 +19,7 @@ import {
   FOLLOWED_VENUE_TYPE,
   type FollowedItemType,
 } from "@/lib/follows";
+import { upcomingSearchFields } from "@/lib/home-location";
 
 type LoadState =
   | { status: "loading" }
@@ -37,6 +39,7 @@ export function FollowedDetailScreen({
 }) {
   const follows = useFollows();
   const saved = useSavedEvents();
+  const home = useHomeLocation();
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const itemType: FollowedItemType =
     kind === "artist" ? FOLLOWED_ATTRACTION_TYPE : FOLLOWED_VENUE_TYPE;
@@ -52,12 +55,17 @@ export function FollowedDetailScreen({
       return;
     }
 
+    if (!home.ready) {
+      return;
+    }
+
     setState({ status: "loading" });
     try {
       const result = await searchUpcomingShows({
         attractions:
           kind === "artist" ? [{ id, label }] : [],
         venues: kind === "venue" ? [{ id, label }] : [],
+        ...upcomingSearchFields(home.location),
       });
       setState({ status: "ready", shows: result.shows });
     } catch (error) {
@@ -69,7 +77,7 @@ export function FollowedDetailScreen({
         ),
       });
     }
-  }, [id, kind, label]);
+  }, [home.location, home.ready, id, kind, label]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

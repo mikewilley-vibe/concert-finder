@@ -9,12 +9,14 @@ export function Button({
   onPress,
   variant = "primary",
   disabled = false,
+  fullWidth = false,
   accessibilityLabel,
 }: {
   label: string;
   onPress: () => void;
   variant?: Variant;
   disabled?: boolean;
+  fullWidth?: boolean;
   accessibilityLabel?: string;
 }) {
   return (
@@ -27,6 +29,7 @@ export function Button({
       style={({ pressed }) => [
         styles.base,
         styles[variant],
+        fullWidth && styles.fullWidth,
         pressed && !disabled ? pressedStyle[variant] : null,
         disabled && styles.disabled,
       ]}
@@ -54,6 +57,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     borderRadius: 999,
     flexShrink: 0,
+  },
+  fullWidth: {
+    alignSelf: "stretch",
   },
   primary: {
     backgroundColor: colors.accent,

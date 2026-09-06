@@ -1,8 +1,10 @@
-import { useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import {
   Keyboard,
   Linking,
+  Pressable,
   StyleSheet,
+  Text,
   TextInput,
   type TextInputProps,
   View,
@@ -39,7 +41,18 @@ import {
 import { ApiError, deleteAccount } from "@/lib/api";
 import { websiteUrl } from "@/lib/config";
 import { completeEmailDomain, EMAIL_DOMAINS } from "@/lib/email-domains";
+import {
+  DEFAULT_RADIUS_MILES,
+  RADIUS_OPTIONS,
+  hasGpsFix,
+  homeLocationLabel,
+} from "@/lib/home-location";
+import {
+  openLocationSettings,
+  requestCurrentHomeLocation,
+} from "@/lib/current-location";
 import { getSupabaseClient } from "@/lib/supabase";
+import { useHomeLocation } from "@/hooks/useHomeLocation";
 
 function Field({
   label,
@@ -62,6 +75,7 @@ function Field({
   | "textContentType"
   | "returnKeyType"
   | "onSubmitEditing"
+  | "maxLength"
 >) {
   const id = label.replace(/\s+/g, "-").toLowerCase();
   return (
@@ -84,6 +98,7 @@ function Field({
 
 export default function ProfileScreen() {
   const { user, ready, configured, error, transferNotice } = useAuth();
+  const home = useHomeLocation();
   const anonymous = isAnonymousUser(user);
   const permanent = isPermanentUser(user);
   const email = verifiedEmail(user);
@@ -110,6 +125,12 @@ export default function ProfileScreen() {
   const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
   const [deleteConfirming, setDeleteConfirming] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
+  const [postalDraft, setPostalDraft] = useState("");
+  const [radiusDraft, setRadiusDraft] = useState(DEFAULT_RADIUS_MILES);
+  const [homeNotice, setHomeNotice] = useState<string | null>(null);
+  const [homePending, setHomePending] = useState(false);
+  const [gpsPending, setGpsPending] = useState(false);
+  const [gpsDenied, setGpsDenied] = useState(false);
   const showEmailDomains =
     signUpEmail.trim().length > 0 && !emailLooksValid(signUpEmail.trim());
 
@@ -122,6 +143,14 @@ export default function ProfileScreen() {
   function openWebsite(path: string) {
     void Linking.openURL(websiteUrl(path));
   }
+
+  useEffect(() => {
+    if (!home.ready) {
+      return;
+    }
+    setPostalDraft(home.location.postalCode);
+    setRadiusDraft(home.location.radiusMiles);
+  }, [home.location.postalCode, home.location.radiusMiles, home.ready]);
 
   async function onSignIn() {
     const nextEmail = signInEmail.trim().toLowerCase();
@@ -256,6 +285,71 @@ export default function ProfileScreen() {
       setFormError("Could not sign out. Try again.");
     } finally {
       setSignOutPending(false);
+    }
+  }
+
+  async function onSaveHomeLocation() {
+    Keyboard.dismiss();
+    setHomePending(true);
+    setHomeNotice(null);
+    setGpsDenied(false);
+    const nextPostal = postalDraft.trim();
+    try {
+      const saved = await home.save({
+        postalCode: nextPostal,
+        radiusMiles: radiusDraft,
+        latitude: null,
+        longitude: null,
+      });
+      if (!saved) {
+        setHomeNotice("Use a ZIP or postal code like 20003.");
+        return;
+      }
+      setPostalDraft(nextPostal.toUpperCase());
+      setHomeNotice(
+        nextPostal
+          ? "Home location saved. Upcoming shows on Home use this area."
+          : "Home location cleared. Upcoming shows are no longer limited by ZIP or GPS.",
+      );
+    } catch {
+      setHomeNotice("Could not save that location. Try again.");
+    } finally {
+      setHomePending(false);
+    }
+  }
+
+  async function onUseCurrentLocation() {
+    Keyboard.dismiss();
+    setGpsPending(true);
+    setHomeNotice(null);
+    setGpsDenied(false);
+    try {
+      const result = await requestCurrentHomeLocation();
+      if (!result.ok) {
+        setGpsDenied(result.code === "denied");
+        setHomeNotice(result.message);
+        return;
+      }
+      const saved = await home.save({
+        postalCode: result.location.postalCode,
+        radiusMiles: radiusDraft,
+        latitude: result.location.latitude,
+        longitude: result.location.longitude,
+      });
+      if (!saved) {
+        setHomeNotice("Could not save that location. Try again.");
+        return;
+      }
+      setPostalDraft(result.location.postalCode);
+      setHomeNotice(
+        "Using your current location. Upcoming shows on Home use this area.",
+      );
+    } catch {
+      setHomeNotice(
+        "Could not read your current location. Try again, or enter a ZIP.",
+      );
+    } finally {
+      setGpsPending(false);
     }
   }
 
@@ -530,10 +624,90 @@ export default function ProfileScreen() {
         </View>
       ) : null}
 
-      <EmptyState
-        title="Home location"
-        body="A home city and search radius will live here. Location permission and nearby search are later work."
-      />
+      <View style={styles.card}>
+        <Strong>Home location</Strong>
+        <Body>
+          Narrow followed shows with GPS or a ZIP and radius. Leave ZIP blank
+          and skip GPS to search more broadly. Saving a ZIP turns GPS off.
+        </Body>
+        {hasGpsFix(home.location) ? (
+          <Body>{homeLocationLabel(home.location)}</Body>
+        ) : null}
+        <Field
+          label="ZIP / postal code"
+          value={postalDraft}
+          onChangeText={(value) => {
+            setPostalDraft(value);
+            setHomeNotice(null);
+          }}
+          autoComplete="postal-code"
+          textContentType="postalCode"
+          autoCapitalize="characters"
+          placeholder="Like 20003"
+          maxLength={12}
+          returnKeyType="done"
+          onSubmitEditing={() => {
+            if (!homePending) void onSaveHomeLocation();
+          }}
+        />
+        <Body>Search radius</Body>
+        <View style={styles.radiusRow}>
+          {RADIUS_OPTIONS.map((miles) => {
+            const selected = radiusDraft === miles;
+            return (
+              <Pressable
+                key={miles}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                accessibilityLabel={`${miles} miles`}
+                onPress={() => {
+                  setRadiusDraft(miles);
+                  setHomeNotice(null);
+                }}
+                style={[styles.radiusChip, selected && styles.radiusChipSelected]}
+              >
+                <Text
+                  style={[
+                    styles.radiusChipLabel,
+                    selected && styles.radiusChipLabelSelected,
+                  ]}
+                >
+                  {miles} mi
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {home.error ? <Body>{home.error}</Body> : null}
+        {homeNotice ? <Body>{homeNotice}</Body> : null}
+        <Button
+          label={gpsPending ? "Finding you…" : "Use current location"}
+          variant="secondary"
+          disabled={homePending || gpsPending}
+          fullWidth
+          onPress={() => {
+            void onUseCurrentLocation();
+          }}
+        />
+        {gpsDenied ? (
+          <Button
+            label="Open Settings"
+            variant="action"
+            disabled={homePending || gpsPending}
+            onPress={() => {
+              openLocationSettings();
+            }}
+          />
+        ) : null}
+        <Button
+          label={homePending ? "Saving…" : "Save home location"}
+          disabled={homePending || gpsPending}
+          fullWidth
+          onPress={() => {
+            void onSaveHomeLocation();
+          }}
+        />
+      </View>
 
       <EmptyState
         title="Notification preferences"
@@ -632,5 +806,31 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 16,
     paddingHorizontal: 16,
+  },
+  radiusRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  radiusChip: {
+    minHeight: 44,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.line,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  radiusChipSelected: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  radiusChipLabel: {
+    color: colors.foreground,
+    fontFamily: fonts.semibold,
+    fontSize: 14,
+  },
+  radiusChipLabelSelected: {
+    color: colors.onAccent,
   },
 });
