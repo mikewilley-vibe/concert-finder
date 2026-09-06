@@ -44,7 +44,6 @@ import { completeEmailDomain, EMAIL_DOMAINS } from "@/lib/email-domains";
 import {
   DEFAULT_RADIUS_MILES,
   RADIUS_OPTIONS,
-  hasGpsFix,
   homeLocationLabel,
 } from "@/lib/home-location";
 import {
@@ -630,9 +629,7 @@ export default function ProfileScreen() {
           Narrow followed shows with GPS or a ZIP and radius. Leave ZIP blank
           and skip GPS to search more broadly. Saving a ZIP turns GPS off.
         </Body>
-        {hasGpsFix(home.location) ? (
-          <Body>{homeLocationLabel(home.location)}</Body>
-        ) : null}
+        {home.ready ? <Body>{homeLocationLabel(home.location)}</Body> : null}
         <Field
           label="ZIP / postal code"
           value={postalDraft}

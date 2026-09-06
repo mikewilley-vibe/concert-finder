@@ -20,6 +20,7 @@ export function useHomeLocation() {
       setReady(isHomeLocationReady());
     };
     const unsubscribe = subscribeHomeLocation(sync);
+    sync();
     void ensureHomeLocationLoaded().catch(() => {
       setError("Could not load your home location.");
       setReady(true);

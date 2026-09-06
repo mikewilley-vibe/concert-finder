@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
@@ -41,6 +41,7 @@ export function FollowedDetailScreen({
   const saved = useSavedEvents();
   const home = useHomeLocation();
   const [state, setState] = useState<LoadState>({ status: "loading" });
+  const requestIdRef = useRef(0);
   const itemType: FollowedItemType =
     kind === "artist" ? FOLLOWED_ATTRACTION_TYPE : FOLLOWED_VENUE_TYPE;
   const label = name?.trim() || (kind === "artist" ? "Artist" : "Venue");
@@ -59,6 +60,8 @@ export function FollowedDetailScreen({
       return;
     }
 
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
     setState({ status: "loading" });
     try {
       const result = await searchUpcomingShows({
@@ -67,8 +70,14 @@ export function FollowedDetailScreen({
         venues: kind === "venue" ? [{ id, label }] : [],
         ...upcomingSearchFields(home.location),
       });
+      if (requestIdRef.current !== requestId) {
+        return;
+      }
       setState({ status: "ready", shows: result.shows });
     } catch (error) {
+      if (requestIdRef.current !== requestId) {
+        return;
+      }
       setState({
         status: "error",
         message: apiErrorMessage(
@@ -77,7 +86,16 @@ export function FollowedDetailScreen({
         ),
       });
     }
-  }, [home.location, home.ready, id, kind, label]);
+  }, [
+    home.location.latitude,
+    home.location.longitude,
+    home.location.postalCode,
+    home.location.radiusMiles,
+    home.ready,
+    id,
+    kind,
+    label,
+  ]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
