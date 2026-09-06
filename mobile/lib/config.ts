@@ -4,6 +4,7 @@ export const DEFAULT_API_BASE_URL = "https://concert-finder-eta.vercel.app";
 
 type PublicExtra = {
   apiBaseUrl?: string;
+  webBaseUrl?: string;
   supabaseUrl?: string;
   supabasePublishableKey?: string;
 };
@@ -46,5 +47,10 @@ export function isSupabaseConfigured() {
 }
 
 export function websiteUrl(path = "/") {
-  return new URL(path, `${getApiBaseUrl()}/`).toString();
+  const configured = configuredValue(
+    process.env.EXPO_PUBLIC_WEB_BASE_URL,
+    publicExtra().webBaseUrl,
+  );
+  const baseUrl = configured || getApiBaseUrl();
+  return new URL(path, `${baseUrl.replace(/\/$/, "")}/`).toString();
 }
