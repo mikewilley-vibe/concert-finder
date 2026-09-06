@@ -1,4 +1,3 @@
-import * as Location from "expo-location";
 import { Linking } from "react-native";
 
 import { parsePostalCode, type HomeLocation } from "./home-location";
@@ -7,19 +6,51 @@ export type CurrentLocationResult =
   | { ok: true; location: Pick<HomeLocation, "postalCode" | "latitude" | "longitude"> }
   | { ok: false; code: "denied" | "unavailable"; message: string };
 
-function postalFromPlace(place: Location.LocationGeocodedAddress) {
-  const parsed = parsePostalCode(place.postalCode ?? "");
+type LocationModule = typeof import("expo-location");
+
+function postalFromPlace(postalCode: string | null | undefined) {
+  const parsed = parsePostalCode(postalCode ?? "");
   return parsed.ok ? parsed.postalCode : "";
 }
 
-export async function requestCurrentHomeLocation(): Promise<CurrentLocationResult> {
-  const permission = await Location.requestForegroundPermissionsAsync();
-  if (permission.status !== Location.PermissionStatus.GRANTED) {
+async function loadLocationModule(): Promise<
+  { ok: true; Location: LocationModule } | { ok: false; message: string }
+> {
+  try {
+    const Location = await import("expo-location");
+    return { ok: true, Location };
+  } catch {
     return {
       ok: false,
-      code: "denied",
       message:
-        "Location access is off. Enable it for Expo Go in Settings, then try again.",
+        "Current location is not available in this Expo Go build. Enter a ZIP instead, or update Expo Go.",
+    };
+  }
+}
+
+export async function requestCurrentHomeLocation(): Promise<CurrentLocationResult> {
+  const loaded = await loadLocationModule();
+  if (!loaded.ok) {
+    return { ok: false, code: "unavailable", message: loaded.message };
+  }
+  const { Location } = loaded;
+
+  try {
+    const permission = await Location.requestForegroundPermissionsAsync();
+    if (permission.status !== "granted") {
+      return {
+        ok: false,
+        code: "denied",
+        message:
+          "Location access is off. Enable it for Expo Go in Settings, then try again.",
+      };
+    }
+  } catch {
+    return {
+      ok: false,
+      code: "unavailable",
+      message:
+        "Could not ask for location access. Enter a ZIP instead, or update Expo Go.",
     };
   }
 
@@ -32,7 +63,7 @@ export async function requestCurrentHomeLocation(): Promise<CurrentLocationResul
     let postalCode = "";
     try {
       const places = await Location.reverseGeocodeAsync({ latitude, longitude });
-      postalCode = places[0] ? postalFromPlace(places[0]) : "";
+      postalCode = postalFromPlace(places[0]?.postalCode);
     } catch {
       postalCode = "";
     }

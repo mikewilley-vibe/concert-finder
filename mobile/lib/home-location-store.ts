@@ -39,29 +39,37 @@ export function subscribeHomeLocation(listener: Listener) {
 }
 
 export function ensureHomeLocationLoaded() {
-  if (ready) {
-    return Promise.resolve();
-  }
   if (loadPromise) {
     return loadPromise;
   }
+  if (ready) {
+    return Promise.resolve();
+  }
 
   const startedAt = writeGeneration;
-  loadPromise = Promise.race([
-    AsyncStorage.getItem(HOME_LOCATION_STORAGE_KEY).then((raw) => {
+  let finished = false;
+
+  const unblock = setTimeout(() => {
+    if (finished) {
+      return;
+    }
+    ready = true;
+    notify();
+  }, 2000);
+
+  loadPromise = AsyncStorage.getItem(HOME_LOCATION_STORAGE_KEY)
+    .then((raw) => {
       if (writeGeneration !== startedAt) {
         return;
       }
       current = parseStoredHomeLocation(raw);
-    }),
-    new Promise<void>((resolve) => {
-      setTimeout(resolve, 2000);
-    }),
-  ])
+    })
     .catch(() => {
-      // Keep the in-memory default if storage is unavailable.
+      // Keep the in-memory value if storage is unavailable.
     })
     .finally(() => {
+      finished = true;
+      clearTimeout(unblock);
       ready = true;
       loadPromise = null;
       notify();

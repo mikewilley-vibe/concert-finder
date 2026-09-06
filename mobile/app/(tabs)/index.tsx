@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ActionLink } from "@/components/ActionLink";
 import { Button } from "@/components/Button";
@@ -19,7 +19,11 @@ import {
 } from "@/lib/api";
 import { isPermanentUser } from "@/lib/auth";
 import { toFollowedRef } from "@/lib/follows";
-import { homeLocationLabel, upcomingSearchFields } from "@/lib/home-location";
+import {
+  hasGpsFix,
+  homeLocationLabel,
+  upcomingSearchFields,
+} from "@/lib/home-location";
 import { getSupabaseClient } from "@/lib/supabase";
 import {
   WatchStateUnavailableError,
@@ -68,6 +72,7 @@ export default function HomeScreen() {
   const home = useHomeLocation();
   const [upcoming, setUpcoming] = useState<UpcomingState>({ status: "loading" });
   const [inbox, setInbox] = useState<InboxState>({ status: "loading" });
+  const upcomingRequest = useRef(0);
   const permanent = isPermanentUser(user);
 
   const loadUpcoming = useCallback(async () => {
@@ -80,6 +85,8 @@ export default function HomeScreen() {
       return;
     }
 
+    const requestId = upcomingRequest.current + 1;
+    upcomingRequest.current = requestId;
     setUpcoming({ status: "loading" });
     try {
       const result = await searchUpcomingShows({
@@ -87,8 +94,14 @@ export default function HomeScreen() {
         venues: follows.venues.map(toFollowedRef),
         ...upcomingSearchFields(home.location),
       });
+      if (upcomingRequest.current !== requestId) {
+        return;
+      }
       setUpcoming({ status: "ready", shows: result.shows });
     } catch (error) {
+      if (upcomingRequest.current !== requestId) {
+        return;
+      }
       setUpcoming({
         status: "error",
         message: apiErrorMessage(
@@ -101,7 +114,10 @@ export default function HomeScreen() {
     follows.artists,
     follows.ready,
     follows.venues,
-    home.location,
+    home.location.latitude,
+    home.location.longitude,
+    home.location.postalCode,
+    home.location.radiusMiles,
     home.ready,
   ]);
 
@@ -295,8 +311,8 @@ export default function HomeScreen() {
         <EmptyState
           title="No upcoming shows yet"
           body={
-            home.location.postalCode
-              ? `Nothing nearby in Ticketmaster’s first results page for ${home.location.postalCode}. Try a wider radius in Profile, or follow another artist.`
+            home.location.postalCode || hasGpsFix(home.location)
+              ? `Nothing nearby in Ticketmaster’s first results page for this area. Try a wider radius in Profile, or follow another artist.`
               : "Nothing on the first Ticketmaster results page for the people you follow."
           }
         />
