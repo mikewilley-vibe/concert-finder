@@ -19,7 +19,7 @@ import {
 } from "@/lib/api";
 import { isPermanentUser } from "@/lib/auth";
 import { toFollowedRef } from "@/lib/follows";
-import { homeLocationLabel } from "@/lib/home-location";
+import { homeLocationLabel, upcomingSearchFields } from "@/lib/home-location";
 import { getSupabaseClient } from "@/lib/supabase";
 import {
   WatchStateUnavailableError,
@@ -85,8 +85,7 @@ export default function HomeScreen() {
       const result = await searchUpcomingShows({
         attractions: follows.artists.map(toFollowedRef),
         venues: follows.venues.map(toFollowedRef),
-        postalCode: home.location.postalCode || undefined,
-        radiusMiles: home.location.radiusMiles,
+        ...upcomingSearchFields(home.location),
       });
       setUpcoming({ status: "ready", shows: result.shows });
     } catch (error) {
@@ -102,8 +101,7 @@ export default function HomeScreen() {
     follows.artists,
     follows.ready,
     follows.venues,
-    home.location.postalCode,
-    home.location.radiusMiles,
+    home.location,
     home.ready,
   ]);
 

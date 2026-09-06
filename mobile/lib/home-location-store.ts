@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import {
-  DEFAULT_RADIUS_MILES,
+  EMPTY_HOME_LOCATION,
   HOME_LOCATION_STORAGE_KEY,
   parsePostalCode,
   parseStoredHomeLocation,
@@ -12,10 +12,7 @@ type Listener = () => void;
 
 const listeners = new Set<Listener>();
 
-let current: HomeLocation = {
-  postalCode: "",
-  radiusMiles: DEFAULT_RADIUS_MILES,
-};
+let current: HomeLocation = { ...EMPTY_HOME_LOCATION };
 let ready = false;
 let writeGeneration = 0;
 let loadPromise: Promise<void> | null = null;
@@ -73,19 +70,24 @@ export function ensureHomeLocationLoaded() {
   return loadPromise;
 }
 
-export async function saveHomeLocation(next: {
-  postalCode: string;
-  radiusMiles: number;
-}) {
+export async function saveHomeLocation(next: HomeLocation) {
   const postal = parsePostalCode(next.postalCode);
   if (!postal.ok) {
     return { ok: false as const };
   }
 
+  const hasPair =
+    next.latitude !== null &&
+    next.longitude !== null &&
+    Number.isFinite(next.latitude) &&
+    Number.isFinite(next.longitude);
+
   writeGeneration += 1;
   current = {
     postalCode: postal.postalCode,
     radiusMiles: next.radiusMiles,
+    latitude: hasPair ? next.latitude : null,
+    longitude: hasPair ? next.longitude : null,
   };
   ready = true;
   notify();

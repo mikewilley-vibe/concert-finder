@@ -174,9 +174,28 @@ export function searchUpcomingShows(input: {
   attractions: FollowedRef[];
   venues: FollowedRef[];
   postalCode?: string;
+  latitude?: number;
+  longitude?: number;
   radiusMiles?: number;
 }) {
   const postalCode = input.postalCode?.trim();
+  const hasCoords =
+    typeof input.latitude === "number" &&
+    typeof input.longitude === "number" &&
+    Number.isFinite(input.latitude) &&
+    Number.isFinite(input.longitude);
+  const location = hasCoords
+    ? {
+        latitude: input.latitude,
+        longitude: input.longitude,
+        radiusMiles: input.radiusMiles,
+      }
+    : postalCode
+      ? {
+          postalCode,
+          radiusMiles: input.radiusMiles,
+        }
+      : undefined;
   return apiFetch<{ events: NativeApiShow[] }>(
     "/api/v1/ticketmaster/events",
     {
@@ -184,12 +203,7 @@ export function searchUpcomingShows(input: {
       body: JSON.stringify({
         attractions: input.attractions,
         venues: input.venues,
-        location: postalCode
-          ? {
-              postalCode,
-              radiusMiles: input.radiusMiles,
-            }
-          : undefined,
+        location,
       }),
     },
   ).then((result) => ({ shows: result.events.map(mapShow) }));

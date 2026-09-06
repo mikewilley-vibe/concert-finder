@@ -28,6 +28,7 @@ import {
   homeLocationLabel,
   parsePostalCode,
   parseStoredHomeLocation,
+  upcomingSearchFields,
 } from "../mobile/lib/home-location.ts";
 
 test("event IDs are deduplicated while preserving discovery order", () => {
@@ -281,11 +282,54 @@ test("home location postal codes match the Ticketmaster search rules", () => {
   assert.deepEqual(parsePostalCode(" 20003 "), { ok: true, postalCode: "20003" });
   assert.equal(parsePostalCode("!!").ok, false);
   assert.equal(
-    homeLocationLabel({ postalCode: "20003", radiusMiles: 50 }),
+    homeLocationLabel({
+      postalCode: "20003",
+      radiusMiles: 50,
+      latitude: null,
+      longitude: null,
+    }),
     "Within 50 miles of 20003.",
+  );
+  assert.equal(
+    homeLocationLabel({
+      postalCode: "20003",
+      radiusMiles: 25,
+      latitude: 38.89,
+      longitude: -77.03,
+    }),
+    "Within 25 miles of your current location (20003).",
   );
   assert.equal(
     parseStoredHomeLocation('{"postalCode":"23220","radiusMiles":100}').radiusMiles,
     100,
+  );
+  assert.deepEqual(
+    parseStoredHomeLocation(
+      '{"postalCode":"20003","radiusMiles":50,"latitude":38.9,"longitude":-77.04}',
+    ),
+    {
+      postalCode: "20003",
+      radiusMiles: 50,
+      latitude: 38.9,
+      longitude: -77.04,
+    },
+  );
+  assert.deepEqual(
+    upcomingSearchFields({
+      postalCode: "20003",
+      radiusMiles: 50,
+      latitude: 38.9,
+      longitude: -77.04,
+    }),
+    { latitude: 38.9, longitude: -77.04, radiusMiles: 50 },
+  );
+  assert.deepEqual(
+    upcomingSearchFields({
+      postalCode: "20003",
+      radiusMiles: 50,
+      latitude: null,
+      longitude: null,
+    }),
+    { postalCode: "20003", radiusMiles: 50 },
   );
 });

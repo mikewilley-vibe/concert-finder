@@ -19,6 +19,7 @@ import {
   FOLLOWED_VENUE_TYPE,
   type FollowedItemType,
 } from "@/lib/follows";
+import { upcomingSearchFields } from "@/lib/home-location";
 
 type LoadState =
   | { status: "loading" }
@@ -64,8 +65,7 @@ export function FollowedDetailScreen({
         attractions:
           kind === "artist" ? [{ id, label }] : [],
         venues: kind === "venue" ? [{ id, label }] : [],
-        postalCode: home.location.postalCode || undefined,
-        radiusMiles: home.location.radiusMiles,
+        ...upcomingSearchFields(home.location),
       });
       setState({ status: "ready", shows: result.shows });
     } catch (error) {
@@ -77,7 +77,7 @@ export function FollowedDetailScreen({
         ),
       });
     }
-  }, [home.location.postalCode, home.location.radiusMiles, home.ready, id, kind, label]);
+  }, [home.location, home.ready, id, kind, label]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

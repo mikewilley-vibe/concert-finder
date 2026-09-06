@@ -44,7 +44,13 @@ import { completeEmailDomain, EMAIL_DOMAINS } from "@/lib/email-domains";
 import {
   DEFAULT_RADIUS_MILES,
   RADIUS_OPTIONS,
+  hasGpsFix,
+  homeLocationLabel,
 } from "@/lib/home-location";
+import {
+  openLocationSettings,
+  requestCurrentHomeLocation,
+} from "@/lib/current-location";
 import { getSupabaseClient } from "@/lib/supabase";
 import { useHomeLocation } from "@/hooks/useHomeLocation";
 
@@ -123,6 +129,8 @@ export default function ProfileScreen() {
   const [radiusDraft, setRadiusDraft] = useState(DEFAULT_RADIUS_MILES);
   const [homeNotice, setHomeNotice] = useState<string | null>(null);
   const [homePending, setHomePending] = useState(false);
+  const [gpsPending, setGpsPending] = useState(false);
+  const [gpsDenied, setGpsDenied] = useState(false);
   const showEmailDomains =
     signUpEmail.trim().length > 0 && !emailLooksValid(signUpEmail.trim());
 
@@ -284,11 +292,14 @@ export default function ProfileScreen() {
     Keyboard.dismiss();
     setHomePending(true);
     setHomeNotice(null);
+    setGpsDenied(false);
     const nextPostal = postalDraft.trim();
     try {
       const saved = await home.save({
         postalCode: nextPostal,
         radiusMiles: radiusDraft,
+        latitude: null,
+        longitude: null,
       });
       if (!saved) {
         setHomeNotice("Use a ZIP or postal code like 20003.");
@@ -298,12 +309,47 @@ export default function ProfileScreen() {
       setHomeNotice(
         nextPostal
           ? "Home location saved. Upcoming shows on Home use this area."
-          : "Home location cleared. Upcoming shows are no longer limited by ZIP.",
+          : "Home location cleared. Upcoming shows are no longer limited by ZIP or GPS.",
       );
     } catch {
       setHomeNotice("Could not save that location. Try again.");
     } finally {
       setHomePending(false);
+    }
+  }
+
+  async function onUseCurrentLocation() {
+    Keyboard.dismiss();
+    setGpsPending(true);
+    setHomeNotice(null);
+    setGpsDenied(false);
+    try {
+      const result = await requestCurrentHomeLocation();
+      if (!result.ok) {
+        setGpsDenied(result.code === "denied");
+        setHomeNotice(result.message);
+        return;
+      }
+      const saved = await home.save({
+        postalCode: result.location.postalCode,
+        radiusMiles: radiusDraft,
+        latitude: result.location.latitude,
+        longitude: result.location.longitude,
+      });
+      if (!saved) {
+        setHomeNotice("Could not save that location. Try again.");
+        return;
+      }
+      setPostalDraft(result.location.postalCode);
+      setHomeNotice(
+        "Using your current location. Upcoming shows on Home use this area.",
+      );
+    } catch {
+      setHomeNotice(
+        "Could not read your current location. Try again, or enter a ZIP.",
+      );
+    } finally {
+      setGpsPending(false);
     }
   }
 
@@ -581,9 +627,12 @@ export default function ProfileScreen() {
       <View style={styles.card}>
         <Strong>Home location</Strong>
         <Body>
-          Narrow followed shows to a ZIP and radius. Leave ZIP blank to search
-          more broadly. Current location from GPS is later work.
+          Narrow followed shows with GPS or a ZIP and radius. Leave ZIP blank
+          and skip GPS to search more broadly. Saving a ZIP turns GPS off.
         </Body>
+        {hasGpsFix(home.location) ? (
+          <Body>{homeLocationLabel(home.location)}</Body>
+        ) : null}
         <Field
           label="ZIP / postal code"
           value={postalDraft}
@@ -632,8 +681,27 @@ export default function ProfileScreen() {
         {home.error ? <Body>{home.error}</Body> : null}
         {homeNotice ? <Body>{homeNotice}</Body> : null}
         <Button
+          label={gpsPending ? "Finding you…" : "Use current location"}
+          variant="secondary"
+          disabled={homePending || gpsPending}
+          fullWidth
+          onPress={() => {
+            void onUseCurrentLocation();
+          }}
+        />
+        {gpsDenied ? (
+          <Button
+            label="Open Settings"
+            variant="action"
+            disabled={homePending || gpsPending}
+            onPress={() => {
+              openLocationSettings();
+            }}
+          />
+        ) : null}
+        <Button
           label={homePending ? "Saving…" : "Save home location"}
-          disabled={homePending}
+          disabled={homePending || gpsPending}
           fullWidth
           onPress={() => {
             void onSaveHomeLocation();
