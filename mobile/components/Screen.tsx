@@ -26,7 +26,7 @@ export function Screen({
         contentContainerStyle={[styles.content, padded && styles.padded]}
         automaticallyAdjustKeyboardInsets
         keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
-        keyboardShouldPersistTaps="handled"
+        keyboardShouldPersistTaps="always"
       >
         {children}
       </ScrollView>

@@ -291,6 +291,7 @@ export default function ProfileScreen() {
         radiusMiles: radiusDraft,
       });
       if (!saved) {
+        setHomeNotice("Use a ZIP or postal code like 20003.");
         return;
       }
       setPostalDraft(nextPostal.toUpperCase());
@@ -632,7 +633,8 @@ export default function ProfileScreen() {
         {homeNotice ? <Body>{homeNotice}</Body> : null}
         <Button
           label={homePending ? "Saving…" : "Save home location"}
-          disabled={homePending || !home.ready}
+          disabled={homePending}
+          fullWidth
           onPress={() => {
             void onSaveHomeLocation();
           }}
