@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState, type RefObject } from "react";
 import {
   Keyboard,
   Linking,
@@ -38,17 +38,20 @@ import {
 } from "@/lib/auth";
 import { apiErrorMessage, deleteAccount } from "@/lib/api";
 import { websiteUrl } from "@/lib/config";
+import { completeEmailDomain, EMAIL_DOMAINS } from "@/lib/email-domains";
 import { getSupabaseClient } from "@/lib/supabase";
 
 function Field({
   label,
   value,
   onChangeText,
+  inputRef,
   ...rest
 }: {
   label: string;
   value: string;
   onChangeText: (value: string) => void;
+  inputRef?: RefObject<TextInput | null>;
 } & Pick<
   TextInputProps,
   | "placeholder"
@@ -65,6 +68,7 @@ function Field({
     <View style={styles.field}>
       <Body>{label}</Body>
       <TextInput
+        ref={inputRef}
         value={value}
         onChangeText={onChangeText}
         placeholderTextColor={colors.mute}
@@ -94,6 +98,7 @@ export default function ProfileScreen() {
   const [signInError, setSignInError] = useState<string | null>(null);
   const [signInPending, setSignInPending] = useState(false);
   const [signUpEmail, setSignUpEmail] = useState("");
+  const signUpEmailRef = useRef<TextInput>(null);
   const [signUpError, setSignUpError] = useState<string | null>(null);
   const [signUpPending, setSignUpPending] = useState(false);
   const [newPassword, setNewPassword] = useState("");
@@ -105,6 +110,14 @@ export default function ProfileScreen() {
   const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
   const [deleteConfirming, setDeleteConfirming] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
+  const showEmailDomains =
+    signUpEmail.trim().length > 0 && !emailLooksValid(signUpEmail.trim());
+
+  function chooseEmailDomain(domain: string) {
+    setSignUpEmail((current) => completeEmailDomain(current, domain));
+    setSignUpError(null);
+    requestAnimationFrame(() => signUpEmailRef.current?.focus());
+  }
 
   function openWebsite(path: string) {
     void Linking.openURL(websiteUrl(path));
@@ -370,6 +383,7 @@ export default function ProfileScreen() {
           <Field
             label="Email"
             value={signUpEmail}
+            inputRef={signUpEmailRef}
             onChangeText={(value) => {
               setSignUpEmail(value);
               setSignUpError(null);
@@ -384,6 +398,19 @@ export default function ProfileScreen() {
               if (!signUpPending) void onCreateAccount();
             }}
           />
+          {showEmailDomains ? (
+            <View style={styles.emailDomains}>
+              {EMAIL_DOMAINS.map((domain) => (
+                <Button
+                  key={domain}
+                  label={`@${domain}`}
+                  variant="action"
+                  accessibilityLabel={`Complete email with ${domain}`}
+                  onPress={() => chooseEmailDomain(domain)}
+                />
+              ))}
+            </View>
+          ) : null}
           {signUpError ? <Body>{signUpError}</Body> : null}
           <Button
             label={signUpPending ? "Sending…" : "Send verification email"}
@@ -554,6 +581,11 @@ const styles = StyleSheet.create({
   },
   field: {
     gap: 6,
+  },
+  emailDomains: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
   },
   input: {
     minHeight: 48,

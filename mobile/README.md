@@ -32,6 +32,7 @@ npm run typecheck
 | Variable | Purpose |
 |---|---|
 | `EXPO_PUBLIC_API_BASE_URL` | Website origin for the versioned `/api/v1` routes. Defaults to the production site. |
+| `EXPO_PUBLIC_WEB_BASE_URL` | Stable public website origin for email verification and password-reset links. Use the development domain with the development Supabase project. |
 | `EXPO_PUBLIC_SUPABASE_URL` | Publishable Supabase project URL |
 | `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable / anon key only |
 
@@ -60,6 +61,12 @@ config, app code, `.env`, logs, or examples.
 Push, location radius, calendar, and community submission are not in the app.
 Auth sessions still use AsyncStorage until `expo-secure-store` can be added and
 verified in a device build.
+
+For development email verification, set the development Supabase project's
+Site URL to `https://concert-finder-dev.vercel.app` and allow
+`https://concert-finder-dev.vercel.app/**` under Authentication → URL
+Configuration. Keep temporary Vercel deployment URLs out of Supabase Auth
+redirect settings because Vercel may protect them with a login screen.
 
 ## What this client talks to
 

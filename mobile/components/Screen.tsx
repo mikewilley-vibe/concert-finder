@@ -1,5 +1,11 @@
 import type { ReactNode } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 
 import { colors, spacing } from "@/constants/theme";
 
@@ -11,13 +17,20 @@ export function Screen({
   padded?: boolean;
 }) {
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={[styles.content, padded && styles.padded]}
-      keyboardShouldPersistTaps="handled"
+    <KeyboardAvoidingView
+      style={styles.keyboardAvoider}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      {children}
-    </ScrollView>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[styles.content, padded && styles.padded]}
+        automaticallyAdjustKeyboardInsets
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+        keyboardShouldPersistTaps="handled"
+      >
+        {children}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -26,6 +39,10 @@ export function ScreenBlock({ children }: { children: ReactNode }) {
 }
 
 const styles = StyleSheet.create({
+  keyboardAvoider: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   scroll: {
     flex: 1,
     backgroundColor: colors.background,
