@@ -23,6 +23,7 @@ import {
   parseUpcomingShowsRequest,
 } from "../lib/ticketmaster.ts";
 import { resolveSupabaseAdminConfig } from "../lib/supabase/admin-client.ts";
+import { completeEmailDomain } from "../mobile/lib/email-domains.ts";
 
 test("event IDs are deduplicated while preserving discovery order", () => {
   assert.deepEqual(
@@ -256,4 +257,13 @@ test("server admin config accepts Supabase integration variable names", () => {
       secretKey: "eyJheader.payload.signature",
     },
   );
+});
+
+test("email domain shortcuts preserve the typed mailbox", () => {
+  assert.equal(completeEmailDomain("mike", "gmail.com"), "mike@gmail.com");
+  assert.equal(
+    completeEmailDomain(" mike@gm ", "yahoo.com"),
+    "mike@yahoo.com",
+  );
+  assert.equal(completeEmailDomain("", "outlook.com"), "");
 });
