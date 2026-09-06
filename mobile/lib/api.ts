@@ -174,7 +174,9 @@ export function searchUpcomingShows(input: {
   attractions: FollowedRef[];
   venues: FollowedRef[];
   postalCode?: string;
+  radiusMiles?: number;
 }) {
+  const postalCode = input.postalCode?.trim();
   return apiFetch<{ events: NativeApiShow[] }>(
     "/api/v1/ticketmaster/events",
     {
@@ -182,8 +184,11 @@ export function searchUpcomingShows(input: {
       body: JSON.stringify({
         attractions: input.attractions,
         venues: input.venues,
-        location: input.postalCode
-          ? { postalCode: input.postalCode }
+        location: postalCode
+          ? {
+              postalCode,
+              radiusMiles: input.radiusMiles,
+            }
           : undefined,
       }),
     },

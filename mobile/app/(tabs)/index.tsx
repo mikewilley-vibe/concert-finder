@@ -9,6 +9,7 @@ import { ShowRow } from "@/components/ShowRow";
 import { Body, Eyebrow, Strong, Title } from "@/components/Typography";
 import { useAuth } from "@/components/AuthProvider";
 import { useFollows } from "@/hooks/useFollows";
+import { useHomeLocation } from "@/hooks/useHomeLocation";
 import { useSavedEvents } from "@/hooks/useSavedEvents";
 import {
   apiErrorMessage,
@@ -18,6 +19,7 @@ import {
 } from "@/lib/api";
 import { isPermanentUser } from "@/lib/auth";
 import { toFollowedRef } from "@/lib/follows";
+import { homeLocationLabel } from "@/lib/home-location";
 import { getSupabaseClient } from "@/lib/supabase";
 import {
   WatchStateUnavailableError,
@@ -63,12 +65,13 @@ export default function HomeScreen() {
   const { user, ready: authReady, configured } = useAuth();
   const follows = useFollows();
   const saved = useSavedEvents();
+  const home = useHomeLocation();
   const [upcoming, setUpcoming] = useState<UpcomingState>({ status: "loading" });
   const [inbox, setInbox] = useState<InboxState>({ status: "loading" });
   const permanent = isPermanentUser(user);
 
   const loadUpcoming = useCallback(async () => {
-    if (!follows.ready) {
+    if (!follows.ready || !home.ready) {
       return;
     }
 
@@ -82,6 +85,8 @@ export default function HomeScreen() {
       const result = await searchUpcomingShows({
         attractions: follows.artists.map(toFollowedRef),
         venues: follows.venues.map(toFollowedRef),
+        postalCode: home.location.postalCode || undefined,
+        radiusMiles: home.location.radiusMiles,
       });
       setUpcoming({ status: "ready", shows: result.shows });
     } catch (error) {
@@ -93,7 +98,14 @@ export default function HomeScreen() {
         ),
       });
     }
-  }, [follows.artists, follows.ready, follows.venues]);
+  }, [
+    follows.artists,
+    follows.ready,
+    follows.venues,
+    home.location.postalCode,
+    home.location.radiusMiles,
+    home.ready,
+  ]);
 
   const loadInbox = useCallback(async () => {
     if (!authReady) {
@@ -207,7 +219,8 @@ export default function HomeScreen() {
         <Title>New announcements and nights you follow.</Title>
         <Body>
           Home lists new-show alerts when they are readable, plus upcoming
-          Ticketmaster concerts from artists and venues you follow.
+          Ticketmaster concerts from artists and venues you follow.{" "}
+          {homeLocationLabel(home.location)}
         </Body>
       </ScreenBlock>
 
@@ -283,11 +296,16 @@ export default function HomeScreen() {
       ) : upcoming.shows.length === 0 ? (
         <EmptyState
           title="No upcoming shows yet"
-          body="Nothing on the first Ticketmaster results page for the people you follow."
+          body={
+            home.location.postalCode
+              ? `Nothing nearby in Ticketmaster’s first results page for ${home.location.postalCode}. Try a wider radius in Profile, or follow another artist.`
+              : "Nothing on the first Ticketmaster results page for the people you follow."
+          }
         />
       ) : (
         <ScreenBlock>
           <Strong>Upcoming from follows</Strong>
+          <Body>{homeLocationLabel(home.location)}</Body>
           {saved.error ? <Body>{saved.error}</Body> : null}
           {upcoming.shows.map((show) => {
             const isSaved = saved.savedIds.has(show.id);

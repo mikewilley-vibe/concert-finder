@@ -24,6 +24,11 @@ import {
 } from "../lib/ticketmaster.ts";
 import { resolveSupabaseAdminConfig } from "../lib/supabase/admin-client.ts";
 import { completeEmailDomain } from "../mobile/lib/email-domains.ts";
+import {
+  homeLocationLabel,
+  parsePostalCode,
+  parseStoredHomeLocation,
+} from "../mobile/lib/home-location.ts";
 
 test("event IDs are deduplicated while preserving discovery order", () => {
   assert.deepEqual(
@@ -270,4 +275,17 @@ test("email domain shortcuts preserve the typed mailbox", () => {
     "mike@yahoo.com",
   );
   assert.equal(completeEmailDomain("", "outlook.com"), "");
+});
+
+test("home location postal codes match the Ticketmaster search rules", () => {
+  assert.deepEqual(parsePostalCode(" 20003 "), { ok: true, postalCode: "20003" });
+  assert.equal(parsePostalCode("!!").ok, false);
+  assert.equal(
+    homeLocationLabel({ postalCode: "20003", radiusMiles: 50 }),
+    "Within 50 miles of 20003.",
+  );
+  assert.equal(
+    parseStoredHomeLocation('{"postalCode":"23220","radiusMiles":100}').radiusMiles,
+    100,
+  );
 });
