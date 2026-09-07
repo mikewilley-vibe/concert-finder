@@ -7,7 +7,6 @@ import { Screen, ScreenBlock } from "@/components/Screen";
 import { ShowRow } from "@/components/ShowRow";
 import { Body, Eyebrow, Strong, Title } from "@/components/Typography";
 import { useFollows } from "@/hooks/useFollows";
-import { useHomeLocation } from "@/hooks/useHomeLocation";
 import { useSavedEvents } from "@/hooks/useSavedEvents";
 import {
   apiErrorMessage,
@@ -19,7 +18,6 @@ import {
   FOLLOWED_VENUE_TYPE,
   type FollowedItemType,
 } from "@/lib/follows";
-import { upcomingSearchFields } from "@/lib/home-location";
 
 type LoadState =
   | { status: "loading" }
@@ -39,7 +37,6 @@ export function FollowedDetailScreen({
 }) {
   const follows = useFollows();
   const saved = useSavedEvents();
-  const home = useHomeLocation();
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const requestIdRef = useRef(0);
   const itemType: FollowedItemType =
@@ -56,10 +53,6 @@ export function FollowedDetailScreen({
       return;
     }
 
-    if (!home.ready) {
-      return;
-    }
-
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
     setState({ status: "loading" });
@@ -68,7 +61,6 @@ export function FollowedDetailScreen({
         attractions:
           kind === "artist" ? [{ id, label }] : [],
         venues: kind === "venue" ? [{ id, label }] : [],
-        ...upcomingSearchFields(home.location),
       });
       if (requestIdRef.current !== requestId) {
         return;
@@ -86,16 +78,7 @@ export function FollowedDetailScreen({
         ),
       });
     }
-  }, [
-    home.location.latitude,
-    home.location.longitude,
-    home.location.postalCode,
-    home.location.radiusMiles,
-    home.ready,
-    id,
-    kind,
-    label,
-  ]);
+  }, [id, kind, label]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -112,7 +95,7 @@ export function FollowedDetailScreen({
         {place ? <Body>{place}</Body> : null}
         <Body>
           Upcoming Ticketmaster dates open as their own concert screens. Follow
-          to include them on Home.
+          to include nearby dates on Home.
         </Body>
         {id ? (
           <Button
@@ -156,7 +139,7 @@ export function FollowedDetailScreen({
       {state.status === "ready" && state.shows.length === 0 ? (
         <EmptyState
           title="No upcoming shows"
-          body="Ticketmaster did not return dates on the first results page."
+          body="Ticketmaster has no upcoming dates for this listing right now."
         />
       ) : null}
 
