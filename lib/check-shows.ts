@@ -4,6 +4,7 @@ import {
   FOLLOWED_VENUE_TYPE,
   type FollowedItemType,
 } from "./saved-follows";
+import { notifyUserOfNewShows } from "./send-expo-push";
 import { AdminConfigError, getSupabaseAdminClient } from "./supabase/admin-client";
 import { searchFollowedEventIds } from "./ticketmaster";
 
@@ -15,6 +16,7 @@ type FollowedRow = {
   user_id: string;
   item_type: FollowedItemType;
   item_key: string;
+  item_label: string;
 };
 
 type ItemResult = {
@@ -65,6 +67,10 @@ async function loadFollowedRows() {
     const userId = typeof row.user_id === "string" ? row.user_id : "";
     const itemType = typeof row.item_type === "string" ? row.item_type : "";
     const itemKey = typeof row.item_key === "string" ? row.item_key.trim() : "";
+    const itemLabel =
+      typeof row.item_label === "string" && row.item_label.trim()
+        ? row.item_label.trim()
+        : itemKey;
     if (!userId || !itemKey || !isFollowedType(itemType)) {
       continue;
     }
@@ -72,6 +78,7 @@ async function loadFollowedRows() {
       user_id: userId,
       item_type: itemType,
       item_key: itemKey,
+      item_label: itemLabel,
     });
   }
   return rows;
@@ -131,6 +138,18 @@ async function checkOne(item: FollowedRow): Promise<ItemResult> {
   const applied = await applyWatchCheck(item, {
     discoveredEventIds: result.ids,
   });
+  if (applied.newEvents > 0) {
+    try {
+      await notifyUserOfNewShows({
+        userId: item.user_id,
+        itemType: item.item_type,
+        itemLabel: item.item_label,
+        count: applied.newEvents,
+      });
+    } catch {
+      // Watch state already recorded the new dates; skip a failed push.
+    }
+  }
   return {
     checked: applied.checked,
     newEvents: applied.newEvents,

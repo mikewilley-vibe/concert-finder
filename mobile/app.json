@@ -9,11 +9,14 @@
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.mikewilley.localshows",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Local Shows uses your current location to find nearby shows."
+        "NSLocationWhenInUseUsageDescription": "Local Shows uses your current location to find nearby shows.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
+      "package": "com.mikewilley.localshows",
       "adaptiveIcon": {
         "backgroundColor": "#0c0b09",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -42,10 +45,21 @@
         {
           "locationWhenInUsePermission": "Local Shows uses your current location to find nearby shows."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "default"
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "3ab09f9e-8ef9-4622-a2a3-87ab3ddfa8f7"
+      }
     }
   }
 }

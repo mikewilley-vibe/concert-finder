@@ -19,6 +19,21 @@ npx expo start
 
 Then open Expo Go, an emulator, or the web target from the CLI.
 
+Remote push needs a development or production build, not Expo Go.
+
+First iOS device build (interactive, because Apple has to create signing credentials):
+
+```bash
+cd mobile
+npx eas-cli@latest build --profile development --platform ios
+```
+
+Install the build with the QR code Expo prints, then start Metro with `npx expo start --dev-client`.
+
+`eas init` writes `extra.eas.projectId` into `app.json`. Apple push credentials
+are created during the first iOS build. Android also needs an FCM /
+google-services setup before store or device Android push will work.
+
 Ticketmaster search from Expo web on localhost may fail CORS. Native
 iOS/Android builds do not use CORS. Point `EXPO_PUBLIC_API_BASE_URL` at a
 same-origin host if you need the web target to search.
@@ -57,10 +72,13 @@ config, app code, `.env`, logs, or examples.
 - Concert, artist, and venue stack screens with follow/save and Ticketmaster
   links
 - Two-step permanent account deletion through the authenticated website API
+- **Push alerts (device build)** — Profile can request notification permission
+  and store an Expo push token. The daily show check sends a ping when a
+  followed artist or venue gets a new date. This does **not** work in Expo Go.
 
-Push, location radius, calendar, and community submission are not in the app.
-Auth sessions still use AsyncStorage until `expo-secure-store` can be added and
-verified in a device build.
+Calendar and community submission are not in this branch. Auth sessions still
+use AsyncStorage until `expo-secure-store` can be added and verified in a
+device build.
 
 For development email verification, set the development Supabase project's
 Site URL to `https://concert-finder-dev.vercel.app` and allow

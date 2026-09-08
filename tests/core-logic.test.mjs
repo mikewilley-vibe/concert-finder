@@ -35,6 +35,7 @@ import {
   concertDeepLink,
   concertShareText,
 } from "../mobile/lib/share-copy.ts";
+import { newShowPushCopy } from "../lib/push-copy.ts";
 
 test("event IDs are deduplicated while preserving discovery order", () => {
   assert.deepEqual(
@@ -368,5 +369,27 @@ test("concert share copy uses an https open link", () => {
       "Madison Square Garden · New York, NY",
       "https://concert-finder-eta.vercel.app/open/concert/1AvZZbkGkFkgjd?name=Phish",
     ].join("\n"),
+  );
+});
+
+test("new-show push copy names the follow and the number of dates", () => {
+  assert.deepEqual(
+    newShowPushCopy({
+      itemType: "ticketmaster_attraction",
+      itemLabel: "Phish",
+      count: 1,
+    }),
+    {
+      title: "New Phish date",
+      body: "Open Local Shows to see them on Home.",
+    },
+  );
+  assert.equal(
+    newShowPushCopy({
+      itemType: "ticketmaster_venue",
+      itemLabel: "Madison Square Garden",
+      count: 3,
+    }).title,
+    "3 new dates at Madison Square Garden",
   );
 });
