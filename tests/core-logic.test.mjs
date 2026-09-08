@@ -35,6 +35,7 @@ import {
   concertDeepLink,
   concertShareText,
 } from "../mobile/lib/share-copy.ts";
+import { calendarWindow } from "../mobile/lib/calendar-window.ts";
 
 test("event IDs are deduplicated while preserving discovery order", () => {
   assert.deepEqual(
@@ -369,4 +370,19 @@ test("concert share copy uses an https open link", () => {
       "https://concert-finder-eta.vercel.app/open/concert/1AvZZbkGkFkgjd?name=Phish",
     ].join("\n"),
   );
+});
+
+test("calendar windows prefer an exact start time and last three hours", () => {
+  const timed = calendarWindow({
+    localDate: "2026-12-30",
+    localTime: "19:30:00",
+  });
+  assert.equal(timed.ok, true);
+  if (timed.ok) {
+    assert.equal(timed.allDay, false);
+    assert.equal(timed.start.getHours(), 19);
+    assert.equal(timed.start.getMinutes(), 30);
+    assert.equal(timed.end.getTime() - timed.start.getTime(), 3 * 60 * 60 * 1000);
+  }
+  assert.equal(calendarWindow({}).ok, false);
 });
