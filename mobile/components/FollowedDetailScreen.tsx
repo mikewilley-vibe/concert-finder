@@ -18,6 +18,7 @@ import {
   FOLLOWED_VENUE_TYPE,
   type FollowedItemType,
 } from "@/lib/follows";
+import { shareListing } from "@/lib/share";
 
 type LoadState =
   | { status: "loading" }
@@ -98,21 +99,31 @@ export function FollowedDetailScreen({
           to include nearby dates on Home.
         </Body>
         {id ? (
-          <Button
-            label={followed ? "Following" : "Follow"}
-            variant={followed ? "secondary" : "action"}
-            disabled={follows.isPending(itemType, id)}
-            accessibilityLabel={
-              followed ? `Unfollow ${label}` : `Follow ${label}`
-            }
-            onPress={() => {
-              void follows.toggleFollow(
-                itemType,
-                { item_key: id, item_label: label },
-                followed,
-              );
-            }}
-          />
+          <>
+            <Button
+              label={followed ? "Following" : "Follow"}
+              variant={followed ? "secondary" : "action"}
+              disabled={follows.isPending(itemType, id)}
+              accessibilityLabel={
+                followed ? `Unfollow ${label}` : `Follow ${label}`
+              }
+              onPress={() => {
+                void follows.toggleFollow(
+                  itemType,
+                  { item_key: id, item_label: label },
+                  followed,
+                );
+              }}
+            />
+            <Button
+              label={kind === "artist" ? "Share artist" : "Share venue"}
+              variant="secondary"
+              accessibilityLabel={`Share ${label}`}
+              onPress={() => {
+                void shareListing(kind, label, id);
+              }}
+            />
+          </>
         ) : null}
         {follows.error ? <Body>{follows.error}</Body> : null}
       </ScreenBlock>

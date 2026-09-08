@@ -708,7 +708,7 @@ export default function ProfileScreen() {
 
       <EmptyState
         title="Notification preferences"
-        body="Push notifications are deferred. This is the placeholder for new-show alerts once that work starts."
+        body="Push alerts for new dates need a Local Shows device build, not Expo Go. You can share a concert, artist, or venue from its screen today."
       />
 
       <View style={styles.card}>

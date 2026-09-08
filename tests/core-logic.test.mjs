@@ -30,6 +30,11 @@ import {
   parseStoredHomeLocation,
   upcomingSearchFields,
 } from "../mobile/lib/home-location.ts";
+import {
+  artistDeepLink,
+  concertDeepLink,
+  concertShareText,
+} from "../mobile/lib/share-copy.ts";
 
 test("event IDs are deduplicated while preserving discovery order", () => {
   assert.deepEqual(
@@ -331,5 +336,37 @@ test("home location postal codes match the Ticketmaster search rules", () => {
       longitude: null,
     }),
     { postalCode: "20003", radiusMiles: 50 },
+  );
+});
+
+test("concert share copy uses an https open link", () => {
+  const origin = "https://concert-finder-eta.vercel.app";
+  assert.equal(concertDeepLink("1AvZZbkGkFkgjd"), "local-shows://concert/1AvZZbkGkFkgjd");
+  assert.equal(
+    artistDeepLink("K8vZ9171J7f", "Phish"),
+    "local-shows://artist/K8vZ9171J7f?name=Phish",
+  );
+  assert.equal(
+    concertShareText(
+      {
+        id: "1AvZZbkGkFkgjd",
+        name: "Phish",
+        dateLabel: "December 30",
+        timeLabel: "7:30 PM",
+        venueName: "Madison Square Garden",
+        city: "New York",
+        state: "NY",
+        url: "https://www.ticketmaster.com/event/1AvZZbkGkFkgjd",
+        attractions: [],
+        matchedLabels: [],
+      },
+      origin,
+    ),
+    [
+      "Phish",
+      "December 30 · 7:30 PM",
+      "Madison Square Garden · New York, NY",
+      "https://concert-finder-eta.vercel.app/open/concert/1AvZZbkGkFkgjd?name=Phish",
+    ].join("\n"),
   );
 });

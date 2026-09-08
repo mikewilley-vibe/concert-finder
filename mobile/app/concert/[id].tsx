@@ -16,6 +16,7 @@ import {
   type TicketmasterShow,
 } from "@/lib/api";
 import { FOLLOWED_ATTRACTION_TYPE } from "@/lib/follows";
+import { shareConcert } from "@/lib/share";
 import { showPlace, showWhen } from "@/lib/show-format";
 
 function firstString(value: string | string[] | undefined) {
@@ -265,6 +266,14 @@ export default function ConcertScreen() {
               }}
             />
           ) : null}
+          <Button
+            label="Share this concert"
+            variant="action"
+            accessibilityLabel={`Share ${show.name}`}
+            onPress={() => {
+              void shareConcert(show);
+            }}
+          />
         </View>
       ) : null}
     </Screen>
