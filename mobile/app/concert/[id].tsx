@@ -16,6 +16,7 @@ import {
   type TicketmasterShow,
 } from "@/lib/api";
 import { FOLLOWED_ATTRACTION_TYPE } from "@/lib/follows";
+import { addShowToCalendar, openCalendarSettings } from "@/lib/calendar";
 import { shareConcert } from "@/lib/share";
 import { showPlace, showWhen } from "@/lib/show-format";
 
@@ -28,6 +29,9 @@ function showFromParams(params: {
   name?: string;
   dateLabel?: string;
   timeLabel?: string;
+  localDate?: string;
+  localTime?: string;
+  startsAt?: string;
   venueName?: string;
   city?: string;
   state?: string;
@@ -51,9 +55,15 @@ function showFromParams(params: {
     matchedLabels: [],
   };
   const timeLabel = firstString(params.timeLabel);
+  const localDate = firstString(params.localDate);
+  const localTime = firstString(params.localTime);
+  const startsAt = firstString(params.startsAt);
   const url = firstString(params.url);
   const image = firstString(params.image);
   if (timeLabel) show.timeLabel = timeLabel;
+  if (localDate) show.localDate = localDate;
+  if (localTime) show.localTime = localTime;
+  if (startsAt) show.startsAt = startsAt;
   if (url) show.url = url;
   if (image) show.image = image;
   return show;
@@ -65,6 +75,9 @@ export default function ConcertScreen() {
     name?: string;
     dateLabel?: string;
     timeLabel?: string;
+    localDate?: string;
+    localTime?: string;
+    startsAt?: string;
     venueName?: string;
     city?: string;
     state?: string;
@@ -79,6 +92,9 @@ export default function ConcertScreen() {
         name: firstString(params.name),
         dateLabel: firstString(params.dateLabel),
         timeLabel: firstString(params.timeLabel),
+        localDate: firstString(params.localDate),
+        localTime: firstString(params.localTime),
+        startsAt: firstString(params.startsAt),
         venueName: firstString(params.venueName),
         city: firstString(params.city),
         state: firstString(params.state),
@@ -90,6 +106,9 @@ export default function ConcertScreen() {
       params.name,
       params.dateLabel,
       params.timeLabel,
+      params.localDate,
+      params.localTime,
+      params.startsAt,
       params.venueName,
       params.city,
       params.state,
@@ -102,6 +121,31 @@ export default function ConcertScreen() {
   const [show, setShow] = useState<TicketmasterShow | null>(snapshot);
   const [loading, setLoading] = useState(eventId !== "preview");
   const [error, setError] = useState<string | null>(null);
+  const [calendarNotice, setCalendarNotice] = useState<string | null>(null);
+  const [calendarPending, setCalendarPending] = useState(false);
+  const [calendarDenied, setCalendarDenied] = useState(false);
+
+  async function onAddToCalendar() {
+    if (!show) {
+      return;
+    }
+    setCalendarPending(true);
+    setCalendarNotice(null);
+    setCalendarDenied(false);
+    try {
+      const result = await addShowToCalendar(show);
+      if (!result.ok) {
+        setCalendarDenied(result.code === "denied");
+        setCalendarNotice(result.message);
+        return;
+      }
+      setCalendarNotice("Opened Calendar with this show.");
+    } catch {
+      setCalendarNotice("Could not add that concert to Calendar. Try again.");
+    } finally {
+      setCalendarPending(false);
+    }
+  }
 
   const loadDetails = useCallback(async () => {
     if (!eventId || eventId === "preview") {
@@ -274,6 +318,25 @@ export default function ConcertScreen() {
               void shareConcert(show);
             }}
           />
+          <Button
+            label={calendarPending ? "Adding…" : "Add to Calendar"}
+            variant="secondary"
+            disabled={calendarPending}
+            accessibilityLabel={`Add ${show.name} to Calendar`}
+            onPress={() => {
+              void onAddToCalendar();
+            }}
+          />
+          {calendarDenied ? (
+            <Button
+              label="Open Settings"
+              variant="action"
+              onPress={() => {
+                openCalendarSettings();
+              }}
+            />
+          ) : null}
+          {calendarNotice ? <Body>{calendarNotice}</Body> : null}
         </View>
       ) : null}
     </Screen>
