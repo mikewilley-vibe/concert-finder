@@ -12,7 +12,10 @@
       "bundleIdentifier": "com.mikewilley.localshows",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Local Shows uses your current location to find nearby shows.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCalendarsWriteOnlyAccessUsageDescription": "Local Shows adds concerts you choose to your calendar.",
+        "NSCalendarsFullAccessUsageDescription": "Local Shows adds concerts you choose to your calendar.",
+        "NSCalendarsUsageDescription": "Local Shows adds concerts you choose to your calendar."
       }
     },
     "android": {
@@ -44,6 +47,12 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "Local Shows uses your current location to find nearby shows."
+        }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Local Shows adds concerts you choose to your calendar."
         }
       ],
       [

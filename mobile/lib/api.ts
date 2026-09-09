@@ -24,6 +24,9 @@ export type TicketmasterShow = {
   name: string;
   dateLabel: string;
   timeLabel?: string;
+  localDate?: string;
+  localTime?: string;
+  startsAt?: string;
   venueName: string;
   city: string;
   state: string;
@@ -43,6 +46,9 @@ type NativeApiShow = {
   name: string;
   dateLabel: string;
   timeLabel: string | null;
+  localDate: string | null;
+  localTime: string | null;
+  startsAt: string | null;
   ticketUrl: string | null;
   imageUrl: string | null;
   attractions: Array<{
@@ -222,6 +228,9 @@ function mapShow(show: NativeApiShow): TicketmasterShow {
     name: show.name,
     dateLabel: show.dateLabel,
     timeLabel: show.timeLabel ?? undefined,
+    localDate: show.localDate ?? undefined,
+    localTime: show.localTime ?? undefined,
+    startsAt: show.startsAt ?? undefined,
     venueName: show.venue.name,
     city: show.venue.city ?? "",
     state: show.venue.stateCode ?? "",
