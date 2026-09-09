@@ -9,14 +9,17 @@
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.mikewilley.localshows",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Local Shows uses your current location to find nearby shows.",
+        "ITSAppUsesNonExemptEncryption": false,
         "NSCalendarsWriteOnlyAccessUsageDescription": "Local Shows adds concerts you choose to your calendar.",
         "NSCalendarsFullAccessUsageDescription": "Local Shows adds concerts you choose to your calendar.",
         "NSCalendarsUsageDescription": "Local Shows adds concerts you choose to your calendar."
       }
     },
     "android": {
+      "package": "com.mikewilley.localshows",
       "adaptiveIcon": {
         "backgroundColor": "#0c0b09",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -51,10 +54,21 @@
         {
           "calendarPermission": "Local Shows adds concerts you choose to your calendar."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "default"
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "3ab09f9e-8ef9-4622-a2a3-87ab3ddfa8f7"
+      }
     }
   }
 }

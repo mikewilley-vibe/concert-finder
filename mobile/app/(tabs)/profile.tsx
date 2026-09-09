@@ -50,6 +50,13 @@ import {
   openLocationSettings,
   requestCurrentHomeLocation,
 } from "@/lib/current-location";
+import {
+  disablePushAlerts,
+  enablePushAlerts,
+  hasEnabledPushToken,
+  openNotificationSettings,
+  remotePushBlockedReason,
+} from "@/lib/push-alerts";
 import { getSupabaseClient } from "@/lib/supabase";
 import { useHomeLocation } from "@/hooks/useHomeLocation";
 
@@ -130,8 +137,13 @@ export default function ProfileScreen() {
   const [homePending, setHomePending] = useState(false);
   const [gpsPending, setGpsPending] = useState(false);
   const [gpsDenied, setGpsDenied] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushPending, setPushPending] = useState(false);
+  const [pushDenied, setPushDenied] = useState(false);
+  const [pushNotice, setPushNotice] = useState<string | null>(null);
   const showEmailDomains =
     signUpEmail.trim().length > 0 && !emailLooksValid(signUpEmail.trim());
+  const pushBlocked = remotePushBlockedReason();
 
   function chooseEmailDomain(domain: string) {
     setSignUpEmail((current) => completeEmailDomain(current, domain));
@@ -150,6 +162,70 @@ export default function ProfileScreen() {
     setPostalDraft(home.location.postalCode);
     setRadiusDraft(home.location.radiusMiles);
   }, [home.location.postalCode, home.location.radiusMiles, home.ready]);
+
+  useEffect(() => {
+    if (!configured || !permanent || !user?.id) {
+      setPushEnabled(false);
+      return;
+    }
+    let cancelled = false;
+    void hasEnabledPushToken(getSupabaseClient(), user.id)
+      .then((enabled) => {
+        if (!cancelled) {
+          setPushEnabled(enabled);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPushEnabled(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [configured, permanent, user?.id]);
+
+  async function onEnablePushAlerts() {
+    if (!user?.id) {
+      return;
+    }
+    setPushPending(true);
+    setPushDenied(false);
+    setPushNotice(null);
+    try {
+      const result = await enablePushAlerts(getSupabaseClient(), user.id);
+      if (!result.ok) {
+        setPushDenied(result.code === "denied");
+        setPushNotice(result.message);
+        setPushEnabled(false);
+        return;
+      }
+      setPushEnabled(true);
+      setPushNotice("Alerts are on. New dates for follows will ping this phone.");
+    } catch {
+      setPushNotice("Could not turn on push alerts. Try again.");
+    } finally {
+      setPushPending(false);
+    }
+  }
+
+  async function onDisablePushAlerts() {
+    if (!user?.id) {
+      return;
+    }
+    setPushPending(true);
+    setPushDenied(false);
+    setPushNotice(null);
+    try {
+      await disablePushAlerts(getSupabaseClient(), user.id);
+      setPushEnabled(false);
+      setPushNotice("Alerts are off on this account.");
+    } catch {
+      setPushNotice("Could not turn off push alerts. Try again.");
+    } finally {
+      setPushPending(false);
+    }
+  }
 
   async function onSignIn() {
     const nextEmail = signInEmail.trim().toLowerCase();
@@ -706,10 +782,54 @@ export default function ProfileScreen() {
         />
       </View>
 
-      <EmptyState
-        title="Notification preferences"
-        body="Push alerts for new dates need a Local Shows device build, not Expo Go. You can share a concert, artist, or venue from its screen today."
-      />
+      <View style={styles.card}>
+        <Strong>Notification preferences</Strong>
+        <Body>
+          {permanent
+            ? "Get a ping when a followed artist or venue gets a new date. The daily check still fills Home either way."
+            : "Save your account first. Push alerts are for permanent accounts, and they need a Local Shows device build."}
+        </Body>
+        {pushBlocked ? <Body>{pushBlocked.message}</Body> : null}
+        {permanent ? (
+          <Button
+            label={
+              pushPending
+                ? pushEnabled
+                  ? "Turning off…"
+                  : "Turning on…"
+                : pushEnabled
+                  ? "Turn off alerts"
+                  : "Turn on alerts"
+            }
+            variant={pushEnabled ? "secondary" : "action"}
+            disabled={pushPending || Boolean(pushBlocked)}
+            fullWidth
+            accessibilityLabel={
+              pushEnabled
+                ? "Turn off new-show push alerts"
+                : "Turn on new-show push alerts"
+            }
+            onPress={() => {
+              if (pushEnabled) {
+                void onDisablePushAlerts();
+              } else {
+                void onEnablePushAlerts();
+              }
+            }}
+          />
+        ) : null}
+        {pushDenied ? (
+          <Button
+            label="Open Settings"
+            variant="action"
+            disabled={pushPending}
+            onPress={() => {
+              openNotificationSettings();
+            }}
+          />
+        ) : null}
+        {pushNotice ? <Body>{pushNotice}</Body> : null}
+      </View>
 
       <View style={styles.card}>
         <Strong>Support and privacy</Strong>

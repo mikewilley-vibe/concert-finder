@@ -1,8 +1,9 @@
 # Shared-backend blockers (dev only)
 
 This note records the RLS and transactional-import fixes in
-`supabase/migrations/20260905000000_transactional_imports_and_rls.sql`.
-They close gaps from the prior shared-backend audit.
+`20260905000000_transactional_imports_and_rls.sql` and
+`20260908180459_push_tokens.sql`. They close gaps from the prior shared-backend
+audit and add device push-token storage.
 
 ## Do not apply to production
 

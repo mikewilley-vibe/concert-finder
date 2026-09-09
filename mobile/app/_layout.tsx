@@ -9,7 +9,7 @@ import {
   Syne_700Bold,
 } from "@expo-google-fonts/syne";
 import { useFonts } from "expo-font";
-import { DarkTheme, Stack, ThemeProvider } from "expo-router";
+import { DarkTheme, Stack, ThemeProvider, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
@@ -66,6 +66,7 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={navigationTheme}>
       <AuthProvider>
+        <PushNotificationBridge />
         <StatusBar style="light" />
         <Stack
           screenOptions={{
@@ -84,4 +85,36 @@ export default function RootLayout() {
       </AuthProvider>
     </ThemeProvider>
   );
+}
+
+function PushNotificationBridge() {
+  useEffect(() => {
+    let subscription: { remove: () => void } | undefined;
+    void (async () => {
+      try {
+        const Notifications = await import("expo-notifications");
+        Notifications.setNotificationHandler({
+          handleNotification: async () => ({
+            shouldShowBanner: true,
+            shouldShowList: true,
+            shouldPlaySound: true,
+            shouldSetBadge: false,
+          }),
+        });
+        subscription = Notifications.addNotificationResponseReceivedListener(
+          () => {
+            router.replace("/(tabs)");
+          },
+        );
+      } catch {
+        // Expo Go and web skip the native notifications module.
+      }
+    })();
+
+    return () => {
+      subscription?.remove();
+    };
+  }, []);
+
+  return null;
 }

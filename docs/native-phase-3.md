@@ -31,8 +31,15 @@ Ticketmaster secrets and privileged Supabase operations on the Next.js server.
 - Encrypted native auth-token storage (`expo-secure-store` could not be added in
   the current environment; AsyncStorage remains in use)
 - Current-location and radius UI
-- Push notifications and notification deep links
+- Push notification delivery in Expo Go
 - Calendar and native sharing
-- EAS development and production builds
+- EAS development and production builds (config is started; first device
+  build still needs `eas init` and Apple/Google credentials)
+
+Source now includes Profile opt-in, `push_tokens` storage, and Expo Push
+sends from the daily check-shows cron. Apply
+`supabase/migrations/20260908180459_push_tokens.sql` on a **development**
+Supabase project first. Do not apply it to production Concert Finder as part
+of this change.
 
 No migration is applied by these source changes.

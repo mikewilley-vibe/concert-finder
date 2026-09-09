@@ -36,6 +36,7 @@ import {
   concertShareText,
 } from "../mobile/lib/share-copy.ts";
 import { calendarWindow } from "../mobile/lib/calendar-window.ts";
+import { newShowPushCopy } from "../lib/push-copy.ts";
 
 test("event IDs are deduplicated while preserving discovery order", () => {
   assert.deepEqual(
@@ -385,4 +386,26 @@ test("calendar windows prefer an exact start time and last three hours", () => {
     assert.equal(timed.end.getTime() - timed.start.getTime(), 3 * 60 * 60 * 1000);
   }
   assert.equal(calendarWindow({}).ok, false);
+});
+
+test("new-show push copy names the follow and the number of dates", () => {
+  assert.deepEqual(
+    newShowPushCopy({
+      itemType: "ticketmaster_attraction",
+      itemLabel: "Phish",
+      count: 1,
+    }),
+    {
+      title: "New Phish date",
+      body: "Open Local Shows to see them on Home.",
+    },
+  );
+  assert.equal(
+    newShowPushCopy({
+      itemType: "ticketmaster_venue",
+      itemLabel: "Madison Square Garden",
+      count: 3,
+    }).title,
+    "3 new dates at Madison Square Garden",
+  );
 });

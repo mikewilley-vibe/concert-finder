@@ -63,6 +63,16 @@ type SavedEventRow = {
   venue_state_code: string | null;
 };
 
+type PushTokenRow = {
+  created_at: string;
+  enabled: boolean;
+  expo_push_token: string;
+  id: string;
+  platform: string;
+  updated_at: string;
+  user_id: string;
+};
+
 type WatchStateRow = {
   id: string;
   initialized_at: string | null;
@@ -138,6 +148,15 @@ export type Database = {
           | "venue_state_code"
         >;
         Update: Partial<SavedEventRow>;
+        Relationships: [];
+      };
+      push_tokens: {
+        Row: PushTokenRow;
+        Insert: Insert<
+          PushTokenRow,
+          "created_at" | "enabled" | "id" | "updated_at"
+        >;
+        Update: Partial<PushTokenRow>;
         Relationships: [];
       };
       ticketmaster_watch_state: {
