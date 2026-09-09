@@ -27,8 +27,8 @@ export default function SavedScreen() {
         <Eyebrow>Saved</Eyebrow>
         <Title>Shows you kept and people you follow.</Title>
         <Body>
-          Saved Ticketmaster events and followed artists and venues stay
-          owner-only in Supabase. Remove them here whenever you want.
+          Saved concerts and followed artists and venues live here. Remove them
+          whenever you want.
         </Body>
       </ScreenBlock>
 
@@ -68,7 +68,13 @@ export default function SavedScreen() {
         <EmptyState
           title="No saved events"
           body="Save a concert from a detail screen to keep the date, venue, and Ticketmaster link."
-          action={<ActionLink href="/discover" label="Search for a show" />}
+          action={
+            <ActionLink
+              href="/discover"
+              label="Find artists and venues"
+              accessibilityLabel="Find artists and venues"
+            />
+          }
         />
       ) : null}
 
@@ -101,7 +107,13 @@ export default function SavedScreen() {
         <EmptyState
           title="No followed artists or venues"
           body="Follow from Discover. Tracking currently supports eight artists and venues combined."
-          action={<ActionLink href="/discover" label="Search to follow" />}
+          action={
+            <ActionLink
+              href="/discover"
+              label="Find artists and venues"
+              accessibilityLabel="Find artists and venues"
+            />
+          }
         />
       ) : null}
 

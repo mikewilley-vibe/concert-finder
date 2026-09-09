@@ -43,7 +43,7 @@ export async function addShowToCalendar(
         ok: false,
         code: "denied",
         message:
-          "Calendar access is off. Enable it for Expo Go in Settings, then try again.",
+          "Calendar access is off. Enable it for Local Shows in Settings, then try again.",
       };
     }
   } catch {

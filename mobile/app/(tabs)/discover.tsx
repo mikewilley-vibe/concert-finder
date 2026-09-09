@@ -80,7 +80,7 @@ export default function DiscoverScreen() {
         status: "error",
         message: apiErrorMessage(
           error,
-          "Could not reach the concert API. Try again.",
+          "Could not search right now. Try again.",
         ),
       });
     }
@@ -92,9 +92,8 @@ export default function DiscoverScreen() {
         <Eyebrow>Discover</Eyebrow>
         <Title>Search artists, venues, and upcoming shows.</Title>
         <Body>
-          Search for an artist or venue, then tap the bright Follow button.
-          Upcoming concerts will appear on Home, where you can open and save
-          them.
+          Search for an artist or venue, then tap Follow. Their upcoming shows
+          appear on Home.
         </Body>
       </ScreenBlock>
 
@@ -133,12 +132,12 @@ export default function DiscoverScreen() {
       {state.status === "idle" ? (
         <EmptyState
           title="Search to get started"
-          body="Open an artist or venue to follow it and load upcoming Ticketmaster dates."
+          body="Open an artist or venue to follow it and see upcoming dates."
         />
       ) : null}
 
       {state.status === "loading" ? (
-        <LoadingBlock label="Searching the website API…" />
+        <LoadingBlock label="Searching…" />
       ) : null}
 
       {state.status === "error" ? (
@@ -161,7 +160,7 @@ export default function DiscoverScreen() {
       state.venues.length === 0 ? (
         <EmptyState
           title="No matches"
-          body="Try a different artist or venue name. Ticketmaster results are limited to the first page from the website API."
+          body="Try a different artist or venue name."
         />
       ) : null}
 

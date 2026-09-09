@@ -94,10 +94,6 @@ export function FollowedDetailScreen({
         <Eyebrow>{kind === "artist" ? "Artist" : "Venue"}</Eyebrow>
         <Title>{label}</Title>
         {place ? <Body>{place}</Body> : null}
-        <Body>
-          Upcoming Ticketmaster dates open as their own concert screens. Follow
-          to include nearby dates on Home.
-        </Body>
         {id ? (
           <>
             <Button

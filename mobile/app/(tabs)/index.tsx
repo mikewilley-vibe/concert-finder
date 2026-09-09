@@ -129,8 +129,7 @@ export default function HomeScreen() {
     if (!configured) {
       setInbox({
         status: "unavailable",
-        message:
-          "Add public Supabase values to read new-show alerts for this account.",
+        message: "Local Shows isn’t connected right now. Try again after a restart.",
       });
       return;
     }
@@ -166,7 +165,7 @@ export default function HomeScreen() {
         setInbox({
           status: "unavailable",
           message:
-            "New-show alerts are not readable yet. Follows still load upcoming dates below.",
+            "New dates could not be checked yet. Upcoming shows below may still load.",
         });
         return;
       }
@@ -174,7 +173,7 @@ export default function HomeScreen() {
         status: "unavailable",
         message: apiErrorMessage(
           error,
-          "Could not load new-show alerts. Upcoming dates below may still work.",
+          "Could not load new dates. Upcoming shows below may still work.",
         ),
       });
     }
@@ -212,7 +211,7 @@ export default function HomeScreen() {
         ...inbox,
         marking: false,
         markSeenError:
-          "Could not mark those shows as seen. The mark-seen function may not be available yet.",
+          "Could not mark those shows as seen. Try again.",
       });
     }
   }
@@ -232,9 +231,8 @@ export default function HomeScreen() {
         <Eyebrow>Local Shows</Eyebrow>
         <Title>New announcements and nights you follow.</Title>
         <Body>
-          Home lists new-show alerts when they are readable, plus upcoming
-          Ticketmaster concerts from artists and venues you follow.{" "}
-          {homeLocationLabel(home.location)}
+          New dates land here, plus upcoming shows from artists and venues you
+          follow. {homeLocationLabel(home.location)}
         </Body>
       </ScreenBlock>
 
@@ -245,7 +243,7 @@ export default function HomeScreen() {
         <ScreenBlock>
           <Strong>New shows</Strong>
           <Body>
-            Newly found dates from automatic tracking. Last check:{" "}
+            Newly found dates from the people you follow. Last check:{" "}
             {formatCheckedAt(latestCheckedAt(inbox.rows))}.
           </Body>
           {inbox.markSeenError ? <Body>{inbox.markSeenError}</Body> : null}
@@ -254,8 +252,8 @@ export default function HomeScreen() {
           ))}
           {inbox.shows.length === 0 ? (
             <Body>
-              New event ids are waiting, but concert details could not be
-              loaded from the website API.
+              New dates are waiting, but those concert details could not load.
+              Try again in a moment.
             </Body>
           ) : null}
           <Button
@@ -272,9 +270,15 @@ export default function HomeScreen() {
           title="No new announcements yet"
           body={
             inboxCopy ??
-            "When automatic tracking finds a new date, it will land here so you can mark it as seen."
+            "When a followed artist or venue gets a new date, it will land here."
           }
-          action={<ActionLink href="/discover" label="Find artists and venues" />}
+          action={
+            <ActionLink
+              href="/discover"
+              label="Find artists and venues"
+              accessibilityLabel="Find artists and venues"
+            />
+          }
         />
       )}
 
@@ -304,7 +308,11 @@ export default function HomeScreen() {
           title="No upcoming shows yet"
           body="Follow an artist or venue in Discover. Their next Ticketmaster dates will appear here."
           action={
-            <ActionLink href="/discover" label="Search artists and venues" />
+            <ActionLink
+              href="/discover"
+              label="Find artists and venues"
+              accessibilityLabel="Find artists and venues"
+            />
           }
         />
       ) : upcoming.shows.length === 0 ? (
@@ -312,8 +320,8 @@ export default function HomeScreen() {
           title="No upcoming shows yet"
           body={
             home.location.postalCode || hasGpsFix(home.location)
-              ? `Nothing nearby in Ticketmaster’s first results page for this area. Try a wider radius in Profile, or follow another artist.`
-              : "Nothing on the first Ticketmaster results page for the people you follow."
+              ? "Nothing nearby for this area. Try a wider radius in Profile, or follow another artist."
+              : "Nothing upcoming for the people you follow right now."
           }
         />
       ) : (

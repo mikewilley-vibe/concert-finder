@@ -70,8 +70,7 @@ export default async function OpenInAppPage({
           {label}
         </h1>
         <p className="text-base leading-7 text-mute">
-          This link opens in the Local Shows app if it is installed. Expo Go
-          can also open it when Local Shows is running.
+          This link opens in the Local Shows app if it is installed.
         </p>
         <OpenInAppButton appLink={link} label={label} />
         <a href="/" className="text-sm text-mute underline">

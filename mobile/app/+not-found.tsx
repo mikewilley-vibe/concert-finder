@@ -12,8 +12,13 @@ export default function NotFoundScreen() {
       <Screen>
         <ScreenBlock>
           <Title>This screen doesn’t exist.</Title>
-          <Body>The Local Shows tab you want is probably still on Home.</Body>
-          <Link href="/" style={styles.link}>
+          <Body>Go back to Home to keep browsing shows.</Body>
+          <Link
+            href="/"
+            accessibilityRole="link"
+            accessibilityLabel="Back to Home"
+            style={styles.link}
+          >
             <Text style={styles.linkLabel}>Back to Home</Text>
           </Link>
         </ScreenBlock>
