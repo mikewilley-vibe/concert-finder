@@ -33,7 +33,7 @@ export function remotePushBlockedReason(): PushAlertFailure | null {
       ok: false,
       code: "expo_go",
       message:
-        "Push alerts need a Local Shows device build. Expo Go cannot receive these notifications.",
+        "Push alerts need a ShowSignal device build. Expo Go cannot receive these notifications.",
     };
   }
   return null;
@@ -88,7 +88,7 @@ export async function enablePushAlerts(
       ok: false,
       code: "unavailable",
       message:
-        "Notifications are not available in this build. Install a Local Shows device build.",
+        "Notifications are not available in this build. Install a ShowSignal device build.",
     };
   }
 
@@ -111,7 +111,7 @@ export async function enablePushAlerts(
         ok: false,
         code: "denied",
         message:
-          "Notifications are off. Enable them for Local Shows in Settings, then try again.",
+          "Notifications are off. Enable them for ShowSignal in Settings, then try again.",
       };
     }
 
@@ -123,7 +123,7 @@ export async function enablePushAlerts(
         ok: false,
         code: "unavailable",
         message:
-          "This build is missing an Expo project id. Create a Local Shows EAS build, then try again.",
+          "This build is missing an Expo project id. Create a ShowSignal EAS build, then try again.",
       };
     }
 

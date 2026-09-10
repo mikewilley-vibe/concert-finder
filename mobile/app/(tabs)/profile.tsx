@@ -503,7 +503,7 @@ export default function ProfileScreen() {
 
       {!configured ? (
         <EmptyState
-          title="Local Shows isn’t connected"
+          title="ShowSignal isn’t connected"
           body="Try again after a restart."
         />
       ) : !ready ? (
@@ -786,7 +786,7 @@ export default function ProfileScreen() {
         <Body>
           {permanent
             ? "Get a ping when a followed artist or venue gets a new date. The daily check still fills Home either way."
-            : "Save your account first. Push alerts are for permanent accounts, and they need a Local Shows device build."}
+            : "Save your account first. Push alerts are for permanent accounts, and they need a ShowSignal device build."}
         </Body>
         {pushBlocked ? <Body>{pushBlocked.message}</Body> : null}
         {permanent ? (
@@ -854,7 +854,7 @@ export default function ProfileScreen() {
         </Body>
         {deleteConfirming ? (
           <>
-            <Body>Are you sure? Your Local Shows account cannot be recovered.</Body>
+            <Body>Are you sure? Your ShowSignal account cannot be recovered.</Body>
             <Button
               label={deletePending ? "Deleting…" : "Permanently delete account"}
               variant="danger"

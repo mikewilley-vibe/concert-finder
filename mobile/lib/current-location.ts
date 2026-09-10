@@ -42,7 +42,7 @@ export async function requestCurrentHomeLocation(): Promise<CurrentLocationResul
         ok: false,
         code: "denied",
         message:
-          "Location access is off. Enable it for Local Shows in Settings, then try again.",
+          "Location access is off. Enable it for ShowSignal in Settings, then try again.",
       };
     }
   } catch {

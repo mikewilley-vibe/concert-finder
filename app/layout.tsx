@@ -16,8 +16,8 @@ const body = Outfit({
 export const metadata: Metadata = {
   metadataBase: new URL("https://concert-finder-eta.vercel.app"),
   title: {
-    default: "My Shows",
-    template: "%s \u00b7 My Shows",
+    default: "ShowSignal",
+    template: "%s \u00b7 ShowSignal",
   },
 };
 

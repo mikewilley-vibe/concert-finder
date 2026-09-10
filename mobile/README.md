@@ -1,6 +1,7 @@
-# Local Shows
+# ShowSignal
 
-Expo / React Native client for Concert Finder. Display name is **Local Shows**.
+Expo / React Native client for Concert Finder. Display name is **ShowSignal**.
+The public tagline is **Never miss your next show.**
 
 The Next.js website at the repository root stays the public site, Ticketmaster
 gateway, Supabase-backed service, and community submission UI. The app does

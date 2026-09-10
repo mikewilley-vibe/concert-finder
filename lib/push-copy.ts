@@ -9,7 +9,7 @@ export function newShowPushCopy({
 }) {
   const n = Math.max(1, Math.trunc(count));
   const name = itemLabel.trim() || "a follow";
-  const body = "Open Local Shows to see them on Home.";
+  const body = "Open ShowSignal to see them on Home.";
 
   if (itemType === "ticketmaster_venue") {
     return {
