@@ -5,8 +5,9 @@ and venues, finding upcoming shows, saving events, and submitting community
 concert listings. This repository will remain the web, administration, cron,
 and secure API service when the Expo mobile client is added.
 
-The website interface still says **My Shows**. The Expo client in `mobile/`
-is named **Local Shows**. Community concert submission stays on the website.
+The website and Expo client in `mobile/` are branded **ShowSignal** with the
+tagline **Never miss your next show.** Community concert submission stays on
+the website.
 
 ## Stack
 
@@ -89,5 +90,5 @@ npm run build
 - Event-search requests accept up to 50 results per page and expose `hasMore`
   and `nextPage` metadata.
 - A single event request accepts up to 25 followed artist/venue references.
-- Location, sharing, calendar, and push alerts are in the Local Shows app
+- Location, sharing, calendar, and push alerts are in the ShowSignal app
   (`mobile/`). The shared API accepts postal or coordinate radius searches.

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 const navLinkClass =
@@ -18,14 +19,17 @@ export function SiteHeader() {
             href="/"
             className="flex min-h-11 items-center gap-2.5 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
           >
-            <span
+            <Image
+              src="/icon.png"
+              alt=""
               aria-hidden="true"
-              className="grid h-8 w-8 place-items-center rounded-md bg-accent text-sm font-semibold text-background"
-            >
-              MS
-            </span>
+              width={32}
+              height={32}
+              className="h-8 w-8 rounded-md"
+              priority
+            />
             <span className="font-display text-base tracking-tight sm:text-lg">
-              My Shows
+              ShowSignal
             </span>
           </Link>
           <nav aria-label="Primary" className="flex items-center gap-1 sm:gap-2">

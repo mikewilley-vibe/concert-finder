@@ -129,7 +129,7 @@ export default function HomeScreen() {
     if (!configured) {
       setInbox({
         status: "unavailable",
-        message: "Local Shows isn’t connected right now. Try again after a restart.",
+        message: "ShowSignal isn’t connected right now. Try again after a restart.",
       });
       return;
     }
@@ -228,8 +228,8 @@ export default function HomeScreen() {
   return (
     <Screen>
       <ScreenBlock>
-        <Eyebrow>Local Shows</Eyebrow>
-        <Title>New announcements and nights you follow.</Title>
+        <Eyebrow>ShowSignal</Eyebrow>
+        <Title>Never miss your next show.</Title>
         <Body>
           New dates land here, plus upcoming shows from artists and venues you
           follow. {homeLocationLabel(home.location)}

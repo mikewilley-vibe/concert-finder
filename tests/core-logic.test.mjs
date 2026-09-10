@@ -343,10 +343,10 @@ test("home location postal codes match the Ticketmaster search rules", () => {
 
 test("concert share copy uses an https open link", () => {
   const origin = "https://concert-finder-eta.vercel.app";
-  assert.equal(concertDeepLink("1AvZZbkGkFkgjd"), "local-shows://concert/1AvZZbkGkFkgjd");
+  assert.equal(concertDeepLink("1AvZZbkGkFkgjd"), "showsignal://concert/1AvZZbkGkFkgjd");
   assert.equal(
     artistDeepLink("K8vZ9171J7f", "Phish"),
-    "local-shows://artist/K8vZ9171J7f?name=Phish",
+    "showsignal://artist/K8vZ9171J7f?name=Phish",
   );
   assert.equal(
     concertShareText(
@@ -397,7 +397,7 @@ test("new-show push copy names the follow and the number of dates", () => {
     }),
     {
       title: "New Phish date",
-      body: "Open Local Shows to see them on Home.",
+      body: "Open ShowSignal to see them on Home.",
     },
   );
   assert.equal(

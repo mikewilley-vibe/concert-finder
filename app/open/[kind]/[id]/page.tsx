@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { SiteHeader } from "../../../components/site-header";
@@ -18,9 +19,9 @@ function firstQuery(value: string | string[] | undefined) {
 function appLink(kind: OpenKind, id: string, name: string) {
   const path = `${kind}/${encodeURIComponent(id)}`;
   if (!name) {
-    return `local-shows://${path}`;
+    return `showsignal://${path}`;
   }
-  return `local-shows://${path}?name=${encodeURIComponent(name)}`;
+  return `showsignal://${path}?name=${encodeURIComponent(name)}`;
 }
 
 export async function generateMetadata({
@@ -34,10 +35,10 @@ export async function generateMetadata({
   const query = await searchParams;
   const name = firstQuery(query.name);
   if (!isOpenKind(kind) || !id.trim()) {
-    return { title: "Open in Local Shows", robots: { index: false, follow: false } };
+    return { title: "Open in ShowSignal", robots: { index: false, follow: false } };
   }
   return {
-    title: name || "Open in Local Shows",
+    title: name || "Open in ShowSignal",
     robots: { index: false, follow: false },
   };
 }
@@ -64,18 +65,18 @@ export default async function OpenInAppPage({
       <SiteHeader />
       <main className="relative z-10 mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 py-16">
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-accent">
-          Local Shows
+          ShowSignal
         </p>
         <h1 className="font-display text-3xl font-medium tracking-tight">
           {label}
         </h1>
         <p className="text-base leading-7 text-mute">
-          This link opens in the Local Shows app if it is installed.
+          This link opens in the ShowSignal app if it is installed.
         </p>
         <OpenInAppButton appLink={link} label={label} />
-        <a href="/" className="text-sm text-mute underline">
+        <Link href="/" className="text-sm text-mute underline">
           Continue on the website
-        </a>
+        </Link>
       </main>
     </div>
   );

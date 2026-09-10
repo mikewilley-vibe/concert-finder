@@ -32,7 +32,7 @@ export async function addShowToCalendar(
       ok: false,
       code: "unavailable",
       message:
-        "Calendar access is not available in this Expo Go build. Try again after reloading, or use a Local Shows device build.",
+        "Calendar access is not available in this Expo Go build. Try again after reloading, or use a ShowSignal device build.",
     };
   }
 
@@ -43,7 +43,7 @@ export async function addShowToCalendar(
         ok: false,
         code: "denied",
         message:
-          "Calendar access is off. Enable it for Local Shows in Settings, then try again.",
+          "Calendar access is off. Enable it for ShowSignal in Settings, then try again.",
       };
     }
   } catch {

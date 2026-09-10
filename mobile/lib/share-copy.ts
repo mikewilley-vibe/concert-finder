@@ -1,6 +1,6 @@
 import type { TicketmasterShow } from "./api";
 
-export const APP_SCHEME = "local-shows";
+export const APP_SCHEME = "showsignal";
 
 export function appDeepLink(path: string) {
   const trimmed = path.replace(/^\/+/, "");
@@ -77,5 +77,5 @@ export function listingShareText(
     websiteOrigin,
     openWebPath(kind, id, label),
   );
-  return `${label} on Local Shows\n${link}`;
+  return `${label} on ShowSignal\n${link}`;
 }

@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Local Shows",
+    "name": "ShowSignal",
     "slug": "local-shows",
-    "scheme": "local-shows",
+    "scheme": "showsignal",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -11,11 +11,11 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.mikewilley.localshows",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Local Shows uses your current location to find nearby shows.",
+        "NSLocationWhenInUseUsageDescription": "ShowSignal uses your current location to find nearby shows.",
         "ITSAppUsesNonExemptEncryption": false,
-        "NSCalendarsWriteOnlyAccessUsageDescription": "Local Shows adds concerts you choose to your calendar.",
-        "NSCalendarsFullAccessUsageDescription": "Local Shows adds concerts you choose to your calendar.",
-        "NSCalendarsUsageDescription": "Local Shows adds concerts you choose to your calendar."
+        "NSCalendarsWriteOnlyAccessUsageDescription": "ShowSignal adds concerts you choose to your calendar.",
+        "NSCalendarsFullAccessUsageDescription": "ShowSignal adds concerts you choose to your calendar.",
+        "NSCalendarsUsageDescription": "ShowSignal adds concerts you choose to your calendar."
       }
     },
     "android": {
@@ -46,13 +46,13 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Local Shows uses your current location to find nearby shows."
+          "locationWhenInUsePermission": "ShowSignal uses your current location to find nearby shows."
         }
       ],
       [
         "expo-calendar",
         {
-          "calendarPermission": "Local Shows adds concerts you choose to your calendar."
+          "calendarPermission": "ShowSignal adds concerts you choose to your calendar."
         }
       ],
       [
