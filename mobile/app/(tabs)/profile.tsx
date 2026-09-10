@@ -497,15 +497,14 @@ export default function ProfileScreen() {
         <Eyebrow>Profile</Eyebrow>
         <Title>Account and preferences.</Title>
         <Body>
-          Local Shows uses the same Supabase project as the website. Secrets
-          stay on the server. Community submissions stay on the website.
+          Sign in, set a home location, and turn on alerts for new dates.
         </Body>
       </ScreenBlock>
 
       {!configured ? (
         <EmptyState
-          title="Supabase is not configured"
-          body="Copy mobile/.env.example to mobile/.env and add the publishable URL and key."
+          title="Local Shows isn’t connected"
+          body="Try again after a restart."
         />
       ) : !ready ? (
         <LoadingBlock label="Starting a guest session…" />
@@ -820,7 +819,7 @@ export default function ProfileScreen() {
         ) : null}
         {pushDenied ? (
           <Button
-            label="Open Settings"
+            label="Open Notification Settings"
             variant="action"
             disabled={pushPending}
             onPress={() => {
@@ -834,7 +833,7 @@ export default function ProfileScreen() {
       <View style={styles.card}>
         <Strong>Support and privacy</Strong>
         <Body>
-          Policies and help stay on the Concert Finder website for now.
+          Policies and help live on the Concert Finder website.
         </Body>
         <Button
           label="Open the website"

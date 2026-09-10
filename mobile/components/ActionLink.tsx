@@ -6,14 +6,17 @@ import { colors, fonts } from "@/constants/theme";
 export function ActionLink({
   href,
   label,
+  accessibilityLabel,
 }: {
   href: Href;
   label: string;
+  accessibilityLabel?: string;
 }) {
   return (
     <Link href={href} asChild>
       <Pressable
         accessibilityRole="link"
+        accessibilityLabel={accessibilityLabel ?? label}
         style={({ pressed }) => [styles.button, pressed && styles.pressed]}
       >
         <Text style={styles.label}>{label}</Text>

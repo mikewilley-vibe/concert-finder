@@ -61,24 +61,21 @@ config, app code, `.env`, logs, or examples.
   proxy, with loading / empty / error / retry
 - **Follow / unfollow** — `saved_items` rows (`ticketmaster_attraction` /
   `ticketmaster_venue`) under RLS
-- **Save / remove** — Ticketmaster concerts in `saved_events` using Phase 1
-  live columns only (no Phase 2 `venue_id` / `date_status` / `attractions`)
-- **Home** — upcoming shows for follows, plus a new-show inbox when
-  `ticketmaster_watch_state.new_event_ids` is readable
+- **Save / remove** — Ticketmaster concerts in `saved_events`
+- **Home** — upcoming shows for follows, plus a new-show inbox
 - **Saved** — saved events and follows with remove actions
 - **Profile** — guest bootstrap, email/password sign-in and sign-up, sign-out,
   password recovery (reset finishes on the website), and merge-anonymous after
   permanent sign-in
-- Concert, artist, and venue stack screens with follow/save and Ticketmaster
-  links
+- Concert, artist, and venue stack screens with follow/save, share, Ticketmaster
+  links, and add to Calendar
 - Two-step permanent account deletion through the authenticated website API
 - **Push alerts (device build)** — Profile can request notification permission
   and store an Expo push token. The daily show check sends a ping when a
   followed artist or venue gets a new date. This does **not** work in Expo Go.
 
-Calendar and community submission are not in this branch. Auth sessions still
-use AsyncStorage until `expo-secure-store` can be added and verified in a
-device build.
+Community submission stays on the website. Auth sessions still use AsyncStorage
+until `expo-secure-store` can be added and verified in a device build.
 
 For development email verification, set the development Supabase project's
 Site URL to `https://concert-finder-dev.vercel.app` and allow

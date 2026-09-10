@@ -42,7 +42,7 @@ export async function requestCurrentHomeLocation(): Promise<CurrentLocationResul
         ok: false,
         code: "denied",
         message:
-          "Location access is off. Enable it for Expo Go in Settings, then try again.",
+          "Location access is off. Enable it for Local Shows in Settings, then try again.",
       };
     }
   } catch {
@@ -50,7 +50,7 @@ export async function requestCurrentHomeLocation(): Promise<CurrentLocationResul
       ok: false,
       code: "unavailable",
       message:
-        "Could not ask for location access. Enter a ZIP instead, or update Expo Go.",
+        "Could not ask for location access. Enter a ZIP instead.",
     };
   }
 

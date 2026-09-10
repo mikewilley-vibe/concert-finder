@@ -189,8 +189,8 @@ export default function ConcertScreen() {
           <Eyebrow>Concert</Eyebrow>
           <Title>Concert detail</Title>
           <Body>
-            Open a real show from Discover, Home, or Saved to see artwork,
-            date, venue, and a Ticketmaster link.
+            Open a show from Discover, Home, or Saved to see the date, venue,
+            and tickets.
           </Body>
         </ScreenBlock>
       </Screen>
@@ -206,10 +206,6 @@ export default function ConcertScreen() {
       <ScreenBlock>
         <Eyebrow>Concert</Eyebrow>
         <Title>{show?.name ?? "Show details"}</Title>
-        <Body>
-          Artwork, date, venue, and Ticketmaster links come from the website
-          API. Saves use live Phase 1 columns only.
-        </Body>
       </ScreenBlock>
 
       {show?.image ? (
@@ -285,7 +281,7 @@ export default function ConcertScreen() {
           })}
           {!saved.configured || !follows.configured ? (
             <Body>
-              Account actions are unavailable until Supabase finishes loading.
+              Account actions are unavailable until your account finishes loading.
             </Body>
           ) : null}
           {saved.error ? <Body>{saved.error}</Body> : null}
@@ -295,11 +291,9 @@ export default function ConcertScreen() {
           <Strong>{when || "Date TBA"}</Strong>
           {show.venueName ? <Body>{show.venueName}</Body> : null}
           {place ? <Body>{place}</Body> : null}
-          <Body>
-            {show.dateLabel === "Date TBA"
-              ? "Status: date to be announced"
-              : "Status: scheduled"}
-          </Body>
+          {show.dateLabel === "Date TBA" ? (
+            <Body>Date to be announced</Body>
+          ) : null}
           {show.url ? (
             <Button
               label="View on Ticketmaster"
@@ -329,7 +323,7 @@ export default function ConcertScreen() {
           />
           {calendarDenied ? (
             <Button
-              label="Open Settings"
+              label="Open Calendar Settings"
               variant="action"
               onPress={() => {
                 openCalendarSettings();

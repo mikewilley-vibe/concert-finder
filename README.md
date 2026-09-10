@@ -89,6 +89,5 @@ npm run build
 - Event-search requests accept up to 50 results per page and expose `hasMore`
   and `nextPage` metadata.
 - A single event request accepts up to 25 followed artist/venue references.
-- Native location permission/UI, push notifications, calendar, and sharing are
-  later native work. The shared API already accepts postal or coordinate radius
-  searches, and the Local Shows Expo scaffold lives in `mobile/`.
+- Location, sharing, calendar, and push alerts are in the Local Shows app
+  (`mobile/`). The shared API accepts postal or coordinate radius searches.
