@@ -10,6 +10,7 @@ by passing its deployed API origin to `createConcertFinderApiClient`.
 | `GET` | `/api/v1/ticketmaster/attractions?keyword=` | Artist search and typo suggestions |
 | `GET` | `/api/v1/ticketmaster/venues?keyword=` | Venue search |
 | `POST` | `/api/v1/ticketmaster/events` | Event discovery, followed-item shows, location, and pagination |
+| `POST` | `/api/v1/ticketmaster/recommendations` | Related artists and venues from upcoming genre-matched events |
 | `GET` | `/api/v1/ticketmaster/event-details?ids=` | Details for up to eight event IDs |
 | `POST` | `/api/v1/account/merge-anonymous` | Authenticated anonymous-account transfer |
 
@@ -46,6 +47,33 @@ Postal-code search is also supported:
 
 Limits are 25 followed references per request, 50 events per page, and pages 0
 through 49. Location coordinates are sent in a `POST` body rather than a URL.
+
+## Related artists and venues
+
+`POST /api/v1/ticketmaster/recommendations` accepts recent seed artists (Ticketmaster
+genre/subgenre IDs), IDs to exclude, and an optional home location. The server
+looks up upcoming **music** events for that genre (at most two Ticketmaster
+event searches, cached for five minutes) and returns up to six artists and six
+venues. If a seed has no genre IDs, the response is empty rather than invented
+matches. This endpoint is rate-limited like other Ticketmaster routes.
+
+```json
+{
+  "seeds": [
+    {
+      "id": "K8vZ9171J7f",
+      "label": "Phish",
+      "genreId": "KnvZfZ7vAv6",
+      "genreName": "Rock",
+      "subGenreId": "KnvZfZ7vAev",
+      "subGenreName": "Pop"
+    }
+  ],
+  "excludeAttractionIds": ["K8vZ9171J7f"],
+  "excludeVenueIds": [],
+  "location": { "postalCode": "23220", "radiusMiles": 50 }
+}
+```
 
 ## Expo configuration
 

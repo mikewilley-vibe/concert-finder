@@ -7,6 +7,8 @@ import type {
   EventSearchData,
   EventSearchRequest,
   MergeAnonymousData,
+  RecommendationsData,
+  RecommendationsRequest,
   VenueSearchData,
 } from "./v1";
 
@@ -87,6 +89,22 @@ export function createConcertFinderApiClient(options?: {
         },
       );
       return readJson<EventSearchData>(response);
+    },
+
+    async searchRecommendations(
+      body: RecommendationsRequest,
+      signal?: AbortSignal,
+    ) {
+      const response = await fetchImpl(
+        apiUrl(baseUrl, "/api/v1/ticketmaster/recommendations"),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal,
+          body: JSON.stringify(body),
+        },
+      );
+      return readJson<RecommendationsData>(response);
     },
 
     async eventDetails(ids: string[], signal?: AbortSignal) {

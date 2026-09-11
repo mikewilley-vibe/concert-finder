@@ -4,6 +4,10 @@ export type TicketmasterAttraction = {
   id: string;
   name: string;
   image?: string;
+  genreId?: string;
+  genreName?: string;
+  subGenreId?: string;
+  subGenreName?: string;
 };
 
 export type TicketmasterVenue = {
@@ -138,22 +142,50 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return ("data" in payload ? payload.data : payload) as T;
 }
 
+function mapArtist(artist: {
+  id: string;
+  name: string;
+  imageUrl: string | null;
+  genreId?: string | null;
+  genreName?: string | null;
+  subGenreId?: string | null;
+  subGenreName?: string | null;
+}): TicketmasterAttraction {
+  return {
+    id: artist.id,
+    name: artist.name,
+    image: artist.imageUrl ?? undefined,
+    genreId: artist.genreId ?? undefined,
+    genreName: artist.genreName ?? undefined,
+    subGenreId: artist.subGenreId ?? undefined,
+    subGenreName: artist.subGenreName ?? undefined,
+  };
+}
+
 export function searchAttractions(keyword: string) {
   const params = new URLSearchParams({ keyword });
   return apiFetch<{
-    artists: Array<{ id: string; name: string; imageUrl: string | null }>;
-    suggestions: Array<{ id: string; name: string; imageUrl: string | null }>;
+    artists: Array<{
+      id: string;
+      name: string;
+      imageUrl: string | null;
+      genreId?: string | null;
+      genreName?: string | null;
+      subGenreId?: string | null;
+      subGenreName?: string | null;
+    }>;
+    suggestions: Array<{
+      id: string;
+      name: string;
+      imageUrl: string | null;
+      genreId?: string | null;
+      genreName?: string | null;
+      subGenreId?: string | null;
+      subGenreName?: string | null;
+    }>;
   }>(`/api/v1/ticketmaster/attractions?${params}`).then((result) => ({
-    attractions: result.artists.map((artist) => ({
-      id: artist.id,
-      name: artist.name,
-      image: artist.imageUrl ?? undefined,
-    })),
-    suggestions: result.suggestions.map((artist) => ({
-      id: artist.id,
-      name: artist.name,
-      image: artist.imageUrl ?? undefined,
-    })),
+    attractions: result.artists.map(mapArtist),
+    suggestions: result.suggestions.map(mapArtist),
   }));
 }
 
@@ -286,6 +318,66 @@ export async function deleteAccount(accessToken: string) {
     }
     throw error;
   }
+}
+
+export function searchRecommendations(input: {
+  seeds: Array<{
+    id: string;
+    label: string;
+    genreId?: string | null;
+    genreName?: string | null;
+    subGenreId?: string | null;
+    subGenreName?: string | null;
+  }>;
+  excludeAttractionIds: string[];
+  excludeVenueIds: string[];
+  postalCode?: string;
+  latitude?: number;
+  longitude?: number;
+  radiusMiles?: number;
+}) {
+  const postalCode = input.postalCode?.trim();
+  const hasCoords =
+    typeof input.latitude === "number" &&
+    typeof input.longitude === "number" &&
+    Number.isFinite(input.latitude) &&
+    Number.isFinite(input.longitude);
+  const location = hasCoords
+    ? {
+        latitude: input.latitude,
+        longitude: input.longitude,
+        radiusMiles: input.radiusMiles,
+      }
+    : postalCode
+      ? {
+          postalCode,
+          radiusMiles: input.radiusMiles,
+        }
+      : undefined;
+  return apiFetch<{
+    seedLabel: string | null;
+    artists: Array<{
+      id: string;
+      name: string;
+      imageUrl: string | null;
+      reason: string;
+    }>;
+    venues: Array<{
+      id: string;
+      name: string;
+      city: string | null;
+      state: string | null;
+      reason: string;
+    }>;
+  }>("/api/v1/ticketmaster/recommendations", {
+    method: "POST",
+    body: JSON.stringify({
+      seeds: input.seeds,
+      excludeAttractionIds: input.excludeAttractionIds,
+      excludeVenueIds: input.excludeVenueIds,
+      location,
+    }),
+  });
 }
 
 export function apiErrorMessage(error: unknown, fallback: string) {

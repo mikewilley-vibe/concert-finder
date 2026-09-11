@@ -12,20 +12,25 @@ import { colors, spacing } from "@/constants/theme";
 export function Screen({
   children,
   padded = true,
+  avoidKeyboard = true,
 }: {
   children: ReactNode;
   padded?: boolean;
+  avoidKeyboard?: boolean;
 }) {
   return (
     <KeyboardAvoidingView
       style={styles.keyboardAvoider}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      enabled={avoidKeyboard}
+      behavior={
+        avoidKeyboard && Platform.OS === "ios" ? "padding" : undefined
+      }
     >
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[styles.content, padded && styles.padded]}
-        automaticallyAdjustKeyboardInsets
-        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+        automaticallyAdjustKeyboardInsets={avoidKeyboard}
+        keyboardDismissMode="none"
         keyboardShouldPersistTaps="always"
       >
         {children}

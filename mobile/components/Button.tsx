@@ -9,6 +9,7 @@ export function Button({
   onPress,
   variant = "primary",
   disabled = false,
+  busy = false,
   fullWidth = false,
   accessibilityLabel,
 }: {
@@ -16,22 +17,25 @@ export function Button({
   onPress: () => void;
   variant?: Variant;
   disabled?: boolean;
+  busy?: boolean;
   fullWidth?: boolean;
   accessibilityLabel?: string;
 }) {
+  const blocked = disabled;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
-      accessibilityState={{ disabled }}
-      disabled={disabled}
+      accessibilityState={{ disabled: blocked, busy }}
+      disabled={blocked}
+      hitSlop={8}
       onPress={onPress}
       style={({ pressed }) => [
         styles.base,
         styles[variant],
         fullWidth && styles.fullWidth,
-        pressed && !disabled ? pressedStyle[variant] : null,
-        disabled && styles.disabled,
+        pressed && !blocked ? pressedStyle[variant] : null,
+        (blocked || busy) && styles.disabled,
       ]}
     >
       <Text
