@@ -103,14 +103,26 @@ function Field({
 }
 
 export default function ProfileScreen() {
-  const { user, ready, configured, error, transferNotice } = useAuth();
+  const {
+    user,
+    ready,
+    configured,
+    error,
+    transferNotice,
+    authLinkNotice,
+    authLinkError,
+    recoveryPending,
+    clearRecoveryPending,
+  } = useAuth();
   const home = useHomeLocation();
   const anonymous = isAnonymousUser(user);
   const permanent = isPermanentUser(user);
   const email = verifiedEmail(user);
   const waitingEmail = pendingEmail(user);
-  const complete = Boolean(email && hasPasswordSet(user));
-  const needsPassword = Boolean(email && !hasPasswordSet(user));
+  const complete = Boolean(email && hasPasswordSet(user) && !recoveryPending);
+  const needsPassword = Boolean(
+    email && (!hasPasswordSet(user) || recoveryPending),
+  );
 
   const [notice, setNotice] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -285,7 +297,7 @@ export default function ProfileScreen() {
       await createAccountFromGuest(supabase, nextEmail);
       setSignUpEmail("");
       setNotice(
-        "Verification email sent. Open it, verify your address, then return here to create your password.",
+        "Verification email sent. Open it on this phone — the confirm button should open ShowSignal.",
       );
     } catch (createError) {
       setSignUpError(upgradeEmailMessage(createError));
@@ -312,6 +324,7 @@ export default function ProfileScreen() {
       const supabase = getSupabaseClient();
       await setAccountPassword(supabase, newPassword);
       setNewPassword("");
+      clearRecoveryPending();
       setNotice("Password saved.");
     } catch (updateError) {
       setPasswordError(passwordMessage(updateError));
@@ -337,7 +350,7 @@ export default function ProfileScreen() {
       await requestPasswordReset(supabase, nextEmail);
       setResetEmail("");
       setNotice(
-        "If that email has an account, we sent a reset link. Finish the new password on the website account page, then sign in here.",
+        "If that email has an account, we sent a reset link. Open it on this phone so ShowSignal can finish the reset.",
       );
     } catch (resetError) {
       setFormError(recoveryMessage(resetError));
@@ -513,12 +526,14 @@ export default function ProfileScreen() {
           <Strong>Account</Strong>
           {error ? <Body>{error}</Body> : null}
           {transferNotice ? <Body>{transferNotice}</Body> : null}
+          {authLinkNotice ? <Body>{authLinkNotice}</Body> : null}
+          {authLinkError ? <Body>{authLinkError}</Body> : null}
           {formError ? <Body>{formError}</Body> : null}
           {notice ? <Body>{notice}</Body> : null}
           {waitingEmail ? (
             <Body>
               Verification is still pending for {waitingEmail}. Open the latest
-              email, then come back.
+              email on this phone so ShowSignal can finish confirming.
             </Body>
           ) : null}
           {complete && email ? (
@@ -545,9 +560,13 @@ export default function ProfileScreen() {
 
       {configured && ready && needsPassword && email ? (
         <View style={styles.card}>
-          <Strong>Create password</Strong>
+          <Strong>
+            {recoveryPending ? "Set a new password" : "Create password"}
+          </Strong>
           <Body>
-            Your email is verified. Add a password so you can sign in later.
+            {recoveryPending
+              ? "Choose a new password for this account."
+              : "Your email is verified. Add a password so you can sign in later."}
           </Body>
           <Field
             label="Password"
@@ -675,8 +694,8 @@ export default function ProfileScreen() {
         <View style={styles.card}>
           <Strong>Forgot password</Strong>
           <Body>
-            We send a reset link to the website account page. After you choose
-            a new password there, sign in here.
+            We send a reset link that opens ShowSignal when the app is
+            installed. After it opens, set a new password here.
           </Body>
           <Field
             label="Account email"

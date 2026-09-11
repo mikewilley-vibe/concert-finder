@@ -147,7 +147,12 @@ export async function consumeAuthRedirect(supabase: AppSupabaseClient) {
     notice = confirmationMessage(rawError);
   } else if (tokenHash) {
     const otpType: EmailOtpType =
-      type === "signup" || type === "email" || type === "invite"
+      type === "signup" ||
+      type === "email" ||
+      type === "invite" ||
+      type === "magiclink" ||
+      type === "recovery" ||
+      type === "email_change"
         ? type
         : "email_change";
     const { error } = await supabase.auth.verifyOtp({

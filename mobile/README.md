@@ -65,7 +65,7 @@ npm run typecheck
 | Variable | Purpose |
 |---|---|
 | `EXPO_PUBLIC_API_BASE_URL` | Website origin for the versioned `/api/v1` routes. Defaults to the production site. |
-| `EXPO_PUBLIC_WEB_BASE_URL` | Stable public website origin for email verification and password-reset links. Use the development domain with the development Supabase project. |
+| `EXPO_PUBLIC_WEB_BASE_URL` | Stable public website origin for email verification and password-reset links (`/auth/callback`). Use the development domain with the development Supabase project. |
 | `EXPO_PUBLIC_SUPABASE_URL` | Publishable Supabase project URL |
 | `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable / anon key only |
 
@@ -83,8 +83,8 @@ config, app code, `.env`, logs, or examples.
 - **Home** — upcoming shows for follows, plus a new-show inbox
 - **Saved** — saved events and follows with remove actions
 - **Profile** — guest bootstrap, email/password sign-in and sign-up, sign-out,
-  password recovery (reset finishes on the website), and merge-anonymous after
-  permanent sign-in
+  password recovery (reset opens ShowSignal when the app is installed), and
+  merge-anonymous after permanent sign-in
 - Concert, artist, and venue stack screens with follow/save, share, Ticketmaster
   links, and add to Calendar
 - Two-step permanent account deletion through the authenticated website API
@@ -95,11 +95,23 @@ config, app code, `.env`, logs, or examples.
 Community submission stays on the website. Auth sessions still use AsyncStorage
 until `expo-secure-store` can be added and verified in a device build.
 
+Email confirmation and password recovery use
+`https://<EXPO_PUBLIC_WEB_BASE_URL>/auth/callback`. The website hosts
+Universal Link files and can hand the same tokens to `showsignal://`. See
+[`docs/auth-email-deep-links.md`](../docs/auth-email-deep-links.md) for the
+Supabase allowlist and TestFlight steps.
+
 For development email verification, set the development Supabase project's
-Site URL to `https://concert-finder-dev.vercel.app` and allow
-`https://concert-finder-dev.vercel.app/**` under Authentication → URL
-Configuration. Keep temporary Vercel deployment URLs out of Supabase Auth
-redirect settings because Vercel may protect them with a login screen.
+Site URL to `https://concert-finder-dev.vercel.app` and allow both
+`https://concert-finder-dev.vercel.app/**` and
+`https://concert-finder-dev.vercel.app/auth/callback` under Authentication →
+URL Configuration. Also allow `showsignal://**`. Keep temporary Vercel
+deployment URLs out of Supabase Auth redirect settings because Vercel may
+protect them with a login screen.
+
+Universal Links need a new EAS production / TestFlight binary after
+`associatedDomains` changes. The current custom scheme still works from the
+website handoff page before that binary is installed.
 
 ## What this client talks to
 

@@ -78,6 +78,10 @@ export default function RootLayout() {
           }}
         >
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="auth/callback"
+            options={{ title: "Confirming", headerBackTitle: "Back" }}
+          />
           <Stack.Screen name="concert/[id]" options={{ title: "Concert" }} />
           <Stack.Screen name="artist/[id]" options={{ title: "Artist" }} />
           <Stack.Screen name="venue/[id]" options={{ title: "Venue" }} />

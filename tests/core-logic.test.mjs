@@ -588,3 +588,58 @@ test("related suggestions rank real Ticketmaster IDs and hide empty genre seeds"
   assert.equal(seeds.length, 10);
   assert.equal(parseDiscoverySeeds("not-json").length, 0);
 });
+
+test("auth callback URLs parse tokens and rebuild the ShowSignal scheme", async () => {
+  const {
+    AUTH_ASSOCIATION,
+    authCallbackErrorMessage,
+    authCallbackSuccessMessage,
+    hasAuthPayload,
+    isAuthCallbackUrl,
+    isMobileUserAgent,
+    parseAuthCallback,
+    toAppAuthCallbackUrl,
+  } = await import("../shared/auth-callback.ts");
+  const { appleAppSiteAssociation, androidAssetLinks } = await import(
+    "../lib/app-association.ts"
+  );
+
+  const httpsUrl =
+    "https://concert-finder-eta.vercel.app/auth/callback?code=abc123&type=signup";
+  const hashUrl =
+    "https://concert-finder-eta.vercel.app/auth/callback#access_token=tok&refresh_token=ref&type=recovery";
+  const schemeUrl = "showsignal://auth/callback?token_hash=otp&type=email_change";
+
+  assert.equal(isAuthCallbackUrl(httpsUrl), true);
+  assert.equal(isAuthCallbackUrl(schemeUrl), true);
+  assert.equal(isAuthCallbackUrl("https://concert-finder-eta.vercel.app/account"), false);
+  assert.equal(parseAuthCallback(httpsUrl).code, "abc123");
+  assert.equal(parseAuthCallback(hashUrl).accessToken, "tok");
+  assert.equal(parseAuthCallback(schemeUrl).tokenHash, "otp");
+  assert.equal(hasAuthPayload(parseAuthCallback(httpsUrl)), true);
+  assert.equal(
+    toAppAuthCallbackUrl(httpsUrl),
+    "showsignal://auth/callback?code=abc123&type=signup",
+  );
+  assert.equal(
+    toAppAuthCallbackUrl(hashUrl),
+    "showsignal://auth/callback?type=recovery&access_token=tok&refresh_token=ref",
+  );
+  assert.equal(isMobileUserAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0)"), true);
+  assert.equal(isMobileUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X)"), false);
+  assert.equal(authCallbackSuccessMessage("recovery"), "Reset link accepted. Set a new password.");
+  assert.match(authCallbackErrorMessage("otp_expired"), /expired or invalid/);
+  assert.equal(
+    AUTH_ASSOCIATION.appleTeamId + "." + AUTH_ASSOCIATION.bundleId,
+    "896999WP34.com.mikewilley.localshows",
+  );
+  assert.equal(
+    appleAppSiteAssociation().applinks.details[0].appIDs[0],
+    "896999WP34.com.mikewilley.localshows",
+  );
+  assert.deepEqual(androidAssetLinks([]), []);
+  assert.equal(
+    androidAssetLinks(["AA:BB"])[0].target.package_name,
+    "com.mikewilley.localshows",
+  );
+});

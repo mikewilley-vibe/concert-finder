@@ -23,6 +23,13 @@ import {
 } from "../../lib/account-transfer";
 import { ensureAnonymousUser } from "../../lib/saved-concerts";
 import { getSupabaseBrowserClient } from "../../lib/supabase/browser-client";
+import { AuthAppHandoff } from "./auth-app-handoff";
+import {
+  hasAuthPayload,
+  isMobileUserAgent,
+  parseAuthCallback,
+  toAppAuthCallbackUrl,
+} from "../../shared/auth-callback";
 
 const fieldClass =
   "min-h-12 w-full rounded-full border border-line bg-background px-4 text-base text-foreground outline-none placeholder:text-mute/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
@@ -55,14 +62,21 @@ export function AccountScreen() {
   const [signInPassword, setSignInPassword] = useState("");
   const [signInPending, setSignInPending] = useState(false);
   const [signOutPending, setSignOutPending] = useState(false);
+  const [handoffSourceUrl, setHandoffSourceUrl] = useState<string | null>(null);
 
   useEffect(() => {
+    const incomingHref = window.location.href;
+    const incomingPayload = parseAuthCallback(incomingHref);
+    const incomingAppLink = toAppAuthCallbackUrl(incomingHref);
     const supabase = getSupabaseBrowserClient();
     let cancelled = false;
 
     async function boot() {
       try {
         const redirectNotice = await consumeAuthRedirect(supabase);
+        if (hasAuthPayload(incomingPayload)) {
+          setHandoffSourceUrl(incomingHref);
+        }
         await ensureAnonymousUser(supabase);
         const [userResult, sessionResult] = await Promise.all([
           supabase.auth.getUser(),
@@ -98,6 +112,19 @@ export function AccountScreen() {
         }
         if (redirectNotice) {
           setError(redirectNotice);
+        }
+
+        const established = Boolean(
+          userResult.data.user &&
+            userResult.data.user.is_anonymous === false &&
+            userResult.data.user.email_confirmed_at,
+        );
+        if (
+          !established &&
+          hasAuthPayload(incomingPayload) &&
+          isMobileUserAgent(window.navigator.userAgent)
+        ) {
+          window.location.assign(incomingAppLink);
         }
       } catch (bootError) {
         if (!cancelled) {
@@ -368,6 +395,7 @@ export function AccountScreen() {
             ? "You can sign back in on another phone or computer with this email."
             : "Add an email so you can sign back in on another device."}
         </p>
+        <AuthAppHandoff mode="web-first" sourceUrl={handoffSourceUrl} />
       </section>
 
       {!ready ? (
