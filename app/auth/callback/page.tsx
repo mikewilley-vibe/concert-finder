@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import { SiteHeader } from "../../components/site-header";
 import { AuthAppHandoff } from "../../components/auth-app-handoff";
+import { firstParam } from "../../../shared/auth-callback.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,28 @@ export const metadata: Metadata = {
   },
 };
 
-export default function AuthCallbackPage() {
+function sourceUrlFromSearch(
+  searchParams: Record<string, string | string[] | undefined>,
+) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(searchParams)) {
+    const first = firstParam(value);
+    if (first) {
+      params.set(key, first);
+    }
+  }
+  const query = params.toString();
+  return query ? `https://callback.local/auth/callback?${query}` : null;
+}
+
+export default async function AuthCallbackPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const query = await searchParams;
+  const sourceUrl = sourceUrlFromSearch(query);
+
   return (
     <div className="relative flex flex-1 flex-col overflow-x-hidden">
       <SiteHeader />
@@ -31,7 +53,7 @@ export default function AuthCallbackPage() {
           website only if you started this from a browser, not the app.
         </p>
         <Suspense>
-          <AuthAppHandoff mode="handoff-first" />
+          <AuthAppHandoff mode="handoff-first" sourceUrl={sourceUrl} />
         </Suspense>
       </main>
     </div>
