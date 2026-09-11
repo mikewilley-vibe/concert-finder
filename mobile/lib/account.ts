@@ -25,7 +25,12 @@ export function hasPasswordSet(user: User | null) {
 }
 
 export function authErrorFields(error: unknown) {
-  const message = error instanceof Error ? error.message : "";
+  const message =
+    error instanceof Error
+      ? error.message
+      : error && typeof error === "object" && "message" in error
+        ? String((error as { message: unknown }).message ?? "")
+        : "";
   const code =
     error && typeof error === "object" && "code" in error
       ? String((error as AuthError).code)
@@ -120,8 +125,17 @@ export function recoveryMessage(error: unknown) {
   return "Could not send a reset email right now. Try again.";
 }
 
+function errorDetails(error: unknown) {
+  if (!error || typeof error !== "object" || !("details" in error)) {
+    return "";
+  }
+  return typeof error.details === "string" ? error.details : "";
+}
+
 export function followsMessage(error: unknown) {
-  const { message, code } = authErrorFields(error);
+  const { message, code, status } = authErrorFields(error);
+  const details = errorDetails(error);
+  const combined = `${message} ${details}`.trim();
 
   if (
     message.includes("EXPO_PUBLIC_SUPABASE") ||
@@ -135,6 +149,39 @@ export function followsMessage(error: unknown) {
     /anonymous sign-ins are disabled/i.test(message)
   ) {
     return "Couldn't start a session. Try reopening the app.";
+  }
+
+  if (
+    /Failed to fetch|Network request failed|Load failed|network request|The Internet connection appears to be offline/i.test(
+      combined,
+    )
+  ) {
+    return "Network error. Check your connection and try Follow again.";
+  }
+
+  if (
+    code === "42501" ||
+    /row-level security|RLS|permission denied|violates row-level/i.test(
+      combined,
+    )
+  ) {
+    return "ShowSignal could not save that follow because of a permissions (RLS) rule. Confirm you are signed in as the same user and try again.";
+  }
+
+  if (
+    status === 401 ||
+    code === "PGRST301" ||
+    /jwt expired|invalid jwt|not authenticated|No API key/i.test(combined)
+  ) {
+    return "Your session is not signed in or has expired. Reopen ShowSignal and try again.";
+  }
+
+  if (/maximum|too many follows|limit/i.test(combined) && /follow/i.test(combined)) {
+    return combined;
+  }
+
+  if (message.trim()) {
+    return message.trim();
   }
 
   return "Could not update who you follow. Try again.";
