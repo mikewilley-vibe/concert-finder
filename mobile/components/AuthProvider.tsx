@@ -1,5 +1,7 @@
+import * as Linking from "expo-linking";
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -9,6 +11,11 @@ import {
 import type { Session, User } from "@supabase/supabase-js";
 
 import { authErrorFields } from "@/lib/account";
+import {
+  authCallbackSuccessMessage,
+  consumeAuthCallbackUrl,
+  isAuthCallbackUrl,
+} from "@/lib/auth-callback";
 import {
   ensureAnonymousUser,
   isPermanentUser,
@@ -25,6 +32,10 @@ type AuthContextValue = {
   configured: boolean;
   error: string | null;
   transferNotice: string | null;
+  authLinkNotice: string | null;
+  authLinkError: string | null;
+  recoveryPending: boolean;
+  clearRecoveryPending: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue>({
@@ -34,6 +45,10 @@ const AuthContext = createContext<AuthContextValue>({
   configured: false,
   error: null,
   transferNotice: null,
+  authLinkNotice: null,
+  authLinkError: null,
+  recoveryPending: false,
+  clearRecoveryPending: () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -46,6 +61,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [transferNotice, setTransferNotice] = useState<string | null>(null);
+  const [authLinkNotice, setAuthLinkNotice] = useState<string | null>(null);
+  const [authLinkError, setAuthLinkError] = useState<string | null>(null);
+  const [recoveryPending, setRecoveryPending] = useState(false);
+
+  const clearRecoveryPending = useCallback(() => {
+    setRecoveryPending(false);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -92,8 +114,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const supabase = getSupabaseClient();
     let cancelled = false;
 
+    async function applyAuthLink(url: string | null | undefined) {
+      const result = await consumeAuthCallbackUrl(supabase, url);
+      if (result.status === "ignored" || result.status === "empty") {
+        return false;
+      }
+
+      if (result.status === "error") {
+        if (!cancelled) {
+          setAuthLinkError(result.message);
+          setAuthLinkNotice(null);
+        }
+        return true;
+      }
+
+      if (!cancelled) {
+        setUser(result.user);
+        setSession(result.session);
+        setError(null);
+        setAuthLinkError(null);
+        setAuthLinkNotice(authCallbackSuccessMessage(result.type));
+        setRecoveryPending(result.type === "recovery");
+        if (isPermanentUser(result.user) && result.session) {
+          try {
+            const merged = await mergeRememberedAnonymousData(
+              result.session,
+              result.user,
+            );
+            if (!cancelled && merged) {
+              setTransferNotice(
+                "Your guest follows and saved shows were moved to this account.",
+              );
+            }
+          } catch {
+            if (!cancelled) {
+              setTransferNotice(
+                "You are signed in, but guest data could not be moved yet. Sign out and back in to retry.",
+              );
+            }
+          }
+        }
+      }
+      return true;
+    }
+
     void (async () => {
       try {
+        const incoming =
+          Linking.getLinkingURL() ?? (await Linking.getInitialURL());
+        await applyAuthLink(incoming);
+        if (cancelled) {
+          return;
+        }
+
+        const { data: afterLink } = await supabase.auth.getSession();
+        if (afterLink.session?.user && isPermanentUser(afterLink.session.user)) {
+          setUser(afterLink.session.user);
+          setSession(afterLink.session);
+          setError(null);
+          setReady(true);
+          return;
+        }
+
         const next = await ensureAnonymousUser(supabase);
         const { data } = await supabase.auth.getSession();
         if (cancelled) {
@@ -153,9 +235,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
+    const linking = Linking.addEventListener("url", ({ url }) => {
+      if (!isAuthCallbackUrl(url)) {
+        return;
+      }
+      void applyAuthLink(url);
+    });
+
     return () => {
       cancelled = true;
       data.subscription.unsubscribe();
+      linking.remove();
     };
   }, [configState]);
 
@@ -167,8 +257,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       configured,
       error,
       transferNotice,
+      authLinkNotice,
+      authLinkError,
+      recoveryPending,
+      clearRecoveryPending,
     }),
-    [user, session, ready, configured, error, transferNotice],
+    [
+      user,
+      session,
+      ready,
+      configured,
+      error,
+      transferNotice,
+      authLinkNotice,
+      authLinkError,
+      recoveryPending,
+      clearRecoveryPending,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

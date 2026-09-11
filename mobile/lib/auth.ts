@@ -3,7 +3,7 @@ import type { Session, SupabaseClient, User } from "@supabase/supabase-js";
 
 import { PASSWORD_SET_KEY } from "./account";
 import { mergeAnonymousAccount } from "./api";
-import { websiteUrl } from "./config";
+import { emailAuthRedirectUrl } from "./config";
 
 const PENDING_ANONYMOUS_TOKEN_KEY = "local-shows:pending-anonymous-token";
 
@@ -129,7 +129,7 @@ export async function createAccountFromGuest(
 ) {
   const { error } = await supabase.auth.updateUser(
     { email },
-    { emailRedirectTo: websiteUrl("/account") },
+    { emailRedirectTo: emailAuthRedirectUrl() },
   );
 
   if (error) {
@@ -162,7 +162,7 @@ export async function requestPasswordReset(
   email: string,
 ) {
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: websiteUrl("/account"),
+    redirectTo: emailAuthRedirectUrl(),
   });
 
   if (error) {

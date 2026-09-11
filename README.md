@@ -91,4 +91,6 @@ npm run build
   and `nextPage` metadata.
 - A single event request accepts up to 25 followed artist/venue references.
 - Location, sharing, calendar, and push alerts are in the ShowSignal app
-  (`mobile/`). The shared API accepts postal or coordinate radius searches.
+(`mobile/`). The shared API accepts postal or coordinate radius searches.
+Auth confirmation emails from the app use `/auth/callback` so they can open
+ShowSignal. See `docs/auth-email-deep-links.md`.

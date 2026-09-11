@@ -10,6 +10,10 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.mikewilley.localshows",
+      "associatedDomains": [
+        "applinks:concert-finder-eta.vercel.app",
+        "applinks:concert-finder-dev.vercel.app"
+      ],
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "ShowSignal uses your current location to find nearby shows.",
         "ITSAppUsesNonExemptEncryption": false,
@@ -20,6 +24,25 @@
     },
     "android": {
       "package": "com.mikewilley.localshows",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "concert-finder-eta.vercel.app",
+              "pathPrefix": "/auth/callback"
+            },
+            {
+              "scheme": "https",
+              "host": "concert-finder-dev.vercel.app",
+              "pathPrefix": "/auth/callback"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#0c0b09",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -34,7 +57,12 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router",
+      [
+        "expo-router",
+        {
+          "origin": "https://concert-finder-eta.vercel.app"
+        }
+      ],
       [
         "expo-splash-screen",
         {

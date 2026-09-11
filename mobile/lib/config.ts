@@ -54,3 +54,7 @@ export function websiteUrl(path = "/") {
   const baseUrl = configured || getApiBaseUrl();
   return new URL(path, `${baseUrl.replace(/\/$/, "")}/`).toString();
 }
+
+export function emailAuthRedirectUrl() {
+  return websiteUrl("/auth/callback");
+}
