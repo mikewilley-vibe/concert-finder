@@ -13,9 +13,15 @@ import type {
   EventDateStatus,
   EventSearchPage,
   FollowedReference,
+  RecommendationsData,
   SaleWindow,
   VenueSummary,
 } from "../shared/api/v1.ts";
+import {
+  rankRelatedSuggestions,
+  type ParsedRecommendationsRequest,
+  type RelatedEventFact,
+} from "./recommendations.ts";
 
 const TICKETMASTER_HOST = "https://app.ticketmaster.com";
 const ATTRACTIONS_PATH = "/discovery/v2/attractions.json";
@@ -154,6 +160,77 @@ function pickImage(images: unknown) {
   return preferred?.url;
 }
 
+function readNamedId(value: unknown) {
+  if (!value || typeof value !== "object") {
+    return { id: null as string | null, name: null as string | null };
+  }
+  const record = value as { id?: unknown; name?: unknown };
+  return {
+    id: readString(record.id),
+    name: readString(record.name),
+  };
+}
+
+export function readArtistClassification(row: unknown) {
+  const empty = {
+    genreId: null as string | null,
+    genreName: null as string | null,
+    subGenreId: null as string | null,
+    subGenreName: null as string | null,
+  };
+  if (!row || typeof row !== "object") {
+    return empty;
+  }
+  const classifications = (row as { classifications?: unknown }).classifications;
+  if (!Array.isArray(classifications) || classifications.length === 0) {
+    return empty;
+  }
+  const primary =
+    classifications.find(
+      (item) =>
+        item &&
+        typeof item === "object" &&
+        (item as { primary?: unknown }).primary === true,
+    ) ?? classifications[0];
+  if (!primary || typeof primary !== "object") {
+    return empty;
+  }
+  const record = primary as {
+    genre?: unknown;
+    subGenre?: unknown;
+  };
+  const genre = readNamedId(record.genre);
+  const subGenre = readNamedId(record.subGenre);
+  return {
+    genreId: genre.id,
+    genreName: genre.name,
+    subGenreId: subGenre.id,
+    subGenreName: subGenre.name,
+  };
+}
+
+function mapArtistRow(row: unknown): ArtistSummary | null {
+  if (!row || typeof row !== "object") {
+    return null;
+  }
+  const record = row as { id?: unknown; name?: unknown; images?: unknown };
+  const id = typeof record.id === "string" ? record.id.trim() : "";
+  const name = typeof record.name === "string" ? record.name.trim() : "";
+  if (!id || !name) {
+    return null;
+  }
+  const classification = readArtistClassification(row);
+  return {
+    id,
+    name,
+    imageUrl: pickImage(record.images) ?? null,
+    genreId: classification.genreId,
+    genreName: classification.genreName,
+    subGenreId: classification.subGenreId,
+    subGenreName: classification.subGenreName,
+  };
+}
+
 function mapAttractions(
   payload: unknown,
   limit = RESULT_LIMIT,
@@ -175,19 +252,13 @@ function mapAttractions(
       continue;
     }
 
-    const record = row as { id?: unknown; name?: unknown; images?: unknown };
-    const id = typeof record.id === "string" ? record.id.trim() : "";
-    const name = typeof record.name === "string" ? record.name.trim() : "";
-    if (!id || !name || seen.has(id)) {
+    const artist = mapArtistRow(row);
+    if (!artist || seen.has(artist.id)) {
       continue;
     }
 
-    seen.add(id);
-    attractions.push({
-      id,
-      name,
-      imageUrl: pickImage(record.images) ?? null,
-    });
+    seen.add(artist.id);
+    attractions.push(artist);
     if (attractions.length >= limit) {
       break;
     }
@@ -785,16 +856,8 @@ function firstVenue(event: Record<string, unknown>) {
 
 function eventAttractions(event: Record<string, unknown>) {
   return relatedRows(event, "attractions").flatMap((row) => {
-    if (!row || typeof row !== "object") {
-      return [];
-    }
-    const record = row as { id?: unknown; name?: unknown; images?: unknown };
-    const id = readString(record.id);
-    const name = readString(record.name);
-    if (!id || !name) {
-      return [];
-    }
-    return [{ id, name, imageUrl: pickImage(record.images) ?? null }];
+    const artist = mapArtistRow(row);
+    return artist ? [artist] : [];
   });
 }
 
@@ -1211,6 +1274,97 @@ export async function searchFollowedEventIds(input: {
   }
 
   return { ok: true, ids };
+}
+
+function relatedEventFacts(
+  payload: unknown,
+  nearLocation: boolean,
+): RelatedEventFact[] {
+  const facts: RelatedEventFact[] = [];
+  for (const event of eventRows(payload)) {
+    if (!isUpcomingEvent(event)) {
+      continue;
+    }
+    const attractions = eventAttractions(event);
+    const venue = firstVenue(event);
+    const startsAt = eventDateDetails(event).startsAt;
+    if (!venue.id) {
+      continue;
+    }
+    for (const artist of attractions) {
+      facts.push({
+        attractionId: artist.id,
+        attractionName: artist.name,
+        attractionGenreId: artist.genreId ?? null,
+        attractionSubGenreId: artist.subGenreId ?? null,
+        venueId: venue.id,
+        venueName: venue.name,
+        venueCity: venue.city,
+        venueState: venue.stateCode ?? venue.state,
+        startsAt,
+        nearLocation,
+      });
+    }
+  }
+  return facts;
+}
+
+export async function searchRelatedRecommendations(
+  input: ParsedRecommendationsRequest,
+): Promise<{ ok: true; data: RecommendationsData } | TicketmasterFailure> {
+  if (!input.seed || (!input.seed.genreId && !input.seed.subGenreId)) {
+    return { ok: true, data: { seedLabel: null, artists: [], venues: [] } };
+  }
+
+  const startDateTime = startDateTimeNow();
+  function eventParams() {
+    const params: Record<string, string> = {
+      size: String(MAX_EVENT_PAGE_SIZE),
+      page: "0",
+      sort: "date,asc",
+      startDateTime,
+      classificationName: "music",
+    };
+    if (input.seed?.subGenreId) {
+      params.subGenreId = input.seed.subGenreId;
+    } else if (input.seed?.genreId) {
+      params.genreId = input.seed.genreId;
+    }
+    return params;
+  }
+
+  const hasLocation =
+    (input.location.latitude !== null && input.location.longitude !== null) ||
+    Boolean(input.location.postalCode);
+
+  const localParams = eventParams();
+  if (hasLocation) {
+    addLocationParams(localParams, input.location);
+  }
+
+  const localResult = await ticketmasterGet(EVENTS_PATH, localParams);
+  if (!localResult.ok) {
+    return localResult;
+  }
+
+  let facts = relatedEventFacts(localResult.payload, hasLocation);
+  if (facts.length === 0 && hasLocation) {
+    const nationwide = await ticketmasterGet(EVENTS_PATH, eventParams());
+    if (!nationwide.ok) {
+      return nationwide;
+    }
+    facts = relatedEventFacts(nationwide.payload, false);
+  }
+
+  return {
+    ok: true,
+    data: rankRelatedSuggestions({
+      seed: input.seed,
+      excludeAttractionIds: input.excludeAttractionIds,
+      excludeVenueIds: input.excludeVenueIds,
+      events: facts,
+    }),
+  };
 }
 
 const MAX_DETAIL_IDS = 8;

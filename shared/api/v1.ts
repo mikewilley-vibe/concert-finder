@@ -34,6 +34,10 @@ export type ArtistSummary = {
   id: string;
   name: string;
   imageUrl: string | null;
+  genreId?: string | null;
+  genreName?: string | null;
+  subGenreId?: string | null;
+  subGenreName?: string | null;
 };
 
 export type VenueSummary = {
@@ -121,6 +125,41 @@ export type EventSearchData = {
 
 export type EventDetailsData = {
   events: ConcertEvent[];
+};
+
+export type RelatedArtistSuggestion = {
+  id: string;
+  name: string;
+  imageUrl: string | null;
+  reason: string;
+};
+
+export type RelatedVenueSuggestion = {
+  id: string;
+  name: string;
+  city: string | null;
+  state: string | null;
+  reason: string;
+};
+
+export type RecommendationsRequest = {
+  seeds?: Array<{
+    id?: string;
+    label?: string;
+    genreId?: string | null;
+    genreName?: string | null;
+    subGenreId?: string | null;
+    subGenreName?: string | null;
+  }>;
+  excludeAttractionIds?: string[];
+  excludeVenueIds?: string[];
+  location?: EventSearchLocation;
+};
+
+export type RecommendationsData = {
+  seedLabel: string | null;
+  artists: RelatedArtistSuggestion[];
+  venues: RelatedVenueSuggestion[];
 };
 
 export type MergeAnonymousData = {

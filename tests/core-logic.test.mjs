@@ -409,3 +409,182 @@ test("new-show push copy names the follow and the number of dates", () => {
     "3 new dates at Madison Square Garden",
   );
 });
+
+test("follow errors keep auth, RLS, and network causes visible", async () => {
+  const { followsMessage } = await import("../mobile/lib/account.ts");
+  const { followPendingKey } = await import("../mobile/lib/follow-result.ts");
+
+  assert.equal(
+    followsMessage({ message: "Network request failed", code: "", status: 0 }),
+    "Network error. Check your connection and try Follow again.",
+  );
+  assert.equal(
+    followsMessage({
+      message: "new row violates row-level security policy",
+      code: "42501",
+      status: 403,
+    }),
+    "ShowSignal could not save that follow because of a permissions (RLS) rule. Confirm you are signed in as the same user and try again.",
+  );
+  assert.equal(
+    followsMessage({
+      message: "JWT expired",
+      code: "PGRST301",
+      status: 401,
+    }),
+    "Your session is not signed in or has expired. Reopen ShowSignal and try again.",
+  );
+  assert.equal(
+    followsMessage({ message: "duplicate key value", code: "23505", status: 409 }),
+    "duplicate key value",
+  );
+  assert.equal(
+    followPendingKey("ticketmaster_attraction", "K8vZ9171J7f"),
+    "ticketmaster_attraction:K8vZ9171J7f",
+  );
+});
+
+test("related suggestions rank real Ticketmaster IDs and hide empty genre seeds", async () => {
+  const { rankRelatedSuggestions, parseRecommendationsRequest } = await import(
+    "../lib/recommendations.ts"
+  );
+  const { rememberDiscoverySeed, parseDiscoverySeeds, DISCOVERY_SEEDS_STORAGE_KEY } =
+    await import("../mobile/lib/discovery-seeds.ts");
+  const { readArtistClassification } = await import("../lib/ticketmaster.ts");
+
+  assert.equal(DISCOVERY_SEEDS_STORAGE_KEY, "showsignal:v1:discovery-seeds");
+  assert.deepEqual(
+    rankRelatedSuggestions({
+      seed: {
+        id: "seed-1",
+        label: "Phish",
+        genreId: null,
+        genreName: null,
+        subGenreId: null,
+        subGenreName: null,
+      },
+      excludeAttractionIds: [],
+      excludeVenueIds: [],
+      events: [
+        {
+          attractionId: "other-1",
+          attractionName: "Other",
+          attractionGenreId: "g1",
+          attractionSubGenreId: null,
+          venueId: "v1",
+          venueName: "Room",
+          venueCity: "Boston",
+          venueState: "MA",
+          startsAt: "2026-10-01T00:00:00Z",
+          nearLocation: true,
+        },
+      ],
+    }),
+    { seedLabel: null, artists: [], venues: [] },
+  );
+
+  const ranked = rankRelatedSuggestions({
+    seed: {
+      id: "seed-1",
+      label: "Phish",
+      genreId: "g1",
+      genreName: "Rock",
+      subGenreId: "sg1",
+      subGenreName: "Jam",
+    },
+    excludeAttractionIds: ["followed-1"],
+    excludeVenueIds: ["followed-v"],
+    events: [
+      {
+        attractionId: "seed-1",
+        attractionName: "Phish",
+        attractionGenreId: "g1",
+        attractionSubGenreId: "sg1",
+        venueId: "v-keep",
+        venueName: "Garden",
+        venueCity: "Boston",
+        venueState: "MA",
+        startsAt: "2026-10-01T00:00:00Z",
+        nearLocation: true,
+      },
+      {
+        attractionId: "followed-1",
+        attractionName: "Already",
+        attractionGenreId: "g1",
+        attractionSubGenreId: "sg1",
+        venueId: "v-keep",
+        venueName: "Garden",
+        venueCity: "Boston",
+        venueState: "MA",
+        startsAt: "2026-10-02T00:00:00Z",
+        nearLocation: true,
+      },
+      {
+        attractionId: "peer-1",
+        attractionName: "Peer",
+        attractionGenreId: "g1",
+        attractionSubGenreId: "sg1",
+        venueId: "followed-v",
+        venueName: "Skip me",
+        venueCity: "NYC",
+        venueState: "NY",
+        startsAt: "2026-10-03T00:00:00Z",
+        nearLocation: false,
+      },
+      {
+        attractionId: "peer-1",
+        attractionName: "Peer",
+        attractionGenreId: "g1",
+        attractionSubGenreId: "sg1",
+        venueId: "v-keep",
+        venueName: "Garden",
+        venueCity: "Boston",
+        venueState: "MA",
+        startsAt: "2026-10-04T00:00:00Z",
+        nearLocation: true,
+      },
+    ],
+  });
+  assert.equal(ranked.seedLabel, "Phish");
+  assert.deepEqual(
+    ranked.artists.map((item) => item.id),
+    ["peer-1"],
+  );
+  assert.deepEqual(
+    ranked.venues.map((item) => item.id),
+    ["v-keep"],
+  );
+
+  const parsed = parseRecommendationsRequest({
+    seeds: [{ id: "ab12", label: "X" }],
+  });
+  assert.equal(parsed.ok && parsed.value.seed, null);
+
+  const classification = readArtistClassification({
+    classifications: [
+      {
+        primary: true,
+        genre: { id: "g1", name: "Rock" },
+        subGenre: { id: "sg1", name: "Jam" },
+      },
+    ],
+  });
+  assert.equal(classification.genreId, "g1");
+  assert.equal(classification.subGenreName, "Jam");
+
+  let seeds = [];
+  for (let index = 0; index < 12; index += 1) {
+    seeds = rememberDiscoverySeed(seeds, {
+      id: `id-${index}xxxx`,
+      label: `Artist ${index}`,
+      genreId: "g1",
+      genreName: "Rock",
+      subGenreId: null,
+      subGenreName: null,
+      source: "search",
+      savedAt: index,
+    });
+  }
+  assert.equal(seeds.length, 10);
+  assert.equal(parseDiscoverySeeds("not-json").length, 0);
+});
