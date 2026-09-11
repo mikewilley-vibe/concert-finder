@@ -31,6 +31,23 @@ npx eas-cli@latest build --profile development --platform ios
 
 Install the build with the QR code Expo prints, then start Metro with `npx expo start --dev-client`.
 
+Production and preview profiles set `"autoIncrement": true` so EAS bumps the
+remote iOS `buildNumber` (and Android `versionCode`) on each build. That
+avoids TestFlight rejections when App Store Connect already has the same
+version + build, such as `0.1.0` build `3`. The development profile is left
+manual.
+
+After this lands, ship a new TestFlight binary with:
+
+```bash
+cd mobile
+# Once, if EAS remote versions are behind App Store Connect:
+# npx eas-cli@latest build:version:set --platform ios
+# then initialize iOS with 3 (the last used App Store Connect build).
+npx eas-cli@latest build --platform ios --profile production
+npx eas-cli@latest submit --platform ios --profile production
+```
+
 `eas init` writes `extra.eas.projectId` into `app.json`. Apple push credentials
 are created during the first iOS build. Android also needs an FCM /
 google-services setup before store or device Android push will work.
