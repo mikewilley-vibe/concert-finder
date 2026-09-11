@@ -18,6 +18,12 @@ import type {
   VenueSummary,
 } from "../shared/api/v1.ts";
 import {
+  filterShowsByRadius,
+  resolveSearchOrigin,
+  ticketmasterLocationParams,
+  type SearchOrigin,
+} from "./geo.ts";
+import {
   rankRelatedSuggestions,
   type ParsedRecommendationsRequest,
   type RelatedEventFact,
@@ -1131,29 +1137,7 @@ function payloadHasMore(payload: unknown, requestedPage: number) {
   );
 }
 
-function addLocationParams(
-  params: Record<string, string>,
-  location: {
-    postalCode: string;
-    latitude: number | null;
-    longitude: number | null;
-    radiusMiles: number;
-  },
-) {
-  if (location.latitude !== null && location.longitude !== null) {
-    params.latlong = `${location.latitude},${location.longitude}`;
-    params.radius = String(location.radiusMiles);
-    params.unit = "miles";
-    return;
-  }
-  if (location.postalCode) {
-    params.postalCode = location.postalCode;
-    params.radius = String(location.radiusMiles);
-    params.unit = "miles";
-  }
-}
-
-export async function searchUpcomingShows(input: {
+type UpcomingSearchInput = {
   attractions: FollowedRef[];
   venues: FollowedRef[];
   keyword: string;
@@ -1165,7 +1149,12 @@ export async function searchUpcomingShows(input: {
   };
   page: number;
   pageSize: number;
-}): Promise<UpcomingShowsResult> {
+};
+
+async function fetchUpcomingShowBatches(
+  input: UpcomingSearchInput,
+  origin: SearchOrigin | null,
+) {
   const startDateTime = startDateTimeNow();
   const requests: Promise<{ ok: true; payload: unknown } | TicketmasterFailure>[] =
     [];
@@ -1177,11 +1166,11 @@ export async function searchUpcomingShows(input: {
       page: String(input.page),
       sort: "date,asc",
       startDateTime,
+      ...ticketmasterLocationParams(origin),
     };
     if (input.keyword) {
       params.keyword = input.keyword;
     }
-    addLocationParams(params, input.location);
     return params;
   }
 
@@ -1217,20 +1206,60 @@ export async function searchUpcomingShows(input: {
     batches.push({ source: sources[index], payload: result.payload });
   }
 
-  const shows = mergeShows(batches, input.attractions, input.venues);
-  const hasMore = batches.some((batch) =>
-    payloadHasMore(batch.payload, input.page),
-  );
+  return { ok: true as const, batches };
+}
+
+function pageFromBatches(
+  shows: TicketmasterShow[],
+  batches: { payload: unknown }[],
+  page: number,
+  pageSize: number,
+) {
+  const hasMore = batches.some((batch) => payloadHasMore(batch.payload, page));
+  return {
+    page,
+    pageSize,
+    resultCount: shows.length,
+    hasMore,
+    nextPage: hasMore ? page + 1 : null,
+  };
+}
+
+export async function searchUpcomingShows(
+  input: UpcomingSearchInput,
+): Promise<UpcomingShowsResult> {
+  const origin = await resolveSearchOrigin(input.location);
+  const located = await fetchUpcomingShowBatches(input, origin);
+  if (!located.ok) {
+    return located;
+  }
+
+  let shows = mergeShows(located.batches, input.attractions, input.venues);
+  if (origin) {
+    shows = filterShowsByRadius(shows, origin);
+  }
+
+  const hasFollows = input.attractions.length > 0 || input.venues.length > 0;
+  if (hasFollows && origin && shows.length === 0) {
+    const nationwide = await fetchUpcomingShowBatches(input, null);
+    if (!nationwide.ok) {
+      return nationwide;
+    }
+    shows = filterShowsByRadius(
+      mergeShows(nationwide.batches, input.attractions, input.venues),
+      origin,
+    );
+    return {
+      ok: true,
+      shows,
+      page: pageFromBatches(shows, nationwide.batches, input.page, input.pageSize),
+    };
+  }
+
   return {
     ok: true,
     shows,
-    page: {
-      page: input.page,
-      pageSize: input.pageSize,
-      resultCount: shows.length,
-      hasMore,
-      nextPage: hasMore ? input.page + 1 : null,
-    },
+    page: pageFromBatches(shows, located.batches, input.page, input.pageSize),
   };
 }
 
@@ -1333,13 +1362,12 @@ export async function searchRelatedRecommendations(
     return params;
   }
 
-  const hasLocation =
-    (input.location.latitude !== null && input.location.longitude !== null) ||
-    Boolean(input.location.postalCode);
+  const origin = await resolveSearchOrigin(input.location);
+  const hasLocation = origin !== null;
 
   const localParams = eventParams();
-  if (hasLocation) {
-    addLocationParams(localParams, input.location);
+  if (origin) {
+    Object.assign(localParams, ticketmasterLocationParams(origin));
   }
 
   const localResult = await ticketmasterGet(EVENTS_PATH, localParams);
