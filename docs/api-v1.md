@@ -48,6 +48,34 @@ Postal-code search is also supported:
 Limits are 25 followed references per request, 50 events per page, and pages 0
 through 49. Location coordinates are sent in a `POST` body rather than a URL.
 
+### Ticketmaster location quirks
+
+Ticketmaster Discovery `postalCode` is an **exact venue-zip text match**, not a
+center point for `radius`. Official docs: “This is text-based search, not
+location-based search. Use lat/long + radius search for nearby events.”
+
+That is why Home showed “Within 250 miles of 23505” with no results for
+followed attraction `Z7r9jZa4W_` (One Irish Rover) while the same query without
+location returned event `Z7r9jZ1A7J3Q3` at The National, Richmond VA 23219
+(~80–90 miles from Norfolk 23505). Sending `postalCode=23505&radius=250` (or
+even 500) dropped the show. The same request with Norfolk `latlong` + `radius`
+returned it.
+
+This API therefore:
+
+1. Geocodes a postal-only home location (Zippopotam, cached) to coordinates.
+2. Queries Ticketmaster with `latlong` + `radius` + `unit=miles`, never
+   `postalCode`, when a radius search is intended.
+3. Applies a local haversine filter on venue coordinates.
+4. If a followed-artist/venue search still comes back empty after Ticketmaster
+   geo-filtering, refetches **without** TM location params and keeps events
+   whose venue coordinates are inside the requested radius. Events with no
+   venue coordinates are kept so a missing geo field cannot wipe a match.
+
+`latlong` itself is marked deprecated on Discovery in favor of `geoPoint`
+(geohash). It still works for this product path; if TM removes it, resolve the
+origin the same way and switch the query param, keeping the local filter.
+
 ## Related artists and venues
 
 `POST /api/v1/ticketmaster/recommendations` accepts recent seed artists (Ticketmaster
