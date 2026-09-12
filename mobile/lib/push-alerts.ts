@@ -2,6 +2,11 @@ import Constants from "expo-constants";
 import { Linking, Platform } from "react-native";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import {
+  claimDevicePushToken,
+  formatPushAlertError,
+} from "./push-token-claim";
+
 export type PushAlertResult =
   | { ok: true }
   | {
@@ -11,6 +16,12 @@ export type PushAlertResult =
     };
 
 export type PushAlertFailure = Extract<PushAlertResult, { ok: false }>;
+
+export {
+  claimDevicePushToken,
+  formatPushAlertError,
+  isPermissionDeniedError,
+} from "./push-token-claim";
 
 export function isExpoGo() {
   return Constants.appOwnership === "expo";
@@ -73,7 +84,7 @@ export async function disablePushAlerts(
 
 export async function enablePushAlerts(
   supabase: SupabaseClient,
-  userId: string,
+  _userId: string,
 ): Promise<PushAlertResult> {
   const blocked = remotePushBlockedReason();
   if (blocked) {
@@ -83,81 +94,113 @@ export async function enablePushAlerts(
   let Notifications: typeof import("expo-notifications");
   try {
     Notifications = await import("expo-notifications");
-  } catch {
+  } catch (error) {
     return {
       ok: false,
       code: "unavailable",
-      message:
+      message: formatPushAlertError(
+        error,
         "Notifications are not available in this build. Install a ShowSignal device build.",
+      ),
     };
   }
 
-  try {
-    if (Platform.OS === "android") {
+  if (Platform.OS === "android") {
+    try {
       await Notifications.setNotificationChannelAsync("default", {
         name: "New show dates",
         importance: Notifications.AndroidImportance.DEFAULT,
       });
+    } catch (error) {
+      return {
+        ok: false,
+        code: "unavailable",
+        message: formatPushAlertError(
+          error,
+          "Could not set up Android notification channel.",
+        ),
+      };
     }
+  }
 
+  let status: string;
+  try {
     const existing = await Notifications.getPermissionsAsync();
-    let status = existing.status;
+    status = existing.status;
     if (status !== "granted") {
       const requested = await Notifications.requestPermissionsAsync();
       status = requested.status;
     }
-    if (status !== "granted") {
-      return {
-        ok: false,
-        code: "denied",
-        message:
-          "Notifications are off. Enable them for ShowSignal in Settings, then try again.",
-      };
-    }
+  } catch (error) {
+    return {
+      ok: false,
+      code: "denied",
+      message: formatPushAlertError(
+        error,
+        "Could not check notification permission.",
+      ),
+    };
+  }
 
-    const projectId =
-      Constants.expoConfig?.extra?.eas?.projectId ??
-      Constants.easConfig?.projectId;
-    if (!projectId) {
-      return {
-        ok: false,
-        code: "unavailable",
-        message:
-          "This build is missing an Expo project id. Create a ShowSignal EAS build, then try again.",
-      };
-    }
+  if (status !== "granted") {
+    return {
+      ok: false,
+      code: "denied",
+      message:
+        "Notifications are off. Enable them for ShowSignal in Settings, then try again.",
+    };
+  }
 
-    const token = await Notifications.getExpoPushTokenAsync({ projectId });
-    const expoPushToken = token.data?.trim() ?? "";
-    if (!expoPushToken.startsWith("ExponentPushToken")) {
-      return {
-        ok: false,
-        code: "unavailable",
-        message: "Could not get a push token for this device. Try again.",
-      };
-    }
-
-    const { error } = await supabase.from("push_tokens").upsert(
-      {
-        user_id: userId,
-        expo_push_token: expoPushToken,
-        platform: Platform.OS === "ios" ? "ios" : "android",
-        enabled: true,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "expo_push_token" },
-    );
-
-    if (error) {
-      throw error;
-    }
-
-    return { ok: true };
-  } catch {
+  const projectId =
+    Constants.expoConfig?.extra?.eas?.projectId ??
+    Constants.easConfig?.projectId;
+  if (!projectId) {
     return {
       ok: false,
       code: "unavailable",
-      message: "Could not turn on push alerts. Try again.",
+      message:
+        "This build is missing an Expo project id. Create a ShowSignal EAS build, then try again.",
     };
   }
+
+  let expoPushToken = "";
+  try {
+    const token = await Notifications.getExpoPushTokenAsync({ projectId });
+    expoPushToken = token.data?.trim() ?? "";
+  } catch (error) {
+    return {
+      ok: false,
+      code: "unavailable",
+      message: formatPushAlertError(
+        error,
+        "Could not get an Expo push token for this device.",
+      ),
+    };
+  }
+
+  if (!expoPushToken.startsWith("ExponentPushToken")) {
+    return {
+      ok: false,
+      code: "unavailable",
+      message: "Could not get a push token for this device. Try again.",
+    };
+  }
+
+  try {
+    await claimDevicePushToken(supabase, {
+      expoPushToken,
+      platform: Platform.OS === "ios" ? "ios" : "android",
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      code: "unavailable",
+      message: formatPushAlertError(
+        error,
+        "Could not save this device's push token.",
+      ),
+    };
+  }
+
+  return { ok: true };
 }

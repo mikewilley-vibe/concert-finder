@@ -43,3 +43,30 @@ Supabase project first. Do not apply it to production Concert Finder as part
 of this change.
 
 No migration is applied by these source changes.
+
+## Device token claim (second account on one phone)
+
+A later additive migration, `20260912120000_claim_device_push_token.sql`,
+adds `public.claim_device_push_token`. Table RLS is unchanged. The helper
+lets the signed-in user take over the Expo token this device presents when
+that token was previously stored under a different user.
+
+Apply that migration to the Supabase project the app uses before expecting
+the Profile toggle to succeed across accounts. The client change is JS-only
+(RPC + clearer errors). It does **not** need a native rebuild. A TestFlight
+binary that already includes Expo Notifications can pick it up via an EAS
+Update, or the next JS bundle in a store/TestFlight build.
+
+### Re-test on one device
+
+1. Apply `20260912120000_claim_device_push_token.sql` to the target
+   Supabase project (dev first; production Concert Finder only after review).
+2. On a ShowSignal device build, sign in as account A and turn on new-show
+   push alerts. Confirm Profile says alerts are on.
+3. Sign out, sign in as account B on the same phone, and turn on push
+   alerts again. This must succeed (no generic “Try again”).
+4. Confirm account B’s Profile shows alerts on. Account A should no longer
+   have that device token (one Expo token maps to one user).
+5. If enable fails, Profile should show a specific reason: notification
+   permission, missing Expo `projectId`, `getExpoPushTokenAsync` error, or
+   a Supabase code/message — not only “Could not turn on push alerts.”
