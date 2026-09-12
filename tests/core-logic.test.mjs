@@ -405,6 +405,56 @@ test("Home upcoming follows keep only the next date per artist and venue", () =>
   );
 });
 
+test("Ticketmaster-mapped venue ids collapse to the next in-range date", () => {
+  const mappedEvent = (id, localDate, attractionId, venueId) => {
+    const event = mapTicketmasterEvent({
+      id,
+      name: "Mapped show",
+      dates: {
+        timezone: "America/New_York",
+        status: { code: "onsale" },
+        start: {
+          dateTime: `${localDate}T23:30:00Z`,
+          localDate,
+          localTime: "19:30:00",
+        },
+      },
+      _embedded: {
+        attractions: [{ id: attractionId, name: "Mapped artist" }],
+        venues: [
+          {
+            id: venueId,
+            name: "The Anthem",
+            city: { name: "Washington" },
+            state: { name: "District of Columbia", stateCode: "DC" },
+          },
+        ],
+      },
+    });
+    assert.ok(event);
+    return {
+      id: event.id,
+      startsAt: event.startsAt,
+      localDate: event.localDate,
+      venueId: event.venue.id,
+      attractions: event.attractions,
+    };
+  };
+
+  const next = mappedEvent("venue-next", "2026-10-04", "artist-a", "venue-1");
+  const later = mappedEvent("venue-later", "2026-10-18", "artist-a", "venue-1");
+  const otherVenue = mappedEvent("other-venue", "2026-10-02", "artist-a", "venue-2");
+
+  assert.equal(next.venueId, "venue-1");
+  assert.deepEqual(
+    pickNextUpcomingShows([later, otherVenue, next], {
+      attractionIds: [],
+      venueIds: ["venue-1"],
+    }).map((item) => item.id),
+    ["venue-next"],
+  );
+});
+
 test("a shared next date for a followed artist and venue is listed once", () => {
   const shared = {
     id: "shared-next",
