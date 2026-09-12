@@ -415,7 +415,7 @@ test("combined follow cap is 50 artists and venues", async () => {
     MAX_MONITORED_FOLLOWS,
     isAtMonitoredFollowLimit,
     maxMonitoredFollowsMessage,
-  } = await import("../mobile/lib/follows.ts");
+  } = await import("../mobile/lib/follow-limit.ts");
   const web = await import("../lib/saved-follows.ts");
 
   assert.equal(MAX_MONITORED_FOLLOWS, 50);
