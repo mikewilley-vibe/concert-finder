@@ -9,7 +9,8 @@ import {
 import {
   FOLLOWED_ATTRACTION_TYPE,
   FOLLOWED_VENUE_TYPE,
-  MAX_MONITORED_FOLLOWS,
+  isAtMonitoredFollowLimit,
+  maxMonitoredFollowsMessage,
   followItem,
   loadFollowedItems,
   unfollowItem,
@@ -151,9 +152,9 @@ export function useFollows() {
 
       if (
         !currentlyFollowed &&
-        artists.length + venues.length >= MAX_MONITORED_FOLLOWS
+        isAtMonitoredFollowLimit(artists.length + venues.length)
       ) {
-        const message = `Automatic tracking currently supports up to ${MAX_MONITORED_FOLLOWS} artists and venues combined. Unfollow one before adding another.`;
+        const message = maxMonitoredFollowsMessage();
         setError(message);
         setItemErrors((current) => ({ ...current, [pendingId]: message }));
         return { ok: false, ...base, code: "max_follows", message };

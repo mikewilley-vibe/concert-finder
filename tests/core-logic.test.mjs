@@ -556,6 +556,26 @@ test("new-show push copy names the follow and the number of dates", () => {
   );
 });
 
+test("combined follow cap is 50 artists and venues", async () => {
+  const {
+    MAX_MONITORED_FOLLOWS,
+    isAtMonitoredFollowLimit,
+    maxMonitoredFollowsMessage,
+  } = await import("../mobile/lib/follow-limit.ts");
+  const web = await import("../lib/saved-follows.ts");
+
+  assert.equal(MAX_MONITORED_FOLLOWS, 50);
+  assert.equal(web.MAX_MONITORED_FOLLOWS, 50);
+  assert.equal(isAtMonitoredFollowLimit(8), false);
+  assert.equal(isAtMonitoredFollowLimit(49), false);
+  assert.equal(isAtMonitoredFollowLimit(50), true);
+  assert.equal(isAtMonitoredFollowLimit(51), true);
+  assert.equal(
+    maxMonitoredFollowsMessage(),
+    "Automatic tracking currently supports up to 50 artists and venues combined. Unfollow one before adding another.",
+  );
+});
+
 test("follow errors keep auth, RLS, and network causes visible", async () => {
   const { followsMessage } = await import("../mobile/lib/account.ts");
   const { followPendingKey } = await import("../mobile/lib/follow-result.ts");

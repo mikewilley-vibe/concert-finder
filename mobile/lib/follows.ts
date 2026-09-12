@@ -1,10 +1,19 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import {
+  MAX_MONITORED_FOLLOWS,
+  isAtMonitoredFollowLimit,
+  maxMonitoredFollowsMessage,
+} from "./follow-limit";
 import { notifyUserLibraryChanged } from "./sync";
 
 export const FOLLOWED_ATTRACTION_TYPE = "ticketmaster_attraction";
 export const FOLLOWED_VENUE_TYPE = "ticketmaster_venue";
-export const MAX_MONITORED_FOLLOWS = 8;
+export {
+  MAX_MONITORED_FOLLOWS,
+  isAtMonitoredFollowLimit,
+  maxMonitoredFollowsMessage,
+};
 
 export type FollowedItemType =
   | typeof FOLLOWED_ATTRACTION_TYPE

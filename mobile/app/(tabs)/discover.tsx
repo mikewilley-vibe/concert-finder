@@ -31,6 +31,7 @@ import { upcomingSearchFields } from "@/lib/home-location";
 import {
   FOLLOWED_ATTRACTION_TYPE,
   FOLLOWED_VENUE_TYPE,
+  MAX_MONITORED_FOLLOWS,
   type FollowedItemType,
 } from "@/lib/follows";
 import type { DiscoverySeed } from "@/lib/discovery-seeds";
@@ -332,7 +333,7 @@ export default function DiscoverScreen() {
       {state.status === "idle" ? (
         <EmptyState
           title="Search to get started"
-          body="Open an artist or venue to follow it and see upcoming dates."
+          body={`Open an artist or venue to follow it and see upcoming dates. Tracking currently supports ${MAX_MONITORED_FOLLOWS} artists and venues combined.`}
         />
       ) : null}
 
