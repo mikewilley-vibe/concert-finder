@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Keyboard,
   Linking,
@@ -6,13 +6,13 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  type TextInputProps,
   View,
 } from "react-native";
 
 import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
+import { Field, PasswordField } from "@/components/Field";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { Screen, ScreenBlock } from "@/components/Screen";
 import { Body, Eyebrow, Strong, Title } from "@/components/Typography";
@@ -60,48 +60,6 @@ import {
 } from "@/lib/push-alerts";
 import { getSupabaseClient } from "@/lib/supabase";
 import { useHomeLocation } from "@/hooks/useHomeLocation";
-
-function Field({
-  label,
-  value,
-  onChangeText,
-  inputRef,
-  ...rest
-}: {
-  label: string;
-  value: string;
-  onChangeText: (value: string) => void;
-  inputRef?: RefObject<TextInput | null>;
-} & Pick<
-  TextInputProps,
-  | "placeholder"
-  | "autoComplete"
-  | "keyboardType"
-  | "secureTextEntry"
-  | "autoCapitalize"
-  | "textContentType"
-  | "returnKeyType"
-  | "onSubmitEditing"
-  | "maxLength"
->) {
-  const id = label.replace(/\s+/g, "-").toLowerCase();
-  return (
-    <View style={styles.field}>
-      <Body>{label}</Body>
-      <TextInput
-        ref={inputRef}
-        value={value}
-        onChangeText={onChangeText}
-        placeholderTextColor={colors.mute}
-        accessibilityLabel={label}
-        nativeID={id}
-        autoCorrect={false}
-        style={styles.input}
-        {...rest}
-      />
-    </View>
-  );
-}
 
 export default function ProfileScreen() {
   const {
@@ -576,14 +534,13 @@ export default function ProfileScreen() {
               ? "Choose a new password for this account."
               : "Your email is verified. Add a password so you can sign in later."}
           </Body>
-          <Field
+          <PasswordField
             label="Password"
             value={newPassword}
             onChangeText={(value) => {
               setNewPassword(value);
               setPasswordError(null);
             }}
-            secureTextEntry
             autoComplete="new-password"
             textContentType="newPassword"
             autoCapitalize="none"
@@ -671,14 +628,13 @@ export default function ProfileScreen() {
             textContentType="username"
             autoCapitalize="none"
           />
-          <Field
+          <PasswordField
             label="Password"
             value={signInPassword}
             onChangeText={(value) => {
               setSignInPassword(value);
               setSignInError(null);
             }}
-            secureTextEntry
             autoComplete="current-password"
             textContentType="password"
             autoCapitalize="none"
@@ -931,24 +887,10 @@ const styles = StyleSheet.create({
     padding: 18,
     gap: 10,
   },
-  field: {
-    gap: 6,
-  },
   emailDomains: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-  },
-  input: {
-    minHeight: 48,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.background,
-    color: colors.foreground,
-    fontFamily: fonts.body,
-    fontSize: 16,
-    paddingHorizontal: 16,
   },
   radiusRow: {
     flexDirection: "row",
