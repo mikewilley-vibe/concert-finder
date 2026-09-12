@@ -198,6 +198,10 @@ export type Database = {
           user_id: string;
         }[];
       };
+      claim_device_push_token: {
+        Args: { p_expo_push_token: string; p_platform: string };
+        Returns: undefined;
+      };
       mark_ticketmaster_watch_state_seen: {
         Args: { target_id: string };
         Returns: undefined;

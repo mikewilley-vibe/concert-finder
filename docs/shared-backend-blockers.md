@@ -36,6 +36,7 @@ considered there.
 | `apply_ticketmaster_watch_check` | `service_role` only |
 | `sync_ticketmaster_watch_state` | revoked from `anon` and `authenticated` |
 | `mark_ticketmaster_watch_state_seen` | `authenticated`, scoped to `auth.uid()` |
+| `claim_device_push_token` | `authenticated`; reassigns only the presented Expo token to `auth.uid()`. See `20260912120000_claim_device_push_token.sql`. |
 
 ## Transactional watch writes
 

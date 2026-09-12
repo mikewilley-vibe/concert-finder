@@ -53,6 +53,7 @@ import {
 import {
   disablePushAlerts,
   enablePushAlerts,
+  formatPushAlertError,
   hasEnabledPushToken,
   openNotificationSettings,
   remotePushBlockedReason,
@@ -214,8 +215,10 @@ export default function ProfileScreen() {
       }
       setPushEnabled(true);
       setPushNotice("Alerts are on. New dates for follows will ping this phone.");
-    } catch {
-      setPushNotice("Could not turn on push alerts. Try again.");
+    } catch (error) {
+      setPushNotice(
+        formatPushAlertError(error, "Could not turn on push alerts. Try again."),
+      );
     } finally {
       setPushPending(false);
     }
@@ -232,8 +235,13 @@ export default function ProfileScreen() {
       await disablePushAlerts(getSupabaseClient(), user.id);
       setPushEnabled(false);
       setPushNotice("Alerts are off on this account.");
-    } catch {
-      setPushNotice("Could not turn off push alerts. Try again.");
+    } catch (error) {
+      setPushNotice(
+        formatPushAlertError(
+          error,
+          "Could not turn off push alerts. Try again.",
+        ),
+      );
     } finally {
       setPushPending(false);
     }
