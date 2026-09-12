@@ -31,6 +31,7 @@ export type TicketmasterShow = {
   localDate?: string;
   localTime?: string;
   startsAt?: string;
+  venueId?: string;
   venueName: string;
   city: string;
   state: string;
@@ -62,6 +63,7 @@ type NativeApiShow = {
   }>;
   matchedLabels: string[];
   venue: {
+    id?: string | null;
     name: string;
     city: string | null;
     stateCode: string | null;
@@ -215,6 +217,7 @@ export function searchUpcomingShows(input: {
   latitude?: number;
   longitude?: number;
   radiusMiles?: number;
+  pageSize?: number;
 }) {
   const postalCode = input.postalCode?.trim();
   const hasCoords =
@@ -242,6 +245,7 @@ export function searchUpcomingShows(input: {
         attractions: input.attractions,
         venues: input.venues,
         location,
+        pageSize: input.pageSize,
       }),
     },
   ).then((result) => ({ shows: result.events.map(mapShow) }));
@@ -263,6 +267,7 @@ function mapShow(show: NativeApiShow): TicketmasterShow {
     localDate: show.localDate ?? undefined,
     localTime: show.localTime ?? undefined,
     startsAt: show.startsAt ?? undefined,
+    venueId: show.venue.id?.trim() || undefined,
     venueName: show.venue.name,
     city: show.venue.city ?? "",
     state: show.venue.stateCode ?? "",
