@@ -36,6 +36,7 @@ import {
   concertShareText,
 } from "../mobile/lib/share-copy.ts";
 import { calendarWindow } from "../mobile/lib/calendar-window.ts";
+import { pickNextUpcomingShows } from "../mobile/lib/next-upcoming-shows.ts";
 import { newShowPushCopy } from "../lib/push-copy.ts";
 
 test("event IDs are deduplicated while preserving discovery order", () => {
@@ -338,6 +339,101 @@ test("home location postal codes match the Ticketmaster search rules", () => {
       longitude: null,
     }),
     { postalCode: "20003", radiusMiles: 50 },
+  );
+});
+
+test("Home upcoming follows keep only the next date per artist and venue", () => {
+  const show = (id, startsAt, extras = {}) => ({
+    id,
+    startsAt,
+    localDate: startsAt.slice(0, 10),
+    attractions: [],
+    ...extras,
+  });
+
+  const artistASoon = show("a-soon", "2026-10-01T00:00:00Z", {
+    attractions: [{ id: "artist-a" }],
+    venueId: "other-venue",
+  });
+  const artistALater = show("a-later", "2026-11-01T00:00:00Z", {
+    attractions: [{ id: "artist-a" }],
+    venueId: "other-venue",
+  });
+  const artistBSoon = show("b-soon", "2026-10-05T00:00:00Z", {
+    attractions: [{ id: "artist-b" }],
+  });
+  const artistBLater = show("b-later", "2026-10-20T00:00:00Z", {
+    attractions: [{ id: "artist-b" }],
+  });
+  const venueSoon = show("v-soon", "2026-10-03T00:00:00Z", {
+    attractions: [{ id: "someone-else" }],
+    venueId: "venue-v",
+  });
+  const venueLater = show("v-later", "2026-10-10T00:00:00Z", {
+    attractions: [{ id: "someone-else" }],
+    venueId: "venue-v",
+  });
+  const outOfFollows = show("other", "2026-09-20T00:00:00Z", {
+    attractions: [{ id: "artist-c" }],
+    venueId: "venue-other",
+  });
+
+  assert.deepEqual(
+    pickNextUpcomingShows(
+      [
+        artistALater,
+        venueLater,
+        artistBLater,
+        artistBSoon,
+        venueSoon,
+        artistASoon,
+        outOfFollows,
+      ],
+      {
+        attractionIds: ["artist-a", "artist-b"],
+        venueIds: ["venue-v"],
+      },
+    ).map((item) => item.id),
+    ["a-soon", "v-soon", "b-soon"],
+  );
+  assert.deepEqual(
+    pickNextUpcomingShows([artistASoon, artistALater], {
+      attractionIds: ["artist-missing"],
+      venueIds: [],
+    }),
+    [],
+  );
+});
+
+test("a shared next date for a followed artist and venue is listed once", () => {
+  const shared = {
+    id: "shared-next",
+    startsAt: "2026-10-02T00:00:00Z",
+    localDate: "2026-10-02",
+    venueId: "venue-v",
+    attractions: [{ id: "artist-a" }],
+  };
+  const laterArtist = {
+    id: "later-artist",
+    startsAt: "2026-10-15T00:00:00Z",
+    localDate: "2026-10-15",
+    venueId: "other-venue",
+    attractions: [{ id: "artist-a" }],
+  };
+  const laterVenue = {
+    id: "later-venue",
+    startsAt: "2026-10-08T00:00:00Z",
+    localDate: "2026-10-08",
+    venueId: "venue-v",
+    attractions: [{ id: "someone-else" }],
+  };
+
+  assert.deepEqual(
+    pickNextUpcomingShows([laterVenue, laterArtist, shared], {
+      attractionIds: ["artist-a"],
+      venueIds: ["venue-v"],
+    }).map((item) => item.id),
+    ["shared-next"],
   );
 });
 
