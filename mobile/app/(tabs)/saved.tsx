@@ -13,6 +13,7 @@ import { useSavedEvents } from "@/hooks/useSavedEvents";
 import {
   FOLLOWED_ATTRACTION_TYPE,
   FOLLOWED_VENUE_TYPE,
+  MAX_MONITORED_FOLLOWS,
 } from "@/lib/follows";
 
 export default function SavedScreen() {
@@ -106,7 +107,7 @@ export default function SavedScreen() {
       follows.venues.length === 0 ? (
         <EmptyState
           title="No followed artists or venues"
-          body="Follow from Discover. Tracking currently supports eight artists and venues combined."
+          body={`Follow from Discover. Tracking currently supports ${MAX_MONITORED_FOLLOWS} artists and venues combined.`}
           action={
             <ActionLink
               href="/discover"
