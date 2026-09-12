@@ -13,6 +13,7 @@ import { DarkTheme, Stack, ThemeProvider, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import "react-native-reanimated";
 
 import { AuthProvider } from "@/components/AuthProvider";
@@ -66,26 +67,28 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={navigationTheme}>
       <AuthProvider>
-        <PushNotificationBridge />
-        <StatusBar style="light" />
-        <Stack
-          screenOptions={{
-            headerStyle: { backgroundColor: colors.background },
-            headerTintColor: colors.foreground,
-            headerShadowVisible: false,
-            headerBackTitle: "Back",
-            contentStyle: { backgroundColor: colors.background },
-          }}
-        >
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="auth/callback"
-            options={{ title: "Confirming", headerBackTitle: "Back" }}
-          />
-          <Stack.Screen name="concert/[id]" options={{ title: "Concert" }} />
-          <Stack.Screen name="artist/[id]" options={{ title: "Artist" }} />
-          <Stack.Screen name="venue/[id]" options={{ title: "Venue" }} />
-        </Stack>
+        <KeyboardProvider preload={false}>
+          <PushNotificationBridge />
+          <StatusBar style="light" />
+          <Stack
+            screenOptions={{
+              headerStyle: { backgroundColor: colors.background },
+              headerTintColor: colors.foreground,
+              headerShadowVisible: false,
+              headerBackTitle: "Back",
+              contentStyle: { backgroundColor: colors.background },
+            }}
+          >
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="auth/callback"
+              options={{ title: "Confirming", headerBackTitle: "Back" }}
+            />
+            <Stack.Screen name="concert/[id]" options={{ title: "Concert" }} />
+            <Stack.Screen name="artist/[id]" options={{ title: "Artist" }} />
+            <Stack.Screen name="venue/[id]" options={{ title: "Venue" }} />
+          </Stack>
+        </KeyboardProvider>
       </AuthProvider>
     </ThemeProvider>
   );

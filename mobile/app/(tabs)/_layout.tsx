@@ -1,6 +1,6 @@
 import { SymbolView, type AndroidSymbol } from "expo-symbols";
 import { Tabs } from "expo-router";
-import type { ColorValue } from "react-native";
+import { Keyboard, type ColorValue } from "react-native";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { colors, fonts } from "@/constants/theme";
@@ -26,11 +26,17 @@ function TabIcon({
 export default function TabLayout() {
   return (
     <Tabs
+      screenListeners={{
+        tabPress: () => {
+          Keyboard.dismiss();
+        },
+      }}
       screenOptions={{
         headerStyle: { backgroundColor: colors.background },
         headerTintColor: colors.foreground,
         headerTitleStyle: { fontFamily: fonts.display },
         headerShadowVisible: false,
+        tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.mute,
         tabBarLabelStyle: {
