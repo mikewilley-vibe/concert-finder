@@ -282,7 +282,7 @@ export default function DiscoverScreen() {
   }
 
   return (
-    <Screen avoidKeyboard={false}>
+    <Screen>
       <ScreenBlock>
         <Eyebrow>Discover</Eyebrow>
         <Title>Search artists, venues, and upcoming shows.</Title>
