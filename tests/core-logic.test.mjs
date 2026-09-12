@@ -36,6 +36,7 @@ import {
   concertShareText,
 } from "../mobile/lib/share-copy.ts";
 import { calendarWindow } from "../mobile/lib/calendar-window.ts";
+import { pickNextUpcomingShows } from "../mobile/lib/next-upcoming-shows.ts";
 import { newShowPushCopy } from "../lib/push-copy.ts";
 
 test("event IDs are deduplicated while preserving discovery order", () => {
@@ -341,6 +342,151 @@ test("home location postal codes match the Ticketmaster search rules", () => {
   );
 });
 
+test("Home upcoming follows keep only the next date per artist and venue", () => {
+  const show = (id, startsAt, extras = {}) => ({
+    id,
+    startsAt,
+    localDate: startsAt.slice(0, 10),
+    attractions: [],
+    ...extras,
+  });
+
+  const artistASoon = show("a-soon", "2026-10-01T00:00:00Z", {
+    attractions: [{ id: "artist-a" }],
+    venueId: "other-venue",
+  });
+  const artistALater = show("a-later", "2026-11-01T00:00:00Z", {
+    attractions: [{ id: "artist-a" }],
+    venueId: "other-venue",
+  });
+  const artistBSoon = show("b-soon", "2026-10-05T00:00:00Z", {
+    attractions: [{ id: "artist-b" }],
+  });
+  const artistBLater = show("b-later", "2026-10-20T00:00:00Z", {
+    attractions: [{ id: "artist-b" }],
+  });
+  const venueSoon = show("v-soon", "2026-10-03T00:00:00Z", {
+    attractions: [{ id: "someone-else" }],
+    venueId: "venue-v",
+  });
+  const venueLater = show("v-later", "2026-10-10T00:00:00Z", {
+    attractions: [{ id: "someone-else" }],
+    venueId: "venue-v",
+  });
+  const outOfFollows = show("other", "2026-09-20T00:00:00Z", {
+    attractions: [{ id: "artist-c" }],
+    venueId: "venue-other",
+  });
+
+  assert.deepEqual(
+    pickNextUpcomingShows(
+      [
+        artistALater,
+        venueLater,
+        artistBLater,
+        artistBSoon,
+        venueSoon,
+        artistASoon,
+        outOfFollows,
+      ],
+      {
+        attractionIds: ["artist-a", "artist-b"],
+        venueIds: ["venue-v"],
+      },
+    ).map((item) => item.id),
+    ["a-soon", "v-soon", "b-soon"],
+  );
+  assert.deepEqual(
+    pickNextUpcomingShows([artistASoon, artistALater], {
+      attractionIds: ["artist-missing"],
+      venueIds: [],
+    }),
+    [],
+  );
+});
+
+test("Ticketmaster-mapped venue ids collapse to the next in-range date", () => {
+  const mappedEvent = (id, localDate, attractionId, venueId) => {
+    const event = mapTicketmasterEvent({
+      id,
+      name: "Mapped show",
+      dates: {
+        timezone: "America/New_York",
+        status: { code: "onsale" },
+        start: {
+          dateTime: `${localDate}T23:30:00Z`,
+          localDate,
+          localTime: "19:30:00",
+        },
+      },
+      _embedded: {
+        attractions: [{ id: attractionId, name: "Mapped artist" }],
+        venues: [
+          {
+            id: venueId,
+            name: "The Anthem",
+            city: { name: "Washington" },
+            state: { name: "District of Columbia", stateCode: "DC" },
+          },
+        ],
+      },
+    });
+    assert.ok(event);
+    return {
+      id: event.id,
+      startsAt: event.startsAt,
+      localDate: event.localDate,
+      venueId: event.venue.id,
+      attractions: event.attractions,
+    };
+  };
+
+  const next = mappedEvent("venue-next", "2026-10-04", "artist-a", "venue-1");
+  const later = mappedEvent("venue-later", "2026-10-18", "artist-a", "venue-1");
+  const otherVenue = mappedEvent("other-venue", "2026-10-02", "artist-a", "venue-2");
+
+  assert.equal(next.venueId, "venue-1");
+  assert.deepEqual(
+    pickNextUpcomingShows([later, otherVenue, next], {
+      attractionIds: [],
+      venueIds: ["venue-1"],
+    }).map((item) => item.id),
+    ["venue-next"],
+  );
+});
+
+test("a shared next date for a followed artist and venue is listed once", () => {
+  const shared = {
+    id: "shared-next",
+    startsAt: "2026-10-02T00:00:00Z",
+    localDate: "2026-10-02",
+    venueId: "venue-v",
+    attractions: [{ id: "artist-a" }],
+  };
+  const laterArtist = {
+    id: "later-artist",
+    startsAt: "2026-10-15T00:00:00Z",
+    localDate: "2026-10-15",
+    venueId: "other-venue",
+    attractions: [{ id: "artist-a" }],
+  };
+  const laterVenue = {
+    id: "later-venue",
+    startsAt: "2026-10-08T00:00:00Z",
+    localDate: "2026-10-08",
+    venueId: "venue-v",
+    attractions: [{ id: "someone-else" }],
+  };
+
+  assert.deepEqual(
+    pickNextUpcomingShows([laterVenue, laterArtist, shared], {
+      attractionIds: ["artist-a"],
+      venueIds: ["venue-v"],
+    }).map((item) => item.id),
+    ["shared-next"],
+  );
+});
+
 test("concert share copy uses an https open link", () => {
   const origin = "https://concert-finder-eta.vercel.app";
   assert.equal(concertDeepLink("1AvZZbkGkFkgjd"), "showsignal://concert/1AvZZbkGkFkgjd");
@@ -407,6 +553,26 @@ test("new-show push copy names the follow and the number of dates", () => {
       count: 3,
     }).title,
     "3 new dates at Madison Square Garden",
+  );
+});
+
+test("combined follow cap is 50 artists and venues", async () => {
+  const {
+    MAX_MONITORED_FOLLOWS,
+    isAtMonitoredFollowLimit,
+    maxMonitoredFollowsMessage,
+  } = await import("../mobile/lib/follow-limit.ts");
+  const web = await import("../lib/saved-follows.ts");
+
+  assert.equal(MAX_MONITORED_FOLLOWS, 50);
+  assert.equal(web.MAX_MONITORED_FOLLOWS, 50);
+  assert.equal(isAtMonitoredFollowLimit(8), false);
+  assert.equal(isAtMonitoredFollowLimit(49), false);
+  assert.equal(isAtMonitoredFollowLimit(50), true);
+  assert.equal(isAtMonitoredFollowLimit(51), true);
+  assert.equal(
+    maxMonitoredFollowsMessage(),
+    "Automatic tracking currently supports up to 50 artists and venues combined. Unfollow one before adding another.",
   );
 });
 

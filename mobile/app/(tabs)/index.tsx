@@ -24,6 +24,7 @@ import {
   homeLocationLabel,
   upcomingSearchFields,
 } from "@/lib/home-location";
+import { pickNextUpcomingShows } from "@/lib/next-upcoming-shows";
 import { getSupabaseClient } from "@/lib/supabase";
 import {
   WatchStateUnavailableError,
@@ -93,11 +94,18 @@ export default function HomeScreen() {
         attractions: follows.artists.map(toFollowedRef),
         venues: follows.venues.map(toFollowedRef),
         ...upcomingSearchFields(home.location),
+        pageSize: 50,
       });
       if (upcomingRequest.current !== requestId) {
         return;
       }
-      setUpcoming({ status: "ready", shows: result.shows });
+      setUpcoming({
+        status: "ready",
+        shows: pickNextUpcomingShows(result.shows, {
+          attractionIds: follows.artists.map((artist) => artist.item_key),
+          venueIds: follows.venues.map((venue) => venue.item_key),
+        }),
+      });
     } catch (error) {
       if (upcomingRequest.current !== requestId) {
         return;
@@ -327,7 +335,10 @@ export default function HomeScreen() {
       ) : (
         <ScreenBlock>
           <Strong>Upcoming from follows</Strong>
-          <Body>{homeLocationLabel(home.location)}</Body>
+          <Body>
+            Next date for each artist and venue you follow.{" "}
+            {homeLocationLabel(home.location)}
+          </Body>
           {saved.error ? <Body>{saved.error}</Body> : null}
           {upcoming.shows.map((show) => {
             const isSaved = saved.savedIds.has(show.id);
