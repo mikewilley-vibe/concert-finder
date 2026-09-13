@@ -287,6 +287,7 @@ export default function DiscoverScreen() {
                 <ListRow
                   title={venue.name}
                   subtitle={place}
+                  accessibilityLabel={`View upcoming shows at ${venue.name}`}
                   onPress={() =>
                     router.push({
                       pathname: "/venue/[id]",
