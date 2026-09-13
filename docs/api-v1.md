@@ -48,6 +48,13 @@ Postal-code search is also supported:
 Limits are 25 followed references per request, 50 events per page, and pages 0
 through 49. Location coordinates are sent in a `POST` body rather than a URL.
 
+A **single** followed artist or venue with no location (artist/venue detail) is
+collected across up to four Ticketmaster pages (200 events) so the listing is
+not truncated to the first page or Home’s “next date only” view. If a venue id
+returns no upcoming events, the API retries with the venue name as a keyword
+and keeps dates whose venue id or name matches. That covers Ticketmaster
+partner/alias venue ids that do not work with `venueId`.
+
 ### Ticketmaster location quirks
 
 Ticketmaster Discovery `postalCode` is an **exact venue-zip text match**, not a

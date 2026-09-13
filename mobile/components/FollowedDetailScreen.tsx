@@ -13,6 +13,7 @@ import {
   searchUpcomingShows,
   type TicketmasterShow,
 } from "@/lib/api";
+import { loadFollowedListingShows } from "@/lib/followed-listing-shows";
 import {
   FOLLOWED_ATTRACTION_TYPE,
   FOLLOWED_VENUE_TYPE,
@@ -23,7 +24,7 @@ import { shareListing } from "@/lib/share";
 type LoadState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ready"; shows: TicketmasterShow[] };
+  | { status: "ready"; shows: TicketmasterShow[]; capped: boolean };
 
 export function FollowedDetailScreen({
   kind,
@@ -58,15 +59,20 @@ export function FollowedDetailScreen({
     requestIdRef.current = requestId;
     setState({ status: "loading" });
     try {
-      const result = await searchUpcomingShows({
-        attractions:
-          kind === "artist" ? [{ id, label }] : [],
-        venues: kind === "venue" ? [{ id, label }] : [],
+      const result = await loadFollowedListingShows({
+        kind,
+        id,
+        label,
+        search: searchUpcomingShows,
       });
       if (requestIdRef.current !== requestId) {
         return;
       }
-      setState({ status: "ready", shows: result.shows });
+      setState({
+        status: "ready",
+        shows: result.shows,
+        capped: result.capped,
+      });
     } catch (error) {
       if (requestIdRef.current !== requestId) {
         return;
@@ -153,6 +159,14 @@ export function FollowedDetailScreen({
       {state.status === "ready" && state.shows.length > 0 ? (
         <ScreenBlock>
           <Strong>Upcoming shows</Strong>
+          <Body>
+            {state.shows.length === 1
+              ? "1 upcoming Ticketmaster date."
+              : `${state.shows.length} upcoming Ticketmaster dates.`}
+            {state.capped
+              ? " Showing the next dates Ticketmaster returned."
+              : ""}
+          </Body>
           {saved.error ? <Body>{saved.error}</Body> : null}
           {state.shows.map((show) => {
             const isSaved = saved.savedIds.has(show.id);

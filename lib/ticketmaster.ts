@@ -39,6 +39,8 @@ const FALLBACK_CANDIDATE_LIMIT = 24;
 export const DEFAULT_EVENT_PAGE_SIZE = 20;
 export const MAX_EVENT_PAGE_SIZE = 50;
 export const MAX_EVENT_PAGE = 49;
+/** Extra Ticketmaster pages for a single artist/venue listing (no home radius). */
+export const MAX_FOLLOWED_LISTING_PAGES = 4;
 const MIN_KEYWORD_LENGTH = 2;
 const MAX_KEYWORD_LENGTH = 80;
 const ID_PATTERN = /^[A-Za-z0-9_-]{4,64}$/;
@@ -1209,57 +1211,230 @@ async function fetchUpcomingShowBatches(
   return { ok: true as const, batches };
 }
 
+function payloadTotalPages(payload: unknown) {
+  if (!payload || typeof payload !== "object") {
+    return 0;
+  }
+  const page = (payload as { page?: unknown }).page;
+  if (!page || typeof page !== "object") {
+    return 0;
+  }
+  const totalPages = (page as { totalPages?: unknown }).totalPages;
+  return typeof totalPages === "number" && Number.isFinite(totalPages)
+    ? totalPages
+    : 0;
+}
+
 function pageFromBatches(
   shows: TicketmasterShow[],
   batches: { payload: unknown }[],
   page: number,
   pageSize: number,
+  lastFetchedPage = page,
 ) {
-  const hasMore = batches.some((batch) => payloadHasMore(batch.payload, page));
+  const totalPages = batches.reduce(
+    (max, batch) => Math.max(max, payloadTotalPages(batch.payload)),
+    0,
+  );
+  const hasMore = lastFetchedPage + 1 < totalPages;
   return {
     page,
     pageSize,
     resultCount: shows.length,
     hasMore,
-    nextPage: hasMore ? page + 1 : null,
+    nextPage: hasMore ? lastFetchedPage + 1 : null,
   };
+}
+
+function isFollowedListingDetail(
+  input: UpcomingSearchInput,
+  origin: SearchOrigin | null,
+) {
+  return (
+    !origin &&
+    !input.keyword &&
+    input.page === 0 &&
+    input.attractions.length + input.venues.length === 1
+  );
+}
+
+function batchesHaveUpcoming(
+  batches: { source: "attraction" | "venue" | "discover"; payload: unknown }[],
+  source: "attraction" | "venue" | "discover",
+) {
+  return batches.some(
+    (batch) =>
+      batch.source === source &&
+      eventRows(batch.payload).some((event) => isUpcomingEvent(event)),
+  );
+}
+
+export function eventMatchesFollowedVenue(
+  show: { venue: { id?: string | null; name?: string | null } },
+  venue: FollowedRef,
+) {
+  const venueId = show.venue.id?.trim() ?? "";
+  if (venueId && venueId === venue.id.trim()) {
+    return true;
+  }
+  const name = show.venue.name?.trim() ?? "";
+  return Boolean(name) && isDirectNameMatch(venue.label, name);
+}
+
+function filterPayloadToFollowedVenue(payload: unknown, venue: FollowedRef) {
+  const events = eventRows(payload).filter((event) => {
+    const show = mapTicketmasterEvent(event);
+    return show !== null && eventMatchesFollowedVenue(show, venue);
+  });
+  if (!payload || typeof payload !== "object") {
+    return { _embedded: { events } };
+  }
+  return {
+    ...(payload as Record<string, unknown>),
+    _embedded: { events },
+  };
+}
+
+type ShowBatch = {
+  source: "attraction" | "venue" | "discover";
+  payload: unknown;
+};
+
+async function fetchUpcomingShowPages(
+  input: UpcomingSearchInput,
+  origin: SearchOrigin | null,
+  maxPages: number,
+): Promise<
+  | { ok: true; batches: ShowBatch[]; lastFetchedPage: number }
+  | TicketmasterFailure
+> {
+  const batches: ShowBatch[] = [];
+  let lastFetchedPage = input.page;
+
+  for (let offset = 0; offset < maxPages; offset += 1) {
+    const page = input.page + offset;
+    const result = await fetchUpcomingShowBatches(
+      { ...input, page },
+      origin,
+    );
+    if (!result.ok) {
+      if (offset === 0) {
+        return result;
+      }
+      break;
+    }
+    batches.push(...result.batches);
+    lastFetchedPage = page;
+    if (!result.batches.some((batch) => payloadHasMore(batch.payload, page))) {
+      break;
+    }
+  }
+
+  return { ok: true, batches, lastFetchedPage };
+}
+
+async function fetchVenueKeywordPages(
+  venue: FollowedRef,
+  pageSize: number,
+  maxPages: number,
+): Promise<{ ok: true; batches: ShowBatch[] } | TicketmasterFailure> {
+  const batches: ShowBatch[] = [];
+
+  for (let page = 0; page < maxPages; page += 1) {
+    const result = await ticketmasterGet(EVENTS_PATH, {
+      size: String(pageSize),
+      page: String(page),
+      sort: "date,asc",
+      startDateTime: startDateTimeNow(),
+      keyword: venue.label,
+    });
+    if (!result.ok) {
+      if (page === 0) {
+        return result;
+      }
+      break;
+    }
+    batches.push({
+      source: "venue",
+      payload: filterPayloadToFollowedVenue(result.payload, venue),
+    });
+    if (!payloadHasMore(result.payload, page)) {
+      break;
+    }
+  }
+
+  return { ok: true, batches };
+}
+
+function mergeLocatedShows(
+  batches: ShowBatch[],
+  input: UpcomingSearchInput,
+  origin: SearchOrigin | null,
+) {
+  const shows = mergeShows(batches, input.attractions, input.venues);
+  return origin ? filterShowsByRadius(shows, origin) : shows;
 }
 
 export async function searchUpcomingShows(
   input: UpcomingSearchInput,
 ): Promise<UpcomingShowsResult> {
   const origin = await resolveSearchOrigin(input.location);
-  const located = await fetchUpcomingShowBatches(input, origin);
+  const listingDetail = isFollowedListingDetail(input, origin);
+  const pageLimit = listingDetail ? MAX_FOLLOWED_LISTING_PAGES : 1;
+
+  const located = await fetchUpcomingShowPages(input, origin, pageLimit);
   if (!located.ok) {
     return located;
   }
 
-  let shows = mergeShows(located.batches, input.attractions, input.venues);
-  if (origin) {
-    shows = filterShowsByRadius(shows, origin);
-  }
+  let shows = mergeLocatedShows(located.batches, input, origin);
+  let resultBatches = located.batches;
+  let lastFetchedPage = located.lastFetchedPage;
 
   const hasFollows = input.attractions.length > 0 || input.venues.length > 0;
   if (hasFollows && origin && shows.length === 0) {
-    const nationwide = await fetchUpcomingShowBatches(input, null);
+    const nationwide = await fetchUpcomingShowPages(input, null, pageLimit);
     if (!nationwide.ok) {
       return nationwide;
     }
-    shows = filterShowsByRadius(
-      mergeShows(nationwide.batches, input.attractions, input.venues),
-      origin,
+    shows = mergeLocatedShows(nationwide.batches, input, origin);
+    resultBatches = nationwide.batches;
+    lastFetchedPage = nationwide.lastFetchedPage;
+  }
+
+  const shouldFallbackEmptyVenue =
+    input.venues.length === 1 &&
+    input.attractions.length === 0 &&
+    !batchesHaveUpcoming(resultBatches, "venue");
+
+  if (shouldFallbackEmptyVenue) {
+    const keywordPages = await fetchVenueKeywordPages(
+      input.venues[0],
+      input.pageSize,
+      listingDetail ? MAX_FOLLOWED_LISTING_PAGES : 1,
     );
-    return {
-      ok: true,
-      shows,
-      page: pageFromBatches(shows, nationwide.batches, input.page, input.pageSize),
-    };
+    if (keywordPages.ok) {
+      shows = mergeLocatedShows(
+        [...resultBatches, ...keywordPages.batches],
+        input,
+        origin,
+      );
+      resultBatches = [...resultBatches, ...keywordPages.batches];
+    } else if (shows.length === 0) {
+      return keywordPages;
+    }
   }
 
   return {
     ok: true,
     shows,
-    page: pageFromBatches(shows, located.batches, input.page, input.pageSize),
+    page: pageFromBatches(
+      shows,
+      resultBatches,
+      input.page,
+      input.pageSize,
+      lastFetchedPage,
+    ),
   };
 }
 

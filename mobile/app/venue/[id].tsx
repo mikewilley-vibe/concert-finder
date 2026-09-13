@@ -1,21 +1,24 @@
 import { useLocalSearchParams } from "expo-router";
 
 import { FollowedDetailScreen } from "@/components/FollowedDetailScreen";
+import { firstRouteParam } from "@/lib/route-params";
 
 export default function VenueScreen() {
-  const { id, name, city, state } = useLocalSearchParams<{
+  const params = useLocalSearchParams<{
     id: string;
     name?: string;
     city?: string;
     state?: string;
   }>();
-  const place = [city, state].filter(Boolean).join(", ");
+  const place = [firstRouteParam(params.city), firstRouteParam(params.state)]
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <FollowedDetailScreen
       kind="venue"
-      id={typeof id === "string" ? id : undefined}
-      name={typeof name === "string" ? name : undefined}
+      id={firstRouteParam(params.id)}
+      name={firstRouteParam(params.name)}
       place={place || undefined}
     />
   );

@@ -1,15 +1,16 @@
 import { useLocalSearchParams } from "expo-router";
 
 import { FollowedDetailScreen } from "@/components/FollowedDetailScreen";
+import { firstRouteParam } from "@/lib/route-params";
 
 export default function ArtistScreen() {
-  const { id, name } = useLocalSearchParams<{ id: string; name?: string }>();
+  const params = useLocalSearchParams<{ id: string; name?: string }>();
 
   return (
     <FollowedDetailScreen
       kind="artist"
-      id={typeof id === "string" ? id : undefined}
-      name={typeof name === "string" ? name : undefined}
+      id={firstRouteParam(params.id)}
+      name={firstRouteParam(params.name)}
     />
   );
 }

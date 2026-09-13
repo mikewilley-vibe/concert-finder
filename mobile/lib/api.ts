@@ -210,16 +210,27 @@ export function searchVenues(keyword: string) {
   }));
 }
 
+export type UpcomingShowsPage = {
+  page: number;
+  pageSize: number;
+  resultCount: number;
+  hasMore: boolean;
+  nextPage: number | null;
+};
+
 export function searchUpcomingShows(input: {
   attractions: FollowedRef[];
   venues: FollowedRef[];
+  keyword?: string;
   postalCode?: string;
   latitude?: number;
   longitude?: number;
   radiusMiles?: number;
+  page?: number;
   pageSize?: number;
 }) {
   const postalCode = input.postalCode?.trim();
+  const keyword = input.keyword?.trim();
   const hasCoords =
     typeof input.latitude === "number" &&
     typeof input.longitude === "number" &&
@@ -237,18 +248,23 @@ export function searchUpcomingShows(input: {
           radiusMiles: input.radiusMiles,
         }
       : undefined;
-  return apiFetch<{ events: NativeApiShow[] }>(
+  return apiFetch<{ events: NativeApiShow[]; page?: UpcomingShowsPage }>(
     "/api/v1/ticketmaster/events",
     {
       method: "POST",
       body: JSON.stringify({
         attractions: input.attractions,
         venues: input.venues,
+        keyword: keyword || undefined,
         location,
+        page: input.page,
         pageSize: input.pageSize,
       }),
     },
-  ).then((result) => ({ shows: result.events.map(mapShow) }));
+  ).then((result) => ({
+    shows: result.events.map(mapShow),
+    page: result.page,
+  }));
 }
 
 export function getEventDetails(ids: string[]) {

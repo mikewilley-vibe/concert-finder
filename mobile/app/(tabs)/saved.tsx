@@ -125,7 +125,8 @@ export default function SavedScreen() {
             <ListRow
               key={artist.item_key}
               title={artist.item_label}
-              subtitle="Artist"
+              subtitle="See upcoming shows"
+              accessibilityLabel={`View upcoming shows for ${artist.item_label}`}
               onPress={() =>
                 router.push({
                   pathname: "/artist/[id]",
@@ -162,7 +163,8 @@ export default function SavedScreen() {
             <ListRow
               key={venue.item_key}
               title={venue.item_label}
-              subtitle="Venue"
+              subtitle="See upcoming shows"
+              accessibilityLabel={`View upcoming shows at ${venue.item_label}`}
               onPress={() =>
                 router.push({
                   pathname: "/venue/[id]",
