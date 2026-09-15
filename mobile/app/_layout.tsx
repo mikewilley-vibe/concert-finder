@@ -87,6 +87,11 @@ export default function RootLayout() {
             <Stack.Screen name="concert/[id]" options={{ title: "Concert" }} />
             <Stack.Screen name="artist/[id]" options={{ title: "Artist" }} />
             <Stack.Screen name="venue/[id]" options={{ title: "Venue" }} />
+            <Stack.Screen name="nearby" options={{ title: "Nearby this week" }} />
+            <Stack.Screen
+              name="your-artists"
+              options={{ title: "Your artists" }}
+            />
           </Stack>
         </KeyboardProvider>
       </AuthProvider>

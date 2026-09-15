@@ -92,6 +92,19 @@ test("event searches accept native coordinates, radius, and pagination", () => {
   });
   assert.equal(parsed.ok ? parsed.page : null, 2);
   assert.equal(parsed.ok ? parsed.pageSize : null, 30);
+  const defaultRadius = parseUpcomingShowsRequest({
+    keyword: "indie rock",
+    location: { latitude: 37.5407, longitude: -77.436 },
+  });
+  assert.equal(defaultRadius.ok, true);
+  assert.equal(defaultRadius.ok ? defaultRadius.location.radiusMiles : null, 100);
+  const withWindow = parseUpcomingShowsRequest({
+    keyword: "jazz",
+    location: { postalCode: "23220" },
+    endDateTime: "2026-09-22T00:00:00Z",
+  });
+  assert.equal(withWindow.ok, true);
+  assert.equal(withWindow.ok ? withWindow.endDateTime : null, "2026-09-22T00:00:00Z");
   assert.equal(
     parseUpcomingShowsRequest({ location: { latitude: 37.5 } }).ok,
     false,
@@ -156,6 +169,7 @@ test("Ticketmaster events map to the complete v1 mobile contract", () => {
     startsAt: "2026-09-01T14:00:00Z",
     endsAt: "2026-10-03T22:00:00Z",
   });
+  assert.equal(event.price, null);
 });
 
 test("the shared client uses the versioned mobile API contract", async () => {
@@ -311,6 +325,8 @@ test("home location postal codes match the Ticketmaster search rules", () => {
     parseStoredHomeLocation('{"postalCode":"23220","radiusMiles":100}').radiusMiles,
     100,
   );
+  assert.equal(parseStoredHomeLocation("{}").radiusMiles, 100);
+  assert.equal(parseStoredHomeLocation('{"postalCode":"23220"}').source, "home");
   assert.deepEqual(
     parseStoredHomeLocation(
       '{"postalCode":"20003","radiusMiles":50,"latitude":38.9,"longitude":-77.04}',
@@ -320,6 +336,12 @@ test("home location postal codes match the Ticketmaster search rules", () => {
       radiusMiles: 50,
       latitude: 38.9,
       longitude: -77.04,
+      source: "current",
+      placeLabel: "",
+      homePostalCode: "",
+      homePlaceLabel: "",
+      homeLatitude: null,
+      homeLongitude: null,
     },
   );
   assert.deepEqual(

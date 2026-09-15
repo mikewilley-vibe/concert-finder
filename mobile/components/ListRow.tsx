@@ -2,23 +2,26 @@ import type { ReactNode } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import { colors } from "@/constants/theme";
-import { Body, Strong } from "./Typography";
+import { Body, Eyebrow, Strong } from "./Typography";
 
 export function ListRow({
   title,
   subtitle,
+  kicker,
   onPress,
   accessibilityLabel,
   trailing,
 }: {
   title: string;
   subtitle?: string;
+  kicker?: string;
   onPress?: () => void;
   accessibilityLabel?: string;
   trailing?: ReactNode;
 }) {
   const copy = (
     <View style={styles.copy}>
+      {kicker ? <Eyebrow>{kicker}</Eyebrow> : null}
       <Strong>{title}</Strong>
       {subtitle ? <Body style={styles.subtitle}>{subtitle}</Body> : null}
     </View>

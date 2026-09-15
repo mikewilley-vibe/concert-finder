@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { View } from "react-native";
 
 import { ActionLink } from "@/components/ActionLink";
 import { Button } from "@/components/Button";
@@ -7,365 +8,390 @@ import { LoadingBlock } from "@/components/LoadingBlock";
 import { Screen, ScreenBlock } from "@/components/Screen";
 import { ShowRow } from "@/components/ShowRow";
 import { Body, Eyebrow, Strong, Title } from "@/components/Typography";
-import { useAuth } from "@/components/AuthProvider";
 import { useFollows } from "@/hooks/useFollows";
+import { useFavoritesOnboarding } from "@/hooks/useFavoritesOnboarding";
 import { useHomeLocation } from "@/hooks/useHomeLocation";
+import { useInteractionSignals } from "@/hooks/useInteractionSignals";
 import { useSavedEvents } from "@/hooks/useSavedEvents";
+import { apiErrorMessage, type TicketmasterShow } from "@/lib/api";
+import { favoriteIdsFromFollows } from "@/lib/home-feed";
+import { favoritesProgress } from "@/lib/favorites-progress";
 import {
-  apiErrorMessage,
-  getEventDetails,
-  searchUpcomingShows,
-  type TicketmasterShow,
-} from "@/lib/api";
-import { isPermanentUser } from "@/lib/auth";
-import { toFollowedRef } from "@/lib/follows";
+  HOME_ARTISTS_LIMIT,
+  HOME_NEAR_YOU_LIMIT,
+  buildHomeFeed,
+  homeShowMeta,
+  type HomeCard,
+} from "@/lib/home-feed";
+import { rememberHomeFeed } from "@/lib/home-feed-cache";
 import {
-  hasGpsFix,
-  homeLocationLabel,
-  upcomingSearchFields,
+  clearHomeEventSetsCache,
+  loadHomeEventSets,
+  type HomeEventSets,
+} from "@/lib/home-events";
+import {
+  activeOrigin,
+  hasActiveSearchLocation,
+  radiusLine,
+  showingNearLine,
 } from "@/lib/home-location";
-import { pickNextUpcomingShows } from "@/lib/next-upcoming-shows";
-import { getSupabaseClient } from "@/lib/supabase";
-import {
-  WatchStateUnavailableError,
-  latestCheckedAt,
-  loadOwnWatchState,
-  markOwnWatchStateSeen,
-  uniqueNewEventIds,
-  type WatchStateRow,
-} from "@/lib/watch-state";
 
-type UpcomingState =
+type SetsState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ready"; shows: TicketmasterShow[] };
+  | { status: "ready"; sets: HomeEventSets };
 
-type InboxState =
-  | { status: "loading" }
-  | { status: "guest" }
-  | { status: "unavailable"; message: string }
-  | {
-      status: "ready";
-      rows: WatchStateRow[];
-      shows: TicketmasterShow[];
-      markSeenError: string | null;
-      marking: boolean;
-    };
-
-function formatCheckedAt(value: string | null) {
-  if (!value) {
-    return "Not checked yet";
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "Not checked yet";
-  }
-  return date.toLocaleString("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+function HomeShowCard({
+  card,
+  saved,
+  pending,
+  onToggle,
+  onOpen,
+}: {
+  card: HomeCard;
+  saved: boolean;
+  pending: boolean;
+  onToggle: (show: TicketmasterShow) => void;
+  onOpen: (show: TicketmasterShow) => void;
+}) {
+  return (
+    <ShowRow
+      show={card.show}
+      kicker={card.scanDate}
+      subtitle={homeShowMeta(card)}
+      onOpen={() => onOpen(card.show)}
+      trailing={
+        <Button
+          label={saved ? "Saved" : "Save"}
+          variant={saved ? "secondary" : "action"}
+          disabled={pending}
+          accessibilityLabel={
+            saved
+              ? `Remove ${card.show.name} from saved`
+              : `Save ${card.show.name}`
+          }
+          onPress={() => onToggle(card.show)}
+        />
+      }
+    />
+  );
 }
 
 export default function HomeScreen() {
-  const { user, ready: authReady, configured } = useAuth();
   const follows = useFollows();
   const saved = useSavedEvents();
   const home = useHomeLocation();
-  const [upcoming, setUpcoming] = useState<UpcomingState>({ status: "loading" });
-  const [inbox, setInbox] = useState<InboxState>({ status: "loading" });
-  const upcomingRequest = useRef(0);
-  const permanent = isPermanentUser(user);
+  const onboarding = useFavoritesOnboarding();
+  const interactions = useInteractionSignals();
+  const [setsState, setSetsState] = useState<SetsState>({ status: "loading" });
+  const [locationNotice, setLocationNotice] = useState<string | null>(null);
+  const [locationReady, setLocationReady] = useState(false);
+  const requestId = useRef(0);
+  const progress = favoritesProgress(
+    follows.artists.length,
+    follows.venues.length,
+  );
 
-  const loadUpcoming = useCallback(async () => {
+  const loadSets = useCallback(async () => {
     if (!follows.ready || !home.ready) {
       return;
     }
 
-    if (follows.artists.length === 0 && follows.venues.length === 0) {
-      setUpcoming({ status: "ready", shows: [] });
-      return;
-    }
-
-    const requestId = upcomingRequest.current + 1;
-    upcomingRequest.current = requestId;
-    setUpcoming({ status: "loading" });
+    const nextRequest = requestId.current + 1;
+    requestId.current = nextRequest;
+    setSetsState({ status: "loading" });
     try {
-      const result = await searchUpcomingShows({
-        attractions: follows.artists.map(toFollowedRef),
-        venues: follows.venues.map(toFollowedRef),
-        ...upcomingSearchFields(home.location),
-        pageSize: 50,
+      const sets = await loadHomeEventSets({
+        location: home.location,
+        artists: follows.artists,
+        venues: follows.venues,
       });
-      if (upcomingRequest.current !== requestId) {
+      if (requestId.current !== nextRequest) {
         return;
       }
-      setUpcoming({
-        status: "ready",
-        shows: pickNextUpcomingShows(result.shows, {
-          attractionIds: follows.artists.map((artist) => artist.item_key),
-          venueIds: follows.venues.map((venue) => venue.item_key),
-        }),
-      });
+      setSetsState({ status: "ready", sets });
     } catch (error) {
-      if (upcomingRequest.current !== requestId) {
+      if (requestId.current !== nextRequest) {
         return;
       }
-      setUpcoming({
+      setSetsState({
         status: "error",
         message: apiErrorMessage(
           error,
-          "Could not load upcoming shows. Try again.",
+          "Could not load nearby shows. Try again.",
         ),
       });
     }
-  }, [
-    follows.artists,
-    follows.ready,
-    follows.venues,
-    home.location.latitude,
-    home.location.longitude,
-    home.location.postalCode,
-    home.location.radiusMiles,
-    home.ready,
-  ]);
+  }, [follows.artists, follows.ready, follows.venues, home.location, home.ready]);
 
-  const loadInbox = useCallback(async () => {
-    if (!authReady) {
+  useEffect(() => {
+    if (!home.ready) {
       return;
     }
-
-    if (!configured) {
-      setInbox({
-        status: "unavailable",
-        message: "ShowSignal isn’t connected right now. Try again after a restart.",
-      });
-      return;
-    }
-
-    if (!permanent) {
-      setInbox({ status: "guest" });
-      return;
-    }
-
-    setInbox({ status: "loading" });
-    try {
-      const supabase = getSupabaseClient();
-      const rows = await loadOwnWatchState(supabase);
-      const ids = uniqueNewEventIds(rows).slice(0, 8);
-      let shows: TicketmasterShow[] = [];
-      if (ids.length > 0) {
-        try {
-          const details = await getEventDetails(ids);
-          shows = details.shows;
-        } catch {
-          shows = [];
-        }
-      }
-      setInbox({
-        status: "ready",
-        rows,
-        shows,
-        markSeenError: null,
-        marking: false,
-      });
-    } catch (error) {
-      if (error instanceof WatchStateUnavailableError) {
-        setInbox({
-          status: "unavailable",
-          message:
-            "New dates could not be checked yet. Upcoming shows below may still load.",
-        });
+    let cancelled = false;
+    void home.bootstrapCurrent().then((result) => {
+      if (cancelled) {
         return;
       }
-      setInbox({
-        status: "unavailable",
-        message: apiErrorMessage(
-          error,
-          "Could not load new dates. Upcoming shows below may still work.",
-        ),
-      });
-    }
-  }, [authReady, configured, permanent]);
+      if (!result.ok) {
+        setLocationNotice(result.message);
+      }
+      setLocationReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [home.bootstrapCurrent, home.ready]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      void loadUpcoming();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [loadUpcoming]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      void loadInbox();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [loadInbox]);
-
-  async function markAllSeen() {
-    if (inbox.status !== "ready" || inbox.marking) {
+    if (!locationReady) {
       return;
     }
+    const timer = setTimeout(() => {
+      void loadSets();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadSets, locationReady]);
 
-    const toClear = inbox.rows.filter((row) => row.new_event_ids.length > 0);
-    setInbox({ ...inbox, marking: true, markSeenError: null });
-    try {
-      const supabase = getSupabaseClient();
-      for (const row of toClear) {
-        await markOwnWatchStateSeen(supabase, row.id);
-      }
-      await loadInbox();
-    } catch {
-      setInbox({
-        ...inbox,
-        marking: false,
-        markSeenError:
-          "Could not mark those shows as seen. Try again.",
-      });
+  const feed = useMemo(() => {
+    if (setsState.status !== "ready") {
+      return null;
     }
+    const next = buildHomeFeed({
+      nearbyShows: setsState.sets.nearby,
+      followedShows: setsState.sets.followed,
+      favorites: favoriteIdsFromFollows(follows.artists, follows.venues),
+      origin: activeOrigin(home.location),
+      radiusMiles: home.location.radiusMiles,
+      signals: interactions.signals,
+    });
+    rememberHomeFeed(next);
+    return next;
+  }, [
+    follows.artists,
+    follows.venues,
+    home.location,
+    interactions.signals,
+    setsState,
+  ]);
+
+  function retry() {
+    clearHomeEventSetsCache();
+    void loadSets();
   }
 
-  const inboxCopy =
-    inbox.status === "guest"
-      ? "Save your account to receive new-show checks. Guest follows still show upcoming dates below."
-      : inbox.status === "unavailable"
-        ? inbox.message
-        : inbox.status === "ready" && uniqueNewEventIds(inbox.rows).length === 0
-          ? `No new announcements right now. Last check: ${formatCheckedAt(latestCheckedAt(inbox.rows))}.`
-          : null;
+  function onOpenShow(show: TicketmasterShow) {
+    void interactions.track({
+      kind: "tap",
+      eventId: show.id,
+      artistIds: show.attractions.map((artist) => artist.id),
+      venueId: show.venueId,
+    });
+  }
+
+  function onToggleSaved(show: TicketmasterShow) {
+    const wasSaved = saved.savedIds.has(show.id);
+    void saved.toggleSaved(show);
+    void interactions.track({
+      kind: wasSaved ? "unsave" : "save",
+      eventId: show.id,
+      artistIds: show.attractions.map((artist) => artist.id),
+      venueId: show.venueId,
+    });
+  }
+
+  const nearYou = feed?.nearYou.slice(0, HOME_NEAR_YOU_LIMIT) ?? [];
+  const yourArtists = feed?.yourArtists.slice(0, HOME_ARTISTS_LIMIT) ?? [];
+  const showOnboarding = onboarding.ready && !progress.complete;
+  const showFullOnboarding = showOnboarding && !onboarding.dismissed;
+  const loading =
+    !follows.ready || !home.ready || !locationReady || setsState.status === "loading";
 
   return (
     <Screen>
       <ScreenBlock>
         <Eyebrow>ShowSignal</Eyebrow>
-        <Title>Never miss your next show.</Title>
-        <Body>
-          New dates land here, plus upcoming shows from artists and venues you
-          follow. {homeLocationLabel(home.location)}
-        </Body>
+        <Title>{showingNearLine(home.location)}</Title>
+        <Body>{radiusLine(home.location)}</Body>
+        {locationNotice ? <Body>{locationNotice}</Body> : null}
+        <ActionLink
+          href="/profile"
+          label="Change location"
+          accessibilityLabel="Change location in Profile"
+        />
       </ScreenBlock>
 
-      {inbox.status === "loading" ? (
-        <LoadingBlock label="Checking for new shows…" />
-      ) : inbox.status === "ready" &&
-        uniqueNewEventIds(inbox.rows).length > 0 ? (
-        <ScreenBlock>
-          <Strong>New shows</Strong>
-          <Body>
-            Newly found dates from the people you follow. Last check:{" "}
-            {formatCheckedAt(latestCheckedAt(inbox.rows))}.
-          </Body>
-          {inbox.markSeenError ? <Body>{inbox.markSeenError}</Body> : null}
-          {inbox.shows.map((show) => (
-            <ShowRow key={show.id} show={show} />
-          ))}
-          {inbox.shows.length === 0 ? (
-            <Body>
-              New dates are waiting, but those concert details could not load.
-              Try again in a moment.
-            </Body>
-          ) : null}
-          <Button
-            label={inbox.marking ? "Marking seen…" : "Mark as seen"}
-            variant="secondary"
-            disabled={inbox.marking}
-            onPress={() => {
-              void markAllSeen();
-            }}
-          />
-        </ScreenBlock>
-      ) : (
+      {showFullOnboarding ? (
         <EmptyState
-          title="No new announcements yet"
-          body={
-            inboxCopy ??
-            "When a followed artist or venue gets a new date, it will land here."
+          title="Make ShowSignal yours"
+          body={`ShowSignal gets better once it knows what you like. Spend a few minutes adding favorites — artists you love and rooms you already go to. ${progress.artistLabel}. ${progress.venueLabel}.`}
+          action={
+            <View style={{ gap: 8 }}>
+              <ActionLink
+                href="/discover"
+                label="Add favorites"
+                accessibilityLabel="Add favorite artists and venues"
+              />
+              <Button
+                label="Not now"
+                variant="secondary"
+                onPress={() => {
+                  void onboarding.dismiss();
+                }}
+              />
+            </View>
           }
+        />
+      ) : showOnboarding ? (
+        <EmptyState
+          title="A few more favorites help"
+          body={`${progress.artistLabel}. ${progress.venueLabel}. Home gets sharper as you add them.`}
           action={
             <ActionLink
               href="/discover"
-              label="Find artists and venues"
-              accessibilityLabel="Find artists and venues"
+              label="Add favorites"
+              accessibilityLabel="Add favorite artists and venues"
             />
           }
         />
-      )}
+      ) : null}
 
       {follows.error ? (
         <EmptyState title="Follows didn’t load" body={follows.error} />
       ) : null}
+      {saved.error ? <EmptyState title="Saved shows" body={saved.error} /> : null}
 
-      {!follows.ready ? (
-        <LoadingBlock label="Loading follows…" />
-      ) : upcoming.status === "loading" ? (
-        <LoadingBlock label="Loading upcoming shows…" />
-      ) : upcoming.status === "error" ? (
+      {loading ? <LoadingBlock label="Loading shows near you…" /> : null}
+
+      {setsState.status === "error" ? (
         <EmptyState
-          title="Upcoming shows didn’t load"
-          body={upcoming.message}
+          title="Shows didn’t load"
+          body={setsState.message}
           action={
             <Button
               label="Try again"
               onPress={() => {
-                void loadUpcoming();
+                retry();
               }}
             />
           }
         />
-      ) : follows.artists.length === 0 && follows.venues.length === 0 ? (
-        <EmptyState
-          title="No upcoming shows yet"
-          body="Follow an artist or venue in Discover. Their next Ticketmaster dates will appear here."
-          action={
-            <ActionLink
-              href="/discover"
-              label="Find artists and venues"
-              accessibilityLabel="Find artists and venues"
-            />
-          }
-        />
-      ) : upcoming.shows.length === 0 ? (
-        <EmptyState
-          title="No upcoming shows yet"
-          body={
-            home.location.postalCode || hasGpsFix(home.location)
-              ? "Nothing nearby for this area. Try a wider radius in Profile, or follow another artist."
-              : "Nothing upcoming for the people you follow right now."
-          }
-        />
-      ) : (
+      ) : null}
+
+      {feed?.radar ? (
         <ScreenBlock>
-          <Strong>Upcoming from follows</Strong>
-          <Body>
-            Next date for each artist and venue you follow.{" "}
-            {homeLocationLabel(home.location)}
-          </Body>
-          {saved.error ? <Body>{saved.error}</Body> : null}
-          {upcoming.shows.map((show) => {
-            const isSaved = saved.savedIds.has(show.id);
-            return (
-              <ShowRow
-                key={show.id}
-                show={show}
-                trailing={
-                  <Button
-                    label={isSaved ? "Saved" : "Save"}
-                    variant={isSaved ? "secondary" : "action"}
-                    disabled={saved.isPending(show.id)}
-                    accessibilityLabel={
-                      isSaved
-                        ? `Remove ${show.name} from saved`
-                        : `Save ${show.name}`
-                    }
-                    onPress={() => {
-                      void saved.toggleSaved(show);
-                    }}
-                  />
-                }
-              />
-            );
-          })}
+          <Strong>On Your Radar</Strong>
+          <Body>A favorite artist has a strong upcoming show nearby.</Body>
+          <HomeShowCard
+            card={feed.radar}
+            saved={saved.savedIds.has(feed.radar.show.id)}
+            pending={saved.isPending(feed.radar.show.id)}
+            onToggle={onToggleSaved}
+            onOpen={onOpenShow}
+          />
         </ScreenBlock>
-      )}
+      ) : null}
+
+      {setsState.status === "ready" && feed ? (
+        <ScreenBlock>
+          <Strong>Near You This Week</Strong>
+          <Body>
+            Live music within {home.location.radiusMiles} miles over the next 7
+            days.
+          </Body>
+          {nearYou.map((card) => (
+            <HomeShowCard
+              key={card.show.id}
+              card={card}
+              saved={saved.savedIds.has(card.show.id)}
+              pending={saved.isPending(card.show.id)}
+              onToggle={onToggleSaved}
+              onOpen={onOpenShow}
+            />
+          ))}
+          {nearYou.length === 0 ? (
+            <EmptyState
+              title="Nothing nearby this week"
+              body={
+                hasActiveSearchLocation(home.location)
+                  ? "No shows turned up in the next 7 days for this area. Try a wider radius in Profile, or add favorites so Home can watch your artists."
+                  : "Turn on location or set a home area in Profile to see what’s playing nearby this week."
+              }
+              action={
+                <ActionLink
+                  href="/profile"
+                  label="Set location"
+                  accessibilityLabel="Set location in Profile"
+                />
+              }
+            />
+          ) : null}
+          {feed.nearYouTotal > HOME_NEAR_YOU_LIMIT ? (
+            <ActionLink
+              href="/nearby"
+              label="See all nearby this week"
+              accessibilityLabel="See all nearby shows this week"
+            />
+          ) : null}
+        </ScreenBlock>
+      ) : null}
+
+      {setsState.status === "ready" && feed ? (
+        <ScreenBlock>
+          <Strong>Your Artists Coming Up</Strong>
+          <Body>
+            Favorite artists in the next 30 days, with nearby dates first.
+          </Body>
+          {yourArtists.map((card) => (
+            <HomeShowCard
+              key={card.show.id}
+              card={card}
+              saved={saved.savedIds.has(card.show.id)}
+              pending={saved.isPending(card.show.id)}
+              onToggle={onToggleSaved}
+              onOpen={onOpenShow}
+            />
+          ))}
+          {follows.artists.length === 0 ? (
+            <EmptyState
+              title="Make ShowSignal yours"
+              body={`Follow artists you already love and Home will lift their nearby dates. ${progress.artistLabel}. ${progress.venueLabel}.`}
+              action={
+                <ActionLink
+                  href="/discover"
+                  label="Add favorites"
+                  accessibilityLabel="Add favorite artists and venues"
+                />
+              }
+            />
+          ) : yourArtists.length === 0 &&
+            feed.nearYou.some((card) => card.favoriteArtist) ? (
+            <EmptyState
+              title="They’re on the list above"
+              body="Your followed artists playing this week are in Near You, marked as favorites. Later dates will land here."
+            />
+          ) : yourArtists.length === 0 ? (
+            <EmptyState
+              title="No artist dates in the next 30 days"
+              body="Nothing upcoming for the artists you follow in this window. Follow another artist, or check back soon."
+              action={
+                <ActionLink
+                  href="/discover"
+                  label="Find artists"
+                  accessibilityLabel="Find artists to follow"
+                />
+              }
+            />
+          ) : null}
+          {feed.yourArtistsTotal > HOME_ARTISTS_LIMIT ? (
+            <ActionLink
+              href="/your-artists"
+              label="See all upcoming artists"
+              accessibilityLabel="See all upcoming shows from your artists"
+            />
+          ) : null}
+        </ScreenBlock>
+      ) : null}
     </Screen>
   );
 }

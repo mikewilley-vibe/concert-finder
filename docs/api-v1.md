@@ -47,6 +47,12 @@ Postal-code search is also supported:
 
 Limits are 25 followed references per request, 50 events per page, and pages 0
 through 49. Location coordinates are sent in a `POST` body rather than a URL.
+If `radiusMiles` is omitted, the search defaults to **100 miles**. An optional
+`endDateTime` ISO timestamp caps the Ticketmaster window (used by Home for the
+7-day nearby list and 30-day artist list). Location-only searches (no artist,
+venue, or keyword) request Ticketmaster `classificationName=music` so Home is
+not filled with sports and theater. Event payloads include `price` when
+Ticketmaster provides `priceRanges`.
 
 A **single** followed artist or venue with no location (artist/venue detail) is
 collected across up to four Ticketmaster pages (200 events) so the listing is

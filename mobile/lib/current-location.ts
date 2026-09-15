@@ -3,7 +3,13 @@ import { Linking } from "react-native";
 import { parsePostalCode, type HomeLocation } from "./home-location";
 
 export type CurrentLocationResult =
-  | { ok: true; location: Pick<HomeLocation, "postalCode" | "latitude" | "longitude"> }
+  | {
+      ok: true;
+      location: Pick<
+        HomeLocation,
+        "postalCode" | "latitude" | "longitude" | "placeLabel"
+      >;
+    }
   | { ok: false; code: "denied" | "unavailable"; message: string };
 
 type LocationModule = typeof import("expo-location");
@@ -11,6 +17,25 @@ type LocationModule = typeof import("expo-location");
 function postalFromPlace(postalCode: string | null | undefined) {
   const parsed = parsePostalCode(postalCode ?? "");
   return parsed.ok ? parsed.postalCode : "";
+}
+
+function placeLabelFromPlace(place: {
+  city?: string | null;
+  subregion?: string | null;
+  region?: string | null;
+  isoCountryCode?: string | null;
+} | null | undefined) {
+  if (!place) {
+    return "";
+  }
+  const city = place.city?.trim() || place.subregion?.trim() || "";
+  const region = place.region?.trim() || "";
+  const regionCode =
+    region.length === 2 ? region.toUpperCase() : region;
+  if (city && regionCode && !city.includes(regionCode)) {
+    return `${city}, ${regionCode}`;
+  }
+  return city || regionCode;
 }
 
 async function loadLocationModule(): Promise<
@@ -61,16 +86,19 @@ export async function requestCurrentHomeLocation(): Promise<CurrentLocationResul
     const latitude = position.coords.latitude;
     const longitude = position.coords.longitude;
     let postalCode = "";
+    let placeLabel = "";
     try {
       const places = await Location.reverseGeocodeAsync({ latitude, longitude });
       postalCode = postalFromPlace(places[0]?.postalCode);
+      placeLabel = placeLabelFromPlace(places[0]);
     } catch {
       postalCode = "";
+      placeLabel = "";
     }
 
     return {
       ok: true,
-      location: { postalCode, latitude, longitude },
+      location: { postalCode, latitude, longitude, placeLabel },
     };
   } catch {
     return {

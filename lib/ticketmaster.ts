@@ -15,6 +15,7 @@ import type {
   FollowedReference,
   RecommendationsData,
   SaleWindow,
+  TicketPrice,
   VenueSummary,
 } from "../shared/api/v1.ts";
 import {
@@ -37,6 +38,7 @@ const EVENTS_PATH = "/discovery/v2/events.json";
 const RESULT_LIMIT = 8;
 const FALLBACK_CANDIDATE_LIMIT = 24;
 export const DEFAULT_EVENT_PAGE_SIZE = 20;
+export const DEFAULT_SEARCH_RADIUS_MILES = 100;
 export const MAX_EVENT_PAGE_SIZE = 50;
 export const MAX_EVENT_PAGE = 49;
 /** Extra Ticketmaster pages for a single artist/venue listing (no home radius). */
@@ -625,6 +627,25 @@ function parsePostalCode(value: unknown) {
   return { ok: true as const, postalCode };
 }
 
+function parseEndDateTime(value: unknown) {
+  if (value === undefined || value === null || value === "") {
+    return { ok: true as const, endDateTime: "" };
+  }
+  if (typeof value !== "string") {
+    return { ok: false as const };
+  }
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) {
+    return { ok: false as const };
+  }
+  const max = Date.now() + 90 * 24 * 60 * 60 * 1000;
+  const clipped = Math.min(parsed, max);
+  return {
+    ok: true as const,
+    endDateTime: new Date(clipped).toISOString().replace(/\.\d{3}Z$/, "Z"),
+  };
+}
+
 function parseOptionalKeyword(value: unknown) {
   if (value === undefined || value === null || value === "") {
     return { ok: true as const, keyword: "" };
@@ -698,7 +719,12 @@ function parseLocation(value: unknown, legacyPostalCode: unknown) {
     longitude = record.longitude;
   }
 
-  const radiusMiles = parseBoundedInteger(record.radiusMiles, 50, 1, 500);
+  const radiusMiles = parseBoundedInteger(
+    record.radiusMiles,
+    DEFAULT_SEARCH_RADIUS_MILES,
+    1,
+    500,
+  );
   if (radiusMiles === null) {
     return { ok: false as const };
   }
@@ -727,6 +753,7 @@ export function parseUpcomingShowsRequest(body: unknown) {
     keyword?: unknown;
     location?: unknown;
     postalCode?: unknown;
+    endDateTime?: unknown;
     page?: unknown;
     pageSize?: unknown;
   };
@@ -735,6 +762,7 @@ export function parseUpcomingShowsRequest(body: unknown) {
   const venues = parseFollowedRefs(record.venues);
   const keyword = parseOptionalKeyword(record.keyword);
   const location = parseLocation(record.location, record.postalCode);
+  const endDateTime = parseEndDateTime(record.endDateTime);
   const page = parseBoundedInteger(record.page, 0, 0, MAX_EVENT_PAGE);
   const pageSize = parseBoundedInteger(
     record.pageSize,
@@ -747,6 +775,7 @@ export function parseUpcomingShowsRequest(body: unknown) {
     !venues ||
     !keyword.ok ||
     !location.ok ||
+    !endDateTime.ok ||
     page === null ||
     pageSize === null
   ) {
@@ -782,6 +811,7 @@ export function parseUpcomingShowsRequest(body: unknown) {
       longitude: location.longitude,
       radiusMiles: location.radiusMiles,
     },
+    endDateTime: endDateTime.endDateTime,
     page,
     pageSize,
   };
@@ -914,6 +944,39 @@ function eventStatus(event: Record<string, unknown>) {
     : null;
 }
 
+function eventPrice(event: Record<string, unknown>): TicketPrice | null {
+  const ranges = event.priceRanges;
+  if (!Array.isArray(ranges) || ranges.length === 0) {
+    return null;
+  }
+  let min: number | null = null;
+  let max: number | null = null;
+  let currency = "USD";
+  for (const row of ranges) {
+    if (!row || typeof row !== "object") {
+      continue;
+    }
+    const record = row as {
+      currency?: unknown;
+      min?: unknown;
+      max?: unknown;
+    };
+    if (typeof record.currency === "string" && record.currency.trim()) {
+      currency = record.currency.trim();
+    }
+    if (typeof record.min === "number" && Number.isFinite(record.min)) {
+      min = min == null ? record.min : Math.min(min, record.min);
+    }
+    if (typeof record.max === "number" && Number.isFinite(record.max)) {
+      max = max == null ? record.max : Math.max(max, record.max);
+    }
+  }
+  if (min == null && max == null) {
+    return null;
+  }
+  return { currency, min, max };
+}
+
 function eventSaleWindow(event: Record<string, unknown>): SaleWindow | null {
   const sales = event.sales;
   if (!sales || typeof sales !== "object") {
@@ -1033,6 +1096,7 @@ export function mapTicketmasterEvent(
     attractions: eventAttractions(event),
     matchedLabels,
     sales: eventSaleWindow(event),
+    price: eventPrice(event),
   };
 
   const url = typeof event.url === "string" ? event.url.trim() : "";
@@ -1118,6 +1182,7 @@ function mergeShows(
       attractions: show.attractions,
       matchedLabels: show.matchedLabels,
       sales: show.sales,
+      price: show.price,
     }));
 }
 
@@ -1149,6 +1214,7 @@ type UpcomingSearchInput = {
     longitude: number | null;
     radiusMiles: number;
   };
+  endDateTime?: string;
   page: number;
   pageSize: number;
 };
@@ -1172,6 +1238,16 @@ async function fetchUpcomingShowBatches(
     };
     if (input.keyword) {
       params.keyword = input.keyword;
+    }
+    if (input.endDateTime) {
+      params.endDateTime = input.endDateTime;
+    }
+    if (
+      input.attractions.length === 0 &&
+      input.venues.length === 0 &&
+      !input.keyword
+    ) {
+      params.classificationName = "music";
     }
     return params;
   }

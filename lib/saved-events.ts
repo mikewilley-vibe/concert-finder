@@ -160,6 +160,7 @@ export async function loadSavedTicketmasterEvents(
         saleStartsAt || saleEndsAt
           ? { startsAt: saleStartsAt, endsAt: saleEndsAt }
           : null,
+      price: null,
     };
     return [show];
   });
