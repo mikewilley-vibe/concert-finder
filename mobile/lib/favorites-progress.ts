@@ -1,5 +1,5 @@
-export const FAVORITE_ARTIST_GOAL = 5;
-export const FAVORITE_VENUE_GOAL = 3;
+export const FAVORITE_ARTIST_GOAL = 10;
+export const FAVORITE_VENUE_GOAL = 5;
 
 export type FavoritesProgress = {
   artistCount: number;

@@ -26,6 +26,10 @@ import {
   type TicketmasterVenue,
 } from "@/lib/api";
 import {
+  FAVORITE_ARTIST_GOAL,
+  FAVORITE_VENUE_GOAL,
+} from "@/lib/favorites-progress";
+import {
   FOLLOWED_ATTRACTION_TYPE,
   FOLLOWED_VENUE_TYPE,
   MAX_MONITORED_FOLLOWS,
@@ -142,7 +146,8 @@ export default function DiscoverScreen() {
         <Title>Search artists, venues, and upcoming shows.</Title>
         <Body>
           Search for an artist or venue, then tap Follow. A handful of favorites
-          makes Home personal — about 5 artists and 3 venues is a great start.
+          makes Home personal — about {FAVORITE_ARTIST_GOAL} artists and{" "}
+          {FAVORITE_VENUE_GOAL} venues is a great start.
         </Body>
       </ScreenBlock>
 

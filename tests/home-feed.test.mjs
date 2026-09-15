@@ -55,13 +55,18 @@ const favorites = favoriteIdsFromFollows(
   [{ item_key: "venue-fav" }],
 );
 
-test("favorite progress uses 5 artists and 3 venues", () => {
+test("favorite progress uses 10 artists and 5 venues", () => {
   const partial = favoritesProgress(3, 2);
-  assert.equal(partial.artistLabel, "Artists: 3 of 5");
-  assert.equal(partial.venueLabel, "Venues: 2 of 3");
+  assert.equal(partial.artistLabel, "Artists: 3 of 10");
+  assert.equal(partial.venueLabel, "Venues: 2 of 5");
+  assert.equal(partial.artistGoal, 10);
+  assert.equal(partial.venueGoal, 5);
   assert.equal(partial.complete, false);
-  assert.equal(favoritesProgress(5, 3).complete, true);
-  assert.equal(favoritesProgress(8, 10).artistLabel, "Artists: 5 of 5");
+  assert.equal(favoritesProgress(5, 3).complete, false);
+  assert.equal(favoritesProgress(10, 5).complete, true);
+  assert.equal(favoritesProgress(8, 10).artistLabel, "Artists: 8 of 10");
+  assert.equal(favoritesProgress(12, 10).artistLabel, "Artists: 10 of 10");
+  assert.equal(favoritesProgress(12, 10).venueLabel, "Venues: 5 of 5");
 });
 
 test("7-day and 30-day filters use local calendar dates", () => {
