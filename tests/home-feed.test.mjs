@@ -7,10 +7,13 @@ import {
   buildHomeFeed,
   distanceMiles,
   favoriteIdsFromFollows,
+  homeArtistKicker,
   isStrongRadarShow,
   isWithinDays,
+  previewYourArtists,
   scanDateLabel,
   scoreShow,
+  SHOWS_PER_FAVORITE_ARTIST,
 } from "../mobile/lib/home-feed.ts";
 import {
   DEFAULT_RADIUS_MILES,
@@ -94,7 +97,7 @@ test("scan dates use TONIGHT, TOMORROW, and weekday labels", () => {
   );
 });
 
-test("Near You keeps this-week favorite shows and dedupes them from Your Artists", () => {
+test("Near You keeps this-week favorite shows and still lists them under Your Artists", () => {
   const thisWeekFavorite = show("fav-week", {
     localDate: "2026-09-18",
     attractions: [{ id: "artist-a", name: "Artist A" }],
@@ -125,7 +128,11 @@ test("Near You keeps this-week favorite shows and dedupes them from Your Artists
   assert.equal(feed.radar?.show.id, "fav-week");
   assert.deepEqual(
     feed.yourArtists.map((item) => item.show.id),
-    ["fav-later"],
+    ["fav-week", "fav-later"],
+  );
+  assert.deepEqual(
+    feed.yourArtists.map((item) => item.artistLabel),
+    ["Artist A", "Artist A"],
   );
 });
 
@@ -203,7 +210,7 @@ test("ranking puts favorite artists above venues, engagement, and distance", () 
   assert.equal(generic.favoriteArtist, false);
 });
 
-test("nearby favorite artists beat farther favorite dates in Your Artists", () => {
+test("Your Artists keeps far dates and lists each artist chronologically", () => {
   const nearbyLater = show("near-later", {
     localDate: "2026-10-10",
     attractions: [{ id: "artist-a", name: "Artist A" }],
@@ -213,6 +220,8 @@ test("nearby favorite artists beat farther favorite dates in Your Artists", () =
   const farSooner = show("far-sooner", {
     localDate: "2026-09-25",
     attractions: [{ id: "artist-a", name: "Artist A" }],
+    city: "Los Angeles",
+    state: "CA",
     venueLatitude: 34.0522,
     venueLongitude: -118.2437,
   });
@@ -228,10 +237,130 @@ test("nearby favorite artists beat farther favorite dates in Your Artists", () =
 
   assert.deepEqual(
     feed.yourArtists.map((item) => item.show.id),
-    ["near-later", "far-sooner"],
+    ["far-sooner", "near-later"],
   );
-  assert.equal(feed.yourArtists[0].inRadius, true);
+  assert.equal(feed.yourArtists[0].inRadius, false);
+  assert.ok((feed.yourArtists[0].distanceMiles ?? 0) > 100);
+  assert.equal(feed.yourArtists[1].inRadius, true);
+  assert.equal(
+    homeArtistKicker(feed.yourArtists[0]),
+    "Artist A · FRI SEP 25",
+  );
+});
+
+test("Your Artists takes the next 2 upcoming shows per favorite, including far-future dates", () => {
+  assert.equal(SHOWS_PER_FAVORITE_ARTIST, 2);
+  const both = favoriteIdsFromFollows(
+    [{ item_key: "artist-a" }, { item_key: "artist-b" }],
+    [],
+  );
+  const artistA = [
+    show("a-1", {
+      localDate: "2026-09-20",
+      attractions: [{ id: "artist-a", name: "Artist A" }],
+    }),
+    show("a-2", {
+      localDate: "2026-10-01",
+      attractions: [{ id: "artist-a", name: "Artist A" }],
+      venueLatitude: 34.0522,
+      venueLongitude: -118.2437,
+      city: "Los Angeles",
+      state: "CA",
+    }),
+    show("a-3", {
+      localDate: "2026-10-08",
+      attractions: [{ id: "artist-a", name: "Artist A" }],
+    }),
+  ];
+  const artistB = [
+    show("b-1", {
+      localDate: "2026-11-01",
+      attractions: [{ id: "artist-b", name: "Artist B" }],
+      venueLatitude: 41.8781,
+      venueLongitude: -87.6298,
+      city: "Chicago",
+      state: "IL",
+    }),
+    show("b-2", {
+      localDate: "2026-11-20",
+      attractions: [{ id: "artist-b", name: "Artist B" }],
+    }),
+    show("b-3", {
+      localDate: "2026-12-02",
+      attractions: [{ id: "artist-b", name: "Artist B" }],
+    }),
+  ];
+
+  const feed = buildHomeFeed({
+    nearbyShows: [],
+    followedShows: [...artistA, ...artistB],
+    favorites: both,
+    origin: RICHMOND,
+    radiusMiles: 100,
+    now: NOW,
+  });
+
+  assert.deepEqual(
+    feed.yourArtists.map((item) => ({
+      id: item.show.id,
+      artist: item.artistLabel,
+    })),
+    [
+      { id: "a-1", artist: "Artist A" },
+      { id: "a-2", artist: "Artist A" },
+      { id: "b-1", artist: "Artist B" },
+      { id: "b-2", artist: "Artist B" },
+    ],
+  );
   assert.equal(feed.yourArtists[1].inRadius, false);
+  assert.equal(isWithinDays(artistB[0], 30, NOW), false);
+  const preview = previewYourArtists(feed.yourArtists, 2);
+  assert.deepEqual(
+    preview.map((item) => item.show.id),
+    ["a-1", "a-2"],
+  );
+});
+
+test("a shared bill counts toward each favorite artist's next 2", () => {
+  const shared = show("fest", {
+    localDate: "2026-09-20",
+    attractions: [
+      { id: "artist-a", name: "Artist A" },
+      { id: "artist-b", name: "Artist B" },
+    ],
+  });
+  const feed = buildHomeFeed({
+    nearbyShows: [],
+    followedShows: [shared],
+    favorites: favoriteIdsFromFollows(
+      [{ item_key: "artist-a" }, { item_key: "artist-b" }],
+      [],
+    ),
+    origin: RICHMOND,
+    radiusMiles: 100,
+    now: NOW,
+  });
+  assert.deepEqual(
+    feed.yourArtists.map((item) => `${item.artistLabel}:${item.show.id}`),
+    ["Artist A:fest", "Artist B:fest"],
+  );
+});
+
+test("Your Artists skips past dates", () => {
+  const past = show("past", { localDate: "2026-09-01" });
+  const next = show("next", { localDate: "2026-09-22" });
+  const feed = buildHomeFeed({
+    nearbyShows: [],
+    followedShows: [past, next],
+    favorites,
+    origin: RICHMOND,
+    radiusMiles: 100,
+    now: NOW,
+  });
+  assert.deepEqual(
+    feed.yourArtists.map((item) => item.show.id),
+    ["next"],
+  );
 });
 
 test("default search radius is 100 miles and artist reach is slightly wider", () => {

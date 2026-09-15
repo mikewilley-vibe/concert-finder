@@ -5,7 +5,9 @@ export const NEARBY_DAYS = 7;
 export const ARTIST_DAYS = 30;
 export const RADAR_DAYS = 14;
 export const HOME_NEAR_YOU_LIMIT = 8;
-export const HOME_ARTISTS_LIMIT = 8;
+export const HOME_ARTISTS_LIMIT = 10;
+/** Next upcoming shows kept per followed artist on Home and See All. */
+export const SHOWS_PER_FAVORITE_ARTIST = 2;
 
 export const FAVORITE_ARTIST_WEIGHT = 1000;
 export const FAVORITE_VENUE_WEIGHT = 400;
@@ -43,7 +45,7 @@ export type RankableShow = {
   venueId?: string | null;
   venueLatitude?: number | null;
   venueLongitude?: number | null;
-  attractions: Array<{ id: string }>;
+  attractions: Array<{ id: string; name?: string | null }>;
 };
 
 export type RankedShow<T extends RankableShow = RankableShow> = {
@@ -68,6 +70,8 @@ export type HomeCard = RankedShow<TicketmasterShow> & {
   scanDate: string;
   distanceLabel: string | null;
   badges: string[];
+  artistId: string | null;
+  artistLabel: string | null;
 };
 
 export type HomeFeed = {
@@ -148,6 +152,10 @@ export function isWithinDays(show: DatedShow, days: number, now = new Date()) {
   return stamp >= today && stamp <= end;
 }
 
+export function isUpcomingShow(show: DatedShow, now = new Date()) {
+  return showLocalStamp(show, now) >= localStamp(now);
+}
+
 export function endDateTimeAfterDays(days: number, now = new Date()) {
   const end = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
   end.setUTCMinutes(Math.floor(end.getUTCMinutes() / 5) * 5, 0, 0);
@@ -200,13 +208,38 @@ export function showHasFavoriteArtist(
   show: { attractions?: Array<{ id?: string | null }> },
   artistIds: ReadonlySet<string>,
 ) {
+  return favoriteArtistIdsOnShow(show, artistIds).length > 0;
+}
+
+function favoriteArtistIdsOnShow(
+  show: { attractions?: Array<{ id?: string | null }> },
+  artistIds: ReadonlySet<string>,
+) {
   if (artistIds.size === 0) {
-    return false;
+    return [];
   }
-  return (show.attractions ?? []).some((artist) => {
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const artist of show.attractions ?? []) {
     const id = artist.id?.trim() ?? "";
-    return Boolean(id) && artistIds.has(id);
-  });
+    if (!id || !artistIds.has(id) || seen.has(id)) {
+      continue;
+    }
+    seen.add(id);
+    ids.push(id);
+  }
+  return ids;
+}
+
+function attractionName(
+  show: { attractions?: Array<{ id?: string | null; name?: string | null }> },
+  artistId: string,
+) {
+  const match = (show.attractions ?? []).find(
+    (artist) => (artist.id?.trim() ?? "") === artistId,
+  );
+  const name = match?.name?.trim() ?? "";
+  return name || artistId;
 }
 
 export function showHasFavoriteVenue(
@@ -336,14 +369,73 @@ function compareNearYouShows<T extends RankableShow>(
   return left.show.id.localeCompare(right.show.id);
 }
 
-function compareArtistShows<T extends RankableShow>(
+function compareArtistSectionShows<T extends RankableShow>(
   left: RankedShow<T>,
   right: RankedShow<T>,
 ) {
+  const byDate = showSortKey(left.show).localeCompare(showSortKey(right.show));
+  if (byDate !== 0) {
+    return byDate;
+  }
   if (left.inRadius !== right.inRadius) {
     return left.inRadius ? -1 : 1;
   }
+  const leftMiles = left.distanceMiles ?? Number.POSITIVE_INFINITY;
+  const rightMiles = right.distanceMiles ?? Number.POSITIVE_INFINITY;
+  if (leftMiles !== rightMiles) {
+    return leftMiles - rightMiles;
+  }
   return compareRankedShows(left, right);
+}
+
+export function pickNextShowsPerFavoriteArtist<T extends RankableShow>(
+  ranked: readonly RankedShow<T>[],
+  artistIds: ReadonlySet<string>,
+  input: { now?: Date; limitPerArtist?: number } = {},
+): Array<{ artistId: string; artistName: string; item: RankedShow<T> }> {
+  const now = input.now ?? new Date();
+  const limitPerArtist = input.limitPerArtist ?? SHOWS_PER_FAVORITE_ARTIST;
+  if (artistIds.size === 0 || limitPerArtist < 1) {
+    return [];
+  }
+
+  const chronological = [...ranked]
+    .filter(
+      (item) =>
+        isUpcomingShow(item.show, now) &&
+        showHasFavoriteArtist(item.show, artistIds),
+    )
+    .sort(compareArtistSectionShows);
+
+  const pickedByArtist = new Map<string, RankedShow<T>[]>();
+  for (const item of chronological) {
+    for (const artistId of favoriteArtistIdsOnShow(item.show, artistIds)) {
+      const list = pickedByArtist.get(artistId) ?? [];
+      if (list.length >= limitPerArtist) {
+        continue;
+      }
+      list.push(item);
+      pickedByArtist.set(artistId, list);
+    }
+  }
+
+  const artistOrder = [...pickedByArtist.entries()].sort((left, right) => {
+    const byShow = compareArtistSectionShows(left[1][0], right[1][0]);
+    return byShow !== 0 ? byShow : left[0].localeCompare(right[0]);
+  });
+
+  const rows: Array<{
+    artistId: string;
+    artistName: string;
+    item: RankedShow<T>;
+  }> = [];
+  for (const [artistId, items] of artistOrder) {
+    const artistName = attractionName(items[0].show, artistId);
+    for (const item of items) {
+      rows.push({ artistId, artistName, item });
+    }
+  }
+  return rows;
 }
 
 function uniqueShows(shows: readonly TicketmasterShow[]) {
@@ -374,7 +466,11 @@ function badgesFor(ranked: RankedShow<TicketmasterShow>) {
   return badges;
 }
 
-function toCard(ranked: RankedShow<TicketmasterShow>, now: Date): HomeCard {
+function toCard(
+  ranked: RankedShow<TicketmasterShow>,
+  now: Date,
+  artist?: { id: string; name: string },
+): HomeCard {
   return {
     ...ranked,
     scanDate: scanDateLabel(ranked.show, now),
@@ -383,6 +479,8 @@ function toCard(ranked: RankedShow<TicketmasterShow>, now: Date): HomeCard {
         ? null
         : formatDistanceMiles(ranked.distanceMiles),
     badges: badgesFor(ranked),
+    artistId: artist?.id ?? null,
+    artistLabel: artist?.name ?? null,
   };
 }
 
@@ -437,21 +535,18 @@ export function buildHomeFeed(input: {
     ? nearYou.filter((item) => item.show.id !== radar.show.id)
     : nearYou;
 
-  const nearYouIds = new Set(nearYou.map((item) => item.show.id));
-
-  const yourArtists = merged
-    .filter(
-      (item) =>
-        showHasFavoriteArtist(item.show, input.favorites.artistIds) &&
-        isWithinDays(item.show, ARTIST_DAYS, now) &&
-        !nearYouIds.has(item.show.id),
-    )
-    .sort(compareArtistShows);
+  const yourArtists = pickNextShowsPerFavoriteArtist(
+    merged,
+    input.favorites.artistIds,
+    { now },
+  );
 
   return {
     radar,
     nearYou: nearYouWithoutRadar.map((item) => toCard(item, now)),
-    yourArtists: yourArtists.map((item) => toCard(item, now)),
+    yourArtists: yourArtists.map((row) =>
+      toCard(row.item, now, { id: row.artistId, name: row.artistName }),
+    ),
     nearYouTotal: nearYouWithoutRadar.length,
     yourArtistsTotal: yourArtists.length,
   };
@@ -471,4 +566,38 @@ export function homeShowMeta(card: HomeCard) {
 
 export function homeShowSubtitle(card: HomeCard) {
   return [card.scanDate, homeShowMeta(card)].filter(Boolean).join(" · ");
+}
+
+export function homeArtistKicker(card: HomeCard) {
+  return card.artistLabel
+    ? `${card.artistLabel} · ${card.scanDate}`
+    : card.scanDate;
+}
+
+export function previewYourArtists(
+  cards: readonly HomeCard[],
+  limit = HOME_ARTISTS_LIMIT,
+) {
+  if (cards.length <= limit) {
+    return [...cards];
+  }
+  const preview: HomeCard[] = [];
+  let index = 0;
+  while (index < cards.length) {
+    const artistId = cards[index].artistId ?? cards[index].show.id;
+    const group: HomeCard[] = [];
+    while (index < cards.length) {
+      const currentId = cards[index].artistId ?? cards[index].show.id;
+      if (currentId !== artistId) {
+        break;
+      }
+      group.push(cards[index]);
+      index += 1;
+    }
+    if (preview.length >= limit) {
+      break;
+    }
+    preview.push(...group);
+  }
+  return preview;
 }

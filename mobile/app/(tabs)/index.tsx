@@ -14,13 +14,14 @@ import { useHomeLocation } from "@/hooks/useHomeLocation";
 import { useInteractionSignals } from "@/hooks/useInteractionSignals";
 import { useSavedEvents } from "@/hooks/useSavedEvents";
 import { apiErrorMessage, type TicketmasterShow } from "@/lib/api";
-import { favoriteIdsFromFollows } from "@/lib/home-feed";
 import { favoritesProgress } from "@/lib/favorites-progress";
 import {
-  HOME_ARTISTS_LIMIT,
   HOME_NEAR_YOU_LIMIT,
   buildHomeFeed,
+  favoriteIdsFromFollows,
+  homeArtistKicker,
   homeShowMeta,
+  previewYourArtists,
   type HomeCard,
 } from "@/lib/home-feed";
 import { rememberHomeFeed } from "@/lib/home-feed-cache";
@@ -47,17 +48,19 @@ function HomeShowCard({
   pending,
   onToggle,
   onOpen,
+  kicker,
 }: {
   card: HomeCard;
   saved: boolean;
   pending: boolean;
   onToggle: (show: TicketmasterShow) => void;
   onOpen: (show: TicketmasterShow) => void;
+  kicker?: string;
 }) {
   return (
     <ShowRow
       show={card.show}
-      kicker={card.scanDate}
+      kicker={kicker ?? card.scanDate}
       subtitle={homeShowMeta(card)}
       onOpen={() => onOpen(card.show)}
       trailing={
@@ -201,7 +204,7 @@ export default function HomeScreen() {
   }
 
   const nearYou = feed?.nearYou.slice(0, HOME_NEAR_YOU_LIMIT) ?? [];
-  const yourArtists = feed?.yourArtists.slice(0, HOME_ARTISTS_LIMIT) ?? [];
+  const yourArtists = feed ? previewYourArtists(feed.yourArtists) : [];
   const showOnboarding = onboarding.ready && !progress.complete;
   const showFullOnboarding = showOnboarding && !onboarding.dismissed;
   const loading =
@@ -340,12 +343,14 @@ export default function HomeScreen() {
         <ScreenBlock>
           <Strong>Your Artists Coming Up</Strong>
           <Body>
-            Favorite artists in the next 30 days, with nearby dates first.
+            The next two upcoming shows for each artist you follow, in any
+            city.
           </Body>
           {yourArtists.map((card) => (
             <HomeShowCard
-              key={card.show.id}
+              key={`${card.artistId ?? "artist"}:${card.show.id}`}
               card={card}
+              kicker={homeArtistKicker(card)}
               saved={saved.savedIds.has(card.show.id)}
               pending={saved.isPending(card.show.id)}
               onToggle={onToggleSaved}
@@ -355,7 +360,7 @@ export default function HomeScreen() {
           {follows.artists.length === 0 ? (
             <EmptyState
               title="Make ShowSignal yours"
-              body={`Follow artists you already love and Home will lift their nearby dates. ${progress.artistLabel}. ${progress.venueLabel}.`}
+              body={`Follow artists you already love and Home will surface their next dates, wherever they play. ${progress.artistLabel}. ${progress.venueLabel}.`}
               action={
                 <ActionLink
                   href="/discover"
@@ -364,16 +369,10 @@ export default function HomeScreen() {
                 />
               }
             />
-          ) : yourArtists.length === 0 &&
-            feed.nearYou.some((card) => card.favoriteArtist) ? (
-            <EmptyState
-              title="They’re on the list above"
-              body="Your followed artists playing this week are in Near You, marked as favorites. Later dates will land here."
-            />
           ) : yourArtists.length === 0 ? (
             <EmptyState
-              title="No artist dates in the next 30 days"
-              body="Nothing upcoming for the artists you follow in this window. Follow another artist, or check back soon."
+              title="No upcoming artist dates"
+              body="Nothing on the calendar yet for the artists you follow. Follow another artist, or check back soon."
               action={
                 <ActionLink
                   href="/discover"
@@ -383,7 +382,7 @@ export default function HomeScreen() {
               }
             />
           ) : null}
-          {feed.yourArtistsTotal > HOME_ARTISTS_LIMIT ? (
+          {feed.yourArtistsTotal > yourArtists.length ? (
             <ActionLink
               href="/your-artists"
               label="See all upcoming artists"

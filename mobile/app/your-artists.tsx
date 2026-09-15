@@ -8,7 +8,7 @@ import { ShowRow } from "@/components/ShowRow";
 import { Body, Eyebrow, Strong, Title } from "@/components/Typography";
 import { useInteractionSignals } from "@/hooks/useInteractionSignals";
 import { useSavedEvents } from "@/hooks/useSavedEvents";
-import { homeShowMeta } from "@/lib/home-feed";
+import { homeArtistKicker, homeShowMeta } from "@/lib/home-feed";
 import { getRememberedHomeFeed } from "@/lib/home-feed-cache";
 
 export default function YourArtistsScreen() {
@@ -23,8 +23,8 @@ export default function YourArtistsScreen() {
         <Eyebrow>Your artists</Eyebrow>
         <Title>Coming up from favorites.</Title>
         <Body>
-          Dates in the next 30 days from artists you follow. Nearby shows stay
-          at the top.
+          The next two upcoming shows for each artist you follow, in any city.
+          Nearby dates can sort higher when two shows are equally soon.
         </Body>
       </ScreenBlock>
       {cards.length === 0 ? (
@@ -46,9 +46,9 @@ export default function YourArtistsScreen() {
             const isSaved = saved.savedIds.has(card.show.id);
             return (
               <ShowRow
-                key={card.show.id}
+                key={`${card.artistId ?? "artist"}:${card.show.id}`}
                 show={card.show}
-                kicker={card.scanDate}
+                kicker={homeArtistKicker(card)}
                 subtitle={homeShowMeta(card)}
                 onOpen={() => {
                   void interactions.track({
