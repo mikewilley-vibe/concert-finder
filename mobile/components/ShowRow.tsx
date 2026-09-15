@@ -9,18 +9,27 @@ import { ListRow } from "./ListRow";
 export function ShowRow({
   show,
   trailing,
+  kicker,
+  subtitle,
+  onOpen,
 }: {
   show: TicketmasterShow;
   trailing?: ReactNode;
+  kicker?: string;
+  subtitle?: string;
+  onOpen?: () => void;
 }) {
   const router = useRouter();
+  const resolvedSubtitle = subtitle ?? showSubtitle(show);
 
   return (
     <ListRow
       title={show.name}
-      subtitle={showSubtitle(show)}
-      accessibilityLabel={`${show.name}. ${showSubtitle(show)}`}
-      onPress={() =>
+      kicker={kicker}
+      subtitle={resolvedSubtitle}
+      accessibilityLabel={`${kicker ? `${kicker}. ` : ""}${show.name}. ${resolvedSubtitle}`}
+      onPress={() => {
+        onOpen?.();
         router.push({
           pathname: "/concert/[id]",
           params: {
@@ -37,8 +46,8 @@ export function ShowRow({
             url: show.url ?? "",
             image: show.image ?? "",
           },
-        })
-      }
+        });
+      }}
       trailing={trailing}
     />
   );

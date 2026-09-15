@@ -35,10 +35,15 @@ export type TicketmasterShow = {
   venueName: string;
   city: string;
   state: string;
+  venueLatitude?: number;
+  venueLongitude?: number;
   url?: string;
   image?: string;
   attractions: TicketmasterArtistRef[];
   matchedLabels: string[];
+  status?: string;
+  statusLabel?: string;
+  priceLabel?: string;
 };
 
 export type FollowedRef = {
@@ -54,6 +59,7 @@ type NativeApiShow = {
   localDate: string | null;
   localTime: string | null;
   startsAt: string | null;
+  status: string | null;
   ticketUrl: string | null;
   imageUrl: string | null;
   attractions: Array<{
@@ -62,11 +68,18 @@ type NativeApiShow = {
     imageUrl: string | null;
   }>;
   matchedLabels: string[];
+  price?: {
+    currency: string;
+    min: number | null;
+    max: number | null;
+  } | null;
   venue: {
     id?: string | null;
     name: string;
     city: string | null;
     stateCode: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
   };
 };
 
@@ -226,6 +239,7 @@ export function searchUpcomingShows(input: {
   latitude?: number;
   longitude?: number;
   radiusMiles?: number;
+  endDateTime?: string;
   page?: number;
   pageSize?: number;
 }) {
@@ -257,6 +271,7 @@ export function searchUpcomingShows(input: {
         venues: input.venues,
         keyword: keyword || undefined,
         location,
+        endDateTime: input.endDateTime,
         page: input.page,
         pageSize: input.pageSize,
       }),
@@ -274,8 +289,36 @@ export function getEventDetails(ids: string[]) {
   ).then((result) => ({ shows: result.events.map(mapShow) }));
 }
 
+function formatPriceLabel(price: NativeApiShow["price"]) {
+  if (!price || (price.min == null && price.max == null)) {
+    return undefined;
+  }
+  const symbol = !price.currency || price.currency === "USD" ? "$" : `${price.currency} `;
+  const format = (value: number) => `${symbol}${Math.round(value)}`;
+  if (price.min != null && price.max != null && Math.round(price.min) !== Math.round(price.max)) {
+    return `${format(price.min)}–${format(price.max)}`;
+  }
+  const value = price.min ?? price.max;
+  return value == null ? undefined : format(value);
+}
+
+function statusLabel(status: string | null | undefined) {
+  switch (status) {
+    case "onsale":
+      return "On sale";
+    case "offsale":
+      return "Off sale";
+    case "canceled":
+      return "Canceled";
+    case "postponed":
+      return "Postponed";
+    default:
+      return undefined;
+  }
+}
+
 function mapShow(show: NativeApiShow): TicketmasterShow {
-  return {
+  const mapped: TicketmasterShow = {
     id: show.id,
     name: show.name,
     dateLabel: show.dateLabel,
@@ -296,6 +339,21 @@ function mapShow(show: NativeApiShow): TicketmasterShow {
     })),
     matchedLabels: show.matchedLabels,
   };
+  if (show.venue.latitude != null && Number.isFinite(show.venue.latitude)) {
+    mapped.venueLatitude = show.venue.latitude;
+  }
+  if (show.venue.longitude != null && Number.isFinite(show.venue.longitude)) {
+    mapped.venueLongitude = show.venue.longitude;
+  }
+  if (show.status) {
+    mapped.status = show.status;
+    mapped.statusLabel = statusLabel(show.status);
+  }
+  const priceLabel = formatPriceLabel(show.price);
+  if (priceLabel) {
+    mapped.priceLabel = priceLabel;
+  }
+  return mapped;
 }
 
 export function mergeAnonymousAccount(options: {

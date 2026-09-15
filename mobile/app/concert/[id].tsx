@@ -9,6 +9,7 @@ import { Screen, ScreenBlock } from "@/components/Screen";
 import { Body, Eyebrow, Strong, Title } from "@/components/Typography";
 import { colors } from "@/constants/theme";
 import { useFollows } from "@/hooks/useFollows";
+import { useInteractionSignals } from "@/hooks/useInteractionSignals";
 import { useSavedEvents } from "@/hooks/useSavedEvents";
 import {
   apiErrorMessage,
@@ -118,6 +119,7 @@ export default function ConcertScreen() {
   );
   const saved = useSavedEvents();
   const follows = useFollows();
+  const interactions = useInteractionSignals();
   const [show, setShow] = useState<TicketmasterShow | null>(snapshot);
   const [loading, setLoading] = useState(eventId !== "preview");
   const [error, setError] = useState<string | null>(null);
@@ -181,6 +183,18 @@ export default function ConcertScreen() {
     }, 0);
     return () => clearTimeout(timer);
   }, [eventId, loadDetails, snapshot]);
+
+  useEffect(() => {
+    if (!show?.id) {
+      return;
+    }
+    void interactions.track({
+      kind: "view",
+      eventId: show.id,
+      artistIds: show.attractions.map((artist) => artist.id),
+      venueId: show.venueId,
+    });
+  }, [show?.id]);
 
   if (eventId === "preview") {
     return (
@@ -248,6 +262,12 @@ export default function ConcertScreen() {
                 : `Save ${show.name}`
             }
             onPress={() => {
+              void interactions.track({
+                kind: isSaved ? "unsave" : "save",
+                eventId: show.id,
+                artistIds: show.attractions.map((artist) => artist.id),
+                venueId: show.venueId,
+              });
               void saved.toggleSaved(show);
             }}
           />
@@ -300,6 +320,12 @@ export default function ConcertScreen() {
               variant="secondary"
               accessibilityLabel={`View ${show.name} on Ticketmaster`}
               onPress={() => {
+                void interactions.track({
+                  kind: "ticket",
+                  eventId: show.id,
+                  artistIds: show.attractions.map((artist) => artist.id),
+                  venueId: show.venueId,
+                });
                 void Linking.openURL(show.url!);
               }}
             />
@@ -309,6 +335,12 @@ export default function ConcertScreen() {
             variant="action"
             accessibilityLabel={`Share ${show.name}`}
             onPress={() => {
+              void interactions.track({
+                kind: "share",
+                eventId: show.id,
+                artistIds: show.attractions.map((artist) => artist.id),
+                venueId: show.venueId,
+              });
               void shareConcert(show);
             }}
           />

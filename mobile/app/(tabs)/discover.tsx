@@ -141,8 +141,8 @@ export default function DiscoverScreen() {
         <Eyebrow>Discover</Eyebrow>
         <Title>Search artists, venues, and upcoming shows.</Title>
         <Body>
-          Search for an artist or venue, then tap Follow. Their upcoming shows
-          appear on Home.
+          Search for an artist or venue, then tap Follow. A handful of favorites
+          makes Home personal — about 5 artists and 3 venues is a great start.
         </Body>
       </ScreenBlock>
 

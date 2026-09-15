@@ -78,24 +78,46 @@ export function ensureHomeLocationLoaded() {
   return loadPromise;
 }
 
+function pairOrNull(
+  latitude: number | null | undefined,
+  longitude: number | null | undefined,
+) {
+  const hasPair =
+    latitude != null &&
+    longitude != null &&
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude);
+  return {
+    latitude: hasPair ? latitude : null,
+    longitude: hasPair ? longitude : null,
+  };
+}
+
 export async function saveHomeLocation(next: HomeLocation) {
   const postal = parsePostalCode(next.postalCode);
   if (!postal.ok) {
     return { ok: false as const };
   }
+  const homePostal = parsePostalCode(next.homePostalCode ?? "");
+  if (!homePostal.ok) {
+    return { ok: false as const };
+  }
 
-  const hasPair =
-    next.latitude !== null &&
-    next.longitude !== null &&
-    Number.isFinite(next.latitude) &&
-    Number.isFinite(next.longitude);
+  const currentPair = pairOrNull(next.latitude, next.longitude);
+  const homePair = pairOrNull(next.homeLatitude, next.homeLongitude);
 
   writeGeneration += 1;
   current = {
     postalCode: postal.postalCode,
     radiusMiles: next.radiusMiles,
-    latitude: hasPair ? next.latitude : null,
-    longitude: hasPair ? next.longitude : null,
+    latitude: currentPair.latitude,
+    longitude: currentPair.longitude,
+    source: next.source === "home" ? "home" : "current",
+    placeLabel: next.placeLabel?.trim() ?? "",
+    homePostalCode: homePostal.postalCode,
+    homePlaceLabel: next.homePlaceLabel?.trim() ?? "",
+    homeLatitude: homePair.latitude,
+    homeLongitude: homePair.longitude,
   };
   ready = true;
   notify();

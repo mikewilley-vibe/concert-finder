@@ -44,7 +44,11 @@ import { completeEmailDomain, EMAIL_DOMAINS } from "@/lib/email-domains";
 import {
   DEFAULT_RADIUS_MILES,
   RADIUS_OPTIONS,
+  hasGpsFix,
+  hasHomeArea,
   homeLocationLabel,
+  resolvedSource,
+  showingNearLine,
 } from "@/lib/home-location";
 import {
   openLocationSettings,
@@ -130,9 +134,14 @@ export default function ProfileScreen() {
     if (!home.ready) {
       return;
     }
-    setPostalDraft(home.location.postalCode);
+    setPostalDraft(home.location.homePostalCode || home.location.postalCode);
     setRadiusDraft(home.location.radiusMiles);
-  }, [home.location.postalCode, home.location.radiusMiles, home.ready]);
+  }, [
+    home.location.homePostalCode,
+    home.location.postalCode,
+    home.location.radiusMiles,
+    home.ready,
+  ]);
 
   useEffect(() => {
     if (!configured || !permanent || !user?.id) {
@@ -350,10 +359,16 @@ export default function ProfileScreen() {
     const nextPostal = postalDraft.trim();
     try {
       const saved = await home.save({
-        postalCode: nextPostal,
+        ...home.location,
+        postalCode: nextPostal || home.location.postalCode,
+        homePostalCode: nextPostal,
+        homePlaceLabel: nextPostal ? home.location.homePlaceLabel : "",
+        homeLatitude: nextPostal ? home.location.homeLatitude : null,
+        homeLongitude: nextPostal ? home.location.homeLongitude : null,
         radiusMiles: radiusDraft,
-        latitude: null,
-        longitude: null,
+        latitude: home.location.latitude,
+        longitude: home.location.longitude,
+        source: nextPostal ? "home" : "current",
       });
       if (!saved) {
         setHomeNotice("Use a ZIP or postal code like 20003.");
@@ -362,8 +377,8 @@ export default function ProfileScreen() {
       setPostalDraft(nextPostal.toUpperCase());
       setHomeNotice(
         nextPostal
-          ? "Home location saved. Upcoming shows on Home use this area."
-          : "Home location cleared. Upcoming shows are no longer limited by ZIP or GPS.",
+          ? "Home area saved. Choose Home area below when you want shows near there."
+          : "Home area cleared. Home uses your current location when it’s available.",
       );
     } catch {
       setHomeNotice("Could not save that location. Try again.");
@@ -385,16 +400,18 @@ export default function ProfileScreen() {
         return;
       }
       const saved = await home.save({
+        ...home.location,
         postalCode: result.location.postalCode,
         radiusMiles: radiusDraft,
         latitude: result.location.latitude,
         longitude: result.location.longitude,
+        placeLabel: result.location.placeLabel,
+        source: "current",
       });
       if (!saved) {
         setHomeNotice("Could not save that location. Try again.");
         return;
       }
-      setPostalDraft(result.location.postalCode);
       setHomeNotice(
         "Using your current location. Upcoming shows on Home use this area.",
       );
@@ -684,12 +701,64 @@ export default function ProfileScreen() {
       <View style={styles.card}>
         <Strong>Home location</Strong>
         <Body>
-          Narrow followed shows with GPS or a ZIP and radius. Leave ZIP blank
-          and skip GPS to search more broadly. Saving a ZIP turns GPS off.
+          Default to your current location. Save a home area so you can still
+          search near home while you’re away. Radius starts at 100 miles.
         </Body>
-        {home.ready ? <Body>{homeLocationLabel(home.location)}</Body> : null}
+        {home.ready ? (
+          <>
+            <Body>{showingNearLine(home.location)}</Body>
+            <Body>{homeLocationLabel(home.location)}</Body>
+          </>
+        ) : null}
+        <Body>Search near</Body>
+        <View style={styles.radiusRow}>
+          {[
+            {
+              source: "current" as const,
+              label: "Current location",
+              disabled: false,
+            },
+            {
+              source: "home" as const,
+              label: "Home area",
+              disabled: !hasHomeArea(home.location) && !postalDraft.trim(),
+            },
+          ].map((option) => {
+            const selected = resolvedSource(home.location) === option.source;
+            return (
+              <Pressable
+                key={option.source}
+                accessibilityRole="button"
+                accessibilityState={{ selected, disabled: option.disabled }}
+                accessibilityLabel={option.label}
+                disabled={option.disabled || homePending || gpsPending}
+                onPress={() => {
+                  void home.save({
+                    ...home.location,
+                    radiusMiles: radiusDraft,
+                    source: option.source,
+                  });
+                  setHomeNotice(null);
+                }}
+                style={[
+                  styles.radiusChip,
+                  selected && styles.radiusChipSelected,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.radiusChipLabel,
+                    selected && styles.radiusChipLabelSelected,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
         <Field
-          label="ZIP / postal code"
+          label="Home area ZIP / postal code"
           value={postalDraft}
           onChangeText={(value) => {
             setPostalDraft(value);
@@ -698,7 +767,7 @@ export default function ProfileScreen() {
           autoComplete="postal-code"
           textContentType="postalCode"
           autoCapitalize="characters"
-          placeholder="Like 20003"
+          placeholder="Like 23220"
           maxLength={12}
           returnKeyType="done"
           onSubmitEditing={() => {
@@ -755,13 +824,16 @@ export default function ProfileScreen() {
           />
         ) : null}
         <Button
-          label={homePending ? "Saving…" : "Save home location"}
+          label={homePending ? "Saving…" : "Save home area"}
           disabled={homePending || gpsPending}
           fullWidth
           onPress={() => {
             void onSaveHomeLocation();
           }}
         />
+        {hasGpsFix(home.location) ? (
+          <Body>Current location is on this device and stays saved when you switch to Home area.</Body>
+        ) : null}
       </View>
 
       <View style={styles.card}>

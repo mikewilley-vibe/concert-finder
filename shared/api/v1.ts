@@ -61,6 +61,12 @@ export type SaleWindow = {
   endsAt: string | null;
 };
 
+export type TicketPrice = {
+  currency: string;
+  min: number | null;
+  max: number | null;
+};
+
 export type ConcertEvent = {
   id: string;
   name: string;
@@ -78,6 +84,7 @@ export type ConcertEvent = {
   attractions: ArtistSummary[];
   matchedLabels: string[];
   sales: SaleWindow | null;
+  price: TicketPrice | null;
 };
 
 export type FollowedReference = {
@@ -97,6 +104,7 @@ export type EventSearchRequest = {
   venues?: FollowedReference[];
   keyword?: string;
   location?: EventSearchLocation;
+  endDateTime?: string;
   page?: number;
   pageSize?: number;
 };
