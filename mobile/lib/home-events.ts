@@ -60,22 +60,39 @@ function mergeShows(batches: TicketmasterShow[][]) {
   return shows;
 }
 
-function chunkFollows(artists: FollowedRef[], venues: FollowedRef[]) {
-  const rows: Array<{ kind: "artist" | "venue"; ref: FollowedRef }> = [
-    ...artists.map((ref) => ({ kind: "artist" as const, ref })),
-    ...venues.map((ref) => ({ kind: "venue" as const, ref })),
-  ];
-  const chunks: Array<{ attractions: FollowedRef[]; venues: FollowedRef[] }> = [];
-  for (let index = 0; index < rows.length; index += FOLLOW_CHUNK) {
-    const slice = rows.slice(index, index + FOLLOW_CHUNK);
-    chunks.push({
-      attractions: slice
-        .filter((row) => row.kind === "artist")
-        .map((row) => row.ref),
-      venues: slice.filter((row) => row.kind === "venue").map((row) => row.ref),
-    });
+function chunkRefs(refs: FollowedRef[]) {
+  const chunks: FollowedRef[][] = [];
+  for (let index = 0; index < refs.length; index += FOLLOW_CHUNK) {
+    chunks.push(refs.slice(index, index + FOLLOW_CHUNK));
   }
   return chunks;
+}
+
+function searchChunks(
+  search: typeof searchUpcomingShows,
+  chunks: FollowedRef[][],
+  kind: "artist" | "venue",
+  extra: {
+    postalCode?: string;
+    latitude?: number;
+    longitude?: number;
+    radiusMiles?: number;
+    endDateTime?: string;
+  },
+) {
+  if (chunks.length === 0) {
+    return Promise.resolve([] as TicketmasterShow[]);
+  }
+  return Promise.all(
+    chunks.map((chunk) =>
+      search({
+        attractions: kind === "artist" ? chunk : [],
+        venues: kind === "venue" ? chunk : [],
+        ...extra,
+        pageSize: 50,
+      }).then((result) => result.shows),
+    ),
+  ).then((batches) => mergeShows(batches));
 }
 
 export async function loadHomeEventSets(input: {
@@ -101,7 +118,7 @@ export async function loadHomeEventSets(input: {
     const fields = upcomingSearchFields(input.location);
     const hasLocation = Boolean(fields.latitude || fields.postalCode);
     const nearbyEnd = endDateTimeAfterDays(NEARBY_DAYS + 1, input.now);
-    const followedEnd = endDateTimeAfterDays(ARTIST_DAYS + 1, input.now);
+    const venueEnd = endDateTimeAfterDays(ARTIST_DAYS + 1, input.now);
     const followRadius = artistReachMiles(input.location.radiusMiles);
     const attractions = input.artists.map(toFollowedRef);
     const venues = input.venues.map(toFollowedRef);
@@ -116,23 +133,28 @@ export async function loadHomeEventSets(input: {
         }).then((result) => result.shows)
       : Promise.resolve([] as TicketmasterShow[]);
 
-    const followChunks = chunkFollows(attractions, venues);
-    const followedPromise =
-      followChunks.length === 0
-        ? Promise.resolve([] as TicketmasterShow[])
-        : Promise.all(
-            followChunks.map((chunk) =>
-              search({
-                attractions: chunk.attractions,
-                venues: chunk.venues,
-                ...(fields.latitude
-                  ? { ...fields, radiusMiles: followRadius }
-                  : fields),
-                endDateTime: followedEnd,
-                pageSize: 50,
-              }).then((result) => result.shows),
-            ),
-          ).then(mergeShows);
+    // Favorite-artist dates are worldwide: no postal/lat/radius filter.
+    const artistPromise = searchChunks(
+      search,
+      chunkRefs(attractions),
+      "artist",
+      {},
+    );
+    const venueLocation = fields.latitude
+      ? { ...fields, radiusMiles: followRadius }
+      : fields;
+    const venuePromise = searchChunks(
+      search,
+      chunkRefs(venues),
+      "venue",
+      {
+        ...venueLocation,
+        endDateTime: venueEnd,
+      },
+    );
+    const followedPromise = Promise.all([artistPromise, venuePromise]).then(
+      (batches) => mergeShows(batches),
+    );
 
     const [nearby, followed] = await Promise.all([
       nearbyPromise,
