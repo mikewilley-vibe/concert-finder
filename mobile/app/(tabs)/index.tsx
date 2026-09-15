@@ -4,6 +4,7 @@ import { View } from "react-native";
 import { ActionLink } from "@/components/ActionLink";
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
+import { GoingButton } from "@/components/GoingButton";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { Screen, ScreenBlock } from "@/components/Screen";
 import { ShowRow } from "@/components/ShowRow";
@@ -44,16 +45,16 @@ type SetsState =
 
 function HomeShowCard({
   card,
-  saved,
+  going,
   pending,
-  onToggle,
+  onToggleGoing,
   onOpen,
   kicker,
 }: {
   card: HomeCard;
-  saved: boolean;
+  going: boolean;
   pending: boolean;
-  onToggle: (show: TicketmasterShow) => void;
+  onToggleGoing: (show: TicketmasterShow) => void;
   onOpen: (show: TicketmasterShow) => void;
   kicker?: string;
 }) {
@@ -64,16 +65,11 @@ function HomeShowCard({
       subtitle={homeShowMeta(card)}
       onOpen={() => onOpen(card.show)}
       trailing={
-        <Button
-          label={saved ? "Saved" : "Save"}
-          variant={saved ? "secondary" : "action"}
-          disabled={pending}
-          accessibilityLabel={
-            saved
-              ? `Remove ${card.show.name} from saved`
-              : `Save ${card.show.name}`
-          }
-          onPress={() => onToggle(card.show)}
+        <GoingButton
+          going={going}
+          pending={pending}
+          name={card.show.name}
+          onPress={() => onToggleGoing(card.show)}
         />
       }
     />
@@ -192,15 +188,8 @@ export default function HomeScreen() {
     });
   }
 
-  function onToggleSaved(show: TicketmasterShow) {
-    const wasSaved = saved.savedIds.has(show.id);
-    void saved.toggleSaved(show);
-    void interactions.track({
-      kind: wasSaved ? "unsave" : "save",
-      eventId: show.id,
-      artistIds: show.attractions.map((artist) => artist.id),
-      venueId: show.venueId,
-    });
+  function onToggleGoing(show: TicketmasterShow) {
+    void saved.tapGoingFromCard(show);
   }
 
   const nearYou = feed?.nearYou.slice(0, HOME_NEAR_YOU_LIMIT) ?? [];
@@ -287,9 +276,9 @@ export default function HomeScreen() {
           <Body>A favorite artist has a strong upcoming show nearby.</Body>
           <HomeShowCard
             card={feed.radar}
-            saved={saved.savedIds.has(feed.radar.show.id)}
+            going={saved.statusFor(feed.radar.show.id) === "going"}
             pending={saved.isPending(feed.radar.show.id)}
-            onToggle={onToggleSaved}
+            onToggleGoing={onToggleGoing}
             onOpen={onOpenShow}
           />
         </ScreenBlock>
@@ -306,9 +295,9 @@ export default function HomeScreen() {
             <HomeShowCard
               key={card.show.id}
               card={card}
-              saved={saved.savedIds.has(card.show.id)}
+              going={saved.statusFor(card.show.id) === "going"}
               pending={saved.isPending(card.show.id)}
-              onToggle={onToggleSaved}
+              onToggleGoing={onToggleGoing}
               onOpen={onOpenShow}
             />
           ))}
@@ -351,9 +340,9 @@ export default function HomeScreen() {
               key={`${card.artistId ?? "artist"}:${card.show.id}`}
               card={card}
               kicker={homeArtistKicker(card)}
-              saved={saved.savedIds.has(card.show.id)}
+              going={saved.statusFor(card.show.id) === "going"}
               pending={saved.isPending(card.show.id)}
-              onToggle={onToggleSaved}
+              onToggleGoing={onToggleGoing}
               onOpen={onOpenShow}
             />
           ))}

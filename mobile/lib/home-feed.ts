@@ -259,6 +259,8 @@ function engagementScore(signals: {
   saves: number;
   ticketOpens: number;
   shares: number;
+  interested?: number;
+  going?: number;
 } | undefined) {
   if (!signals) {
     return 0;
@@ -268,7 +270,9 @@ function engagementScore(signals: {
     signals.taps * 8 +
     signals.saves * 20 +
     signals.ticketOpens * 25 +
-    signals.shares * 15
+    signals.shares * 15 +
+    (signals.interested ?? 0) * 40 +
+    (signals.going ?? 0) * 80
   );
 }
 

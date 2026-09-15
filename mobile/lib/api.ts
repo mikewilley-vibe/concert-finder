@@ -31,8 +31,11 @@ export type TicketmasterShow = {
   localDate?: string;
   localTime?: string;
   startsAt?: string;
+  timezone?: string;
+  doorTime?: string;
   venueId?: string;
   venueName: string;
+  venueAddress?: string;
   city: string;
   state: string;
   venueLatitude?: number;
@@ -59,6 +62,8 @@ type NativeApiShow = {
   localDate: string | null;
   localTime: string | null;
   startsAt: string | null;
+  timezone?: string | null;
+  doorTime?: string | null;
   status: string | null;
   ticketUrl: string | null;
   imageUrl: string | null;
@@ -76,6 +81,7 @@ type NativeApiShow = {
   venue: {
     id?: string | null;
     name: string;
+    addressLine?: string | null;
     city: string | null;
     stateCode: string | null;
     latitude?: number | null;
@@ -326,8 +332,11 @@ function mapShow(show: NativeApiShow): TicketmasterShow {
     localDate: show.localDate ?? undefined,
     localTime: show.localTime ?? undefined,
     startsAt: show.startsAt ?? undefined,
+    timezone: show.timezone ?? undefined,
+    doorTime: show.doorTime ?? undefined,
     venueId: show.venue.id?.trim() || undefined,
     venueName: show.venue.name,
+    venueAddress: show.venue.addressLine?.trim() || undefined,
     city: show.venue.city ?? "",
     state: show.venue.stateCode ?? "",
     url: show.ticketUrl ?? undefined,

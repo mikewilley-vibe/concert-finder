@@ -131,6 +131,7 @@ export async function loadSavedTicketmasterEvents(
       startsAt: optionalString(row.starts_at) ?? null,
       localDate,
       localTime,
+      doorTime: null,
       timezone: optionalString(row.timezone) ?? null,
       dateStatus:
         row.date_status === "date_tba" || row.date_status === "date_tbd"
@@ -201,6 +202,7 @@ export async function saveTicketmasterEvent(
       sale_ends_at: show.sales?.endsAt ?? null,
       attractions: show.attractions,
       matched_labels: show.matchedLabels,
+      attendance_status: "interested",
     },
     { onConflict: "user_id,provider,provider_event_id" },
   );

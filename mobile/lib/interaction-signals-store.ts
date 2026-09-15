@@ -4,6 +4,7 @@ import {
   INTERACTION_SIGNALS_STORAGE_KEY,
   applyInteraction,
   parseInteractionSignals,
+  type AttendanceSignalStatus,
   type InteractionKind,
   type InteractionSignals,
 } from "./interaction-signals";
@@ -72,6 +73,8 @@ export async function recordInteraction(input: {
   artistIds?: readonly string[];
   venueId?: string | null;
   genreIds?: readonly string[];
+  fromStatus?: AttendanceSignalStatus;
+  toStatus?: AttendanceSignalStatus;
 }) {
   writeGeneration += 1;
   current = applyInteraction(current, input);

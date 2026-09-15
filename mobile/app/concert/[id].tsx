@@ -4,6 +4,7 @@ import { useLocalSearchParams } from "expo-router";
 
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
+import { GoingButton } from "@/components/GoingButton";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { Screen, ScreenBlock } from "@/components/Screen";
 import { Body, Eyebrow, Strong, Title } from "@/components/Typography";
@@ -17,7 +18,7 @@ import {
   type TicketmasterShow,
 } from "@/lib/api";
 import { FOLLOWED_ATTRACTION_TYPE } from "@/lib/follows";
-import { addShowToCalendar, openCalendarSettings } from "@/lib/calendar";
+import { openCalendarSettings } from "@/lib/calendar";
 import { shareConcert } from "@/lib/share";
 import { showPlace, showWhen } from "@/lib/show-format";
 
@@ -33,7 +34,10 @@ function showFromParams(params: {
   localDate?: string;
   localTime?: string;
   startsAt?: string;
+  timezone?: string;
+  doorTime?: string;
   venueName?: string;
+  venueAddress?: string;
   city?: string;
   state?: string;
   url?: string;
@@ -59,12 +63,18 @@ function showFromParams(params: {
   const localDate = firstString(params.localDate);
   const localTime = firstString(params.localTime);
   const startsAt = firstString(params.startsAt);
+  const timezone = firstString(params.timezone);
+  const doorTime = firstString(params.doorTime);
+  const venueAddress = firstString(params.venueAddress);
   const url = firstString(params.url);
   const image = firstString(params.image);
   if (timeLabel) show.timeLabel = timeLabel;
   if (localDate) show.localDate = localDate;
   if (localTime) show.localTime = localTime;
   if (startsAt) show.startsAt = startsAt;
+  if (timezone) show.timezone = timezone;
+  if (doorTime) show.doorTime = doorTime;
+  if (venueAddress) show.venueAddress = venueAddress;
   if (url) show.url = url;
   if (image) show.image = image;
   return show;
@@ -79,7 +89,10 @@ export default function ConcertScreen() {
     localDate?: string;
     localTime?: string;
     startsAt?: string;
+    timezone?: string;
+    doorTime?: string;
     venueName?: string;
+    venueAddress?: string;
     city?: string;
     state?: string;
     url?: string;
@@ -96,7 +109,10 @@ export default function ConcertScreen() {
         localDate: firstString(params.localDate),
         localTime: firstString(params.localTime),
         startsAt: firstString(params.startsAt),
+        timezone: firstString(params.timezone),
+        doorTime: firstString(params.doorTime),
         venueName: firstString(params.venueName),
+        venueAddress: firstString(params.venueAddress),
         city: firstString(params.city),
         state: firstString(params.state),
         url: firstString(params.url),
@@ -110,7 +126,10 @@ export default function ConcertScreen() {
       params.localDate,
       params.localTime,
       params.startsAt,
+      params.timezone,
+      params.doorTime,
       params.venueName,
+      params.venueAddress,
       params.city,
       params.state,
       params.url,
@@ -135,13 +154,17 @@ export default function ConcertScreen() {
     setCalendarNotice(null);
     setCalendarDenied(false);
     try {
-      const result = await addShowToCalendar(show);
+      const result = await saved.addToCalendar(show);
       if (!result.ok) {
         setCalendarDenied(result.code === "denied");
         setCalendarNotice(result.message);
         return;
       }
-      setCalendarNotice("Opened Calendar with this show.");
+      setCalendarNotice(
+        result.skipped
+          ? "Already on your calendar."
+          : "Added to your calendar.",
+      );
     } catch {
       setCalendarNotice("Could not add that concert to Calendar. Try again.");
     } finally {
@@ -213,7 +236,9 @@ export default function ConcertScreen() {
 
   const place = show ? showPlace(show) : "";
   const when = show ? showWhen(show) : "";
-  const isSaved = show ? saved.savedIds.has(show.id) : false;
+  const attendance = show ? saved.statusFor(show.id) : null;
+  const isInterested = attendance === "interested";
+  const isGoing = attendance === "going";
 
   return (
     <Screen>
@@ -251,26 +276,32 @@ export default function ConcertScreen() {
 
       {show ? (
         <View style={styles.card}>
-          <Strong>Save or follow</Strong>
-          <Button
-            label={isSaved ? "Saved" : "Save this concert"}
-            variant={isSaved ? "secondary" : "action"}
-            disabled={saved.isPending(show.id)}
-            accessibilityLabel={
-              isSaved
-                ? `Remove ${show.name} from saved`
-                : `Save ${show.name}`
-            }
-            onPress={() => {
-              void interactions.track({
-                kind: isSaved ? "unsave" : "save",
-                eventId: show.id,
-                artistIds: show.attractions.map((artist) => artist.id),
-                venueId: show.venueId,
-              });
-              void saved.toggleSaved(show);
-            }}
-          />
+          <Strong>Are you going?</Strong>
+          <View style={styles.attendanceRow}>
+            <Button
+              label={isInterested ? "♡ Interested" : "♡ Interested"}
+              variant={isInterested ? "secondary" : "action"}
+              disabled={saved.isPending(show.id)}
+              accessibilityLabel={
+                isInterested
+                  ? `Clear interested for ${show.name}`
+                  : `Mark ${show.name} as Interested`
+              }
+              onPress={() => {
+                void saved.tapStatus(show, "interested");
+              }}
+            />
+            <GoingButton
+              going={isGoing}
+              pending={saved.isPending(show.id)}
+              name={show.name}
+              onPress={() => {
+                void saved.tapStatus(show, "going");
+              }}
+            />
+          </View>
+          {isGoing ? <Body>✓ You’re going to this show.</Body> : null}
+          {show.attractions.length > 0 ? <Strong>Follow</Strong> : null}
           {show.attractions.map((artist) => {
             const followed = follows.isFollowed(
               FOLLOWED_ATTRACTION_TYPE,
@@ -310,6 +341,7 @@ export default function ConcertScreen() {
           <Strong>Event details</Strong>
           <Strong>{when || "Date TBA"}</Strong>
           {show.venueName ? <Body>{show.venueName}</Body> : null}
+          {show.venueAddress ? <Body>{show.venueAddress}</Body> : null}
           {place ? <Body>{place}</Body> : null}
           {show.dateLabel === "Date TBA" ? (
             <Body>Date to be announced</Body>
@@ -345,7 +377,13 @@ export default function ConcertScreen() {
             }}
           />
           <Button
-            label={calendarPending ? "Adding…" : "Add to Calendar"}
+            label={
+              calendarPending
+                ? "Adding…"
+                : saved.calendarLinkFor(show.id)
+                  ? "Added to Calendar"
+                  : "Add to Calendar"
+            }
             variant="secondary"
             disabled={calendarPending}
             accessibilityLabel={`Add ${show.name} to Calendar`}
@@ -383,5 +421,10 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 18,
     gap: 10,
+  },
+  attendanceRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
   },
 });

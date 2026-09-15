@@ -210,6 +210,45 @@ test("ranking puts favorite artists above venues, engagement, and distance", () 
   assert.equal(generic.favoriteArtist, false);
 });
 
+test("Going engagement is strong but still below an explicit favorite artist", () => {
+  const goingSignals = applyInteraction(parseInteractionSignals(null), {
+    kind: "attendance",
+    eventId: "generic-close",
+    toStatus: "going",
+    at: NOW.getTime(),
+  });
+  const goingShow = scoreShow(
+    show("generic-close", {
+      localDate: "2026-09-16",
+      attractions: [{ id: "other", name: "Other" }],
+      venueId: "other-venue",
+    }),
+    {
+      favorites,
+      origin: RICHMOND,
+      radiusMiles: 100,
+      now: NOW,
+      signals: goingSignals,
+    },
+  );
+  const favorite = scoreShow(
+    show("favorite-artist", {
+      localDate: "2026-09-20",
+      attractions: [{ id: "artist-a", name: "Artist A" }],
+      venueLatitude: 34.05,
+      venueLongitude: -118.24,
+    }),
+    {
+      favorites,
+      origin: RICHMOND,
+      radiusMiles: 100,
+      now: NOW,
+    },
+  );
+  assert.ok(goingShow.engagement > 0);
+  assert.ok(favorite.score > goingShow.score);
+});
+
 test("Your Artists keeps far dates and lists each artist chronologically", () => {
   const nearbyLater = show("near-later", {
     localDate: "2026-10-10",

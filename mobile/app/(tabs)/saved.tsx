@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { ActionLink } from "@/components/ActionLink";
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
+import { GoingButton } from "@/components/GoingButton";
 import { ListRow } from "@/components/ListRow";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { Screen, ScreenBlock } from "@/components/Screen";
@@ -21,23 +22,26 @@ export default function SavedScreen() {
   const follows = useFollows();
   const saved = useSavedEvents();
   const loading = !follows.ready || !saved.ready;
+  const hasShows = saved.goingShows.length > 0 || saved.interestedShows.length > 0;
+  const hasFavorites =
+    follows.artists.length > 0 || follows.venues.length > 0;
 
   return (
     <Screen>
       <ScreenBlock>
-        <Eyebrow>Saved</Eyebrow>
-        <Title>Shows you kept and people you follow.</Title>
+        <Eyebrow>My Shows</Eyebrow>
+        <Title>Going, interested, and favorites.</Title>
         <Body>
-          Saved concerts and followed artists and venues live here. Remove them
-          whenever you want.
+          Shows you’re going to, shows you’re considering, and the artists and
+          venues you follow.
         </Body>
       </ScreenBlock>
 
-      {loading ? <LoadingBlock label="Loading saved items…" /> : null}
+      {loading ? <LoadingBlock label="Loading your shows…" /> : null}
 
       {saved.error ? (
         <EmptyState
-          title="Saved shows didn’t load"
+          title="Shows didn’t load"
           body={saved.error}
           action={
             <Button
@@ -65,10 +69,10 @@ export default function SavedScreen() {
         />
       ) : null}
 
-      {!loading && saved.shows.length === 0 ? (
+      {!loading && !hasShows ? (
         <EmptyState
-          title="No saved events"
-          body="Save a concert from a detail screen to keep the date, venue, and Ticketmaster link."
+          title="No shows yet"
+          body="Mark I’m Going or Interested on a concert to keep it here."
           action={
             <ActionLink
               href="/discover"
@@ -79,21 +83,21 @@ export default function SavedScreen() {
         />
       ) : null}
 
-      {saved.shows.length > 0 ? (
+      {saved.goingShows.length > 0 ? (
         <ScreenBlock>
-          <Strong>Saved events</Strong>
-          {saved.shows.map((show) => (
+          <Strong>Going</Strong>
+          {saved.goingShows.map((show) => (
             <ShowRow
               key={show.id}
               show={show}
+              kicker="✓ Going"
               trailing={
-                <Button
-                  label="Remove"
-                  variant="secondary"
-                  disabled={saved.isPending(show.id)}
-                  accessibilityLabel={`Remove ${show.name} from saved`}
+                <GoingButton
+                  going
+                  pending={saved.isPending(show.id)}
+                  name={show.name}
                   onPress={() => {
-                    void saved.toggleSaved(show);
+                    void saved.tapStatus(show, "going");
                   }}
                 />
               }
@@ -102,11 +106,33 @@ export default function SavedScreen() {
         </ScreenBlock>
       ) : null}
 
-      {!loading &&
-      follows.artists.length === 0 &&
-      follows.venues.length === 0 ? (
+      {saved.interestedShows.length > 0 ? (
+        <ScreenBlock>
+          <Strong>Interested</Strong>
+          {saved.interestedShows.map((show) => (
+            <ShowRow
+              key={show.id}
+              show={show}
+              kicker="♡ Interested"
+              trailing={
+                <Button
+                  label="♡ Interested"
+                  variant="secondary"
+                  disabled={saved.isPending(show.id)}
+                  accessibilityLabel={`Clear interested for ${show.name}`}
+                  onPress={() => {
+                    void saved.tapStatus(show, "interested");
+                  }}
+                />
+              }
+            />
+          ))}
+        </ScreenBlock>
+      ) : null}
+
+      {!loading && !hasFavorites ? (
         <EmptyState
-          title="No followed artists or venues"
+          title="No favorite artists or venues"
           body={`Follow from Discover. Tracking currently supports ${MAX_MONITORED_FOLLOWS} artists and venues combined.`}
           action={
             <ActionLink
@@ -120,7 +146,7 @@ export default function SavedScreen() {
 
       {follows.artists.length > 0 ? (
         <ScreenBlock>
-          <Strong>Followed artists</Strong>
+          <Strong>Favorite artists</Strong>
           {follows.artists.map((artist) => (
             <ListRow
               key={artist.item_key}
@@ -158,7 +184,7 @@ export default function SavedScreen() {
 
       {follows.venues.length > 0 ? (
         <ScreenBlock>
-          <Strong>Followed venues</Strong>
+          <Strong>Favorite venues</Strong>
           {follows.venues.map((venue) => (
             <ListRow
               key={venue.item_key}

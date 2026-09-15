@@ -31,11 +31,15 @@ type SavedItemRow = {
 
 type SavedEventRow = {
   attractions: Json;
+  attendance_status: string;
+  calendar_added_at: string | null;
+  calendar_provider: string | null;
   city: string;
   created_at: string;
   date_label: string;
   date_status: string;
   event_status: string | null;
+  external_calendar_event_id: string | null;
   id: string;
   image_url: string | null;
   local_date: string | null;
@@ -119,11 +123,15 @@ export type Database = {
         Insert: Insert<
           SavedEventRow,
           | "attractions"
+          | "attendance_status"
+          | "calendar_added_at"
+          | "calendar_provider"
           | "city"
           | "created_at"
           | "date_label"
           | "date_status"
           | "event_status"
+          | "external_calendar_event_id"
           | "id"
           | "image_url"
           | "local_date"

@@ -131,6 +131,7 @@ test("Ticketmaster events map to the complete v1 mobile contract", () => {
         dateTime: "2026-10-03T23:30:00Z",
         localDate: "2026-10-03",
         localTime: "19:30:00",
+        doorTime: "18:00:00",
       },
     },
     sales: {
@@ -160,6 +161,8 @@ test("Ticketmaster events map to the complete v1 mobile contract", () => {
   assert.ok(event);
   assert.equal(event.startsAt, "2026-10-03T23:30:00Z");
   assert.equal(event.timezone, "America/New_York");
+  assert.equal(event.doorTime, "18:00:00");
+  assert.equal(event.venue.addressLine, "901 Wharf Street SW");
   assert.equal(event.status, "onsale");
   assert.equal(event.ticketUrl, "https://www.ticketmaster.com/event-123");
   assert.equal(event.venue.state, "District of Columbia");
@@ -541,7 +544,7 @@ test("concert share copy uses an https open link", () => {
   );
 });
 
-test("calendar windows prefer an exact start time and last three hours", () => {
+test("calendar windows prefer venue-local wall-clock time and last three hours", () => {
   const timed = calendarWindow({
     localDate: "2026-12-30",
     localTime: "19:30:00",
