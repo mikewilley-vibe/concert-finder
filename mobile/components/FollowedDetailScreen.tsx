@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
+import { GoingButton } from "@/components/GoingButton";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { Screen, ScreenBlock } from "@/components/Screen";
 import { ShowRow } from "@/components/ShowRow";
@@ -169,23 +170,18 @@ export function FollowedDetailScreen({
           </Body>
           {saved.error ? <Body>{saved.error}</Body> : null}
           {state.shows.map((show) => {
-            const isSaved = saved.savedIds.has(show.id);
+            const going = saved.statusFor(show.id) === "going";
             return (
               <ShowRow
                 key={show.id}
                 show={show}
                 trailing={
-                  <Button
-                    label={isSaved ? "Saved" : "Save"}
-                    variant={isSaved ? "secondary" : "action"}
-                    disabled={saved.isPending(show.id)}
-                    accessibilityLabel={
-                      isSaved
-                        ? `Remove ${show.name} from saved`
-                        : `Save ${show.name}`
-                    }
+                  <GoingButton
+                    going={going}
+                    pending={saved.isPending(show.id)}
+                    name={show.name}
                     onPress={() => {
-                      void saved.toggleSaved(show);
+                      void saved.tapGoingFromCard(show);
                     }}
                   />
                 }

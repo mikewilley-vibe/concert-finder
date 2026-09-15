@@ -914,6 +914,7 @@ function eventDateDetails(event: Record<string, unknown>) {
           localTime?: unknown;
           dateTBA?: unknown;
           dateTBD?: unknown;
+          doorTime?: unknown;
         })
       : null;
 
@@ -928,6 +929,7 @@ function eventDateDetails(event: Record<string, unknown>) {
     startsAt: readString(record?.dateTime),
     localDate: readString(record?.localDate),
     localTime: readString(record?.localTime),
+    doorTime: readString(record?.doorTime),
     timezone: readString(dateRecord?.timezone),
     dateStatus,
   };
@@ -1085,6 +1087,7 @@ export function mapTicketmasterEvent(
     startsAt: date.startsAt,
     localDate: date.localDate,
     localTime: date.localTime,
+    doorTime: date.doorTime,
     timezone: date.timezone ?? venue.timezone,
     dateStatus: date.dateStatus,
     dateLabel: date.localDate ? formatDateLabel(date.localDate) : "Date TBA",
@@ -1171,6 +1174,7 @@ function mergeShows(
       startsAt: show.startsAt,
       localDate: show.localDate,
       localTime: show.localTime,
+      doorTime: show.doorTime,
       timezone: show.timezone,
       dateStatus: show.dateStatus,
       dateLabel: show.dateLabel,

@@ -71,7 +71,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="saved"
         options={{
-          title: "Saved",
+          title: "My Shows",
           tabBarIcon: ({ color }) => (
             <TabIcon ios="bookmark" android="bookmark" color={color} />
           ),

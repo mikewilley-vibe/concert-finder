@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import {
   applyInteraction,
+  type AttendanceSignalStatus,
   type InteractionKind,
   type InteractionSignals,
 } from "@/lib/interaction-signals";
@@ -35,6 +36,8 @@ export function useInteractionSignals() {
       artistIds?: readonly string[];
       venueId?: string | null;
       genreIds?: readonly string[];
+      fromStatus?: AttendanceSignalStatus;
+      toStatus?: AttendanceSignalStatus;
     }) => {
       setSignals((current) => applyInteraction(current, input));
       await recordInteraction(input);

@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 
 import { ActionLink } from "@/components/ActionLink";
-import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
+import { GoingButton } from "@/components/GoingButton";
 import { Screen, ScreenBlock } from "@/components/Screen";
 import { ShowRow } from "@/components/ShowRow";
 import { Body, Eyebrow, Strong, Title } from "@/components/Typography";
@@ -43,7 +43,7 @@ export default function YourArtistsScreen() {
         <ScreenBlock>
           <Strong>{cards.length} shows</Strong>
           {cards.map((card) => {
-            const isSaved = saved.savedIds.has(card.show.id);
+            const going = saved.statusFor(card.show.id) === "going";
             return (
               <ShowRow
                 key={`${card.artistId ?? "artist"}:${card.show.id}`}
@@ -59,12 +59,12 @@ export default function YourArtistsScreen() {
                   });
                 }}
                 trailing={
-                  <Button
-                    label={isSaved ? "Saved" : "Save"}
-                    variant={isSaved ? "secondary" : "action"}
-                    disabled={saved.isPending(card.show.id)}
+                  <GoingButton
+                    going={going}
+                    pending={saved.isPending(card.show.id)}
+                    name={card.show.name}
                     onPress={() => {
-                      void saved.toggleSaved(card.show);
+                      void saved.tapGoingFromCard(card.show);
                     }}
                   />
                 }

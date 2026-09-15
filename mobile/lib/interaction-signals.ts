@@ -7,7 +7,10 @@ export type InteractionKind =
   | "save"
   | "unsave"
   | "ticket"
-  | "share";
+  | "share"
+  | "attendance";
+
+export type AttendanceSignalStatus = "interested" | "going" | null;
 
 export type EventSignals = {
   views: number;
@@ -15,6 +18,8 @@ export type EventSignals = {
   saves: number;
   ticketOpens: number;
   shares: number;
+  interested: number;
+  going: number;
   lastAt: number;
 };
 
@@ -23,6 +28,8 @@ export type EntitySignals = {
   saves: number;
   ticketOpens: number;
   shares: number;
+  interested: number;
+  going: number;
   lastAt: number;
 };
 
@@ -46,6 +53,8 @@ const EMPTY_EVENT: EventSignals = {
   saves: 0,
   ticketOpens: 0,
   shares: 0,
+  interested: 0,
+  going: 0,
   lastAt: 0,
 };
 
@@ -54,6 +63,8 @@ const EMPTY_ENTITY: EntitySignals = {
   saves: 0,
   ticketOpens: 0,
   shares: 0,
+  interested: 0,
+  going: 0,
   lastAt: 0,
 };
 
@@ -74,6 +85,8 @@ function parseEventSignals(value: unknown): EventSignals | null {
     saves: asCount(record.saves),
     ticketOpens: asCount(record.ticketOpens),
     shares: asCount(record.shares),
+    interested: asCount(record.interested),
+    going: asCount(record.going),
     lastAt: asCount(record.lastAt),
   };
 }
@@ -88,6 +101,8 @@ function parseEntitySignals(value: unknown): EntitySignals | null {
     saves: asCount(record.saves),
     ticketOpens: asCount(record.ticketOpens),
     shares: asCount(record.shares),
+    interested: asCount(record.interested),
+    going: asCount(record.going),
     lastAt: asCount(record.lastAt),
   };
 }
@@ -146,9 +161,32 @@ export function eventSignalsFor(
   return signals.events[eventId] ?? EMPTY_EVENT;
 }
 
+function applyAttendanceCounts(
+  row: { interested: number; going: number },
+  fromStatus: AttendanceSignalStatus,
+  toStatus: AttendanceSignalStatus,
+) {
+  if (fromStatus === toStatus) {
+    return;
+  }
+  if (fromStatus === "interested") {
+    row.interested = Math.max(0, row.interested - 1);
+  }
+  if (fromStatus === "going") {
+    row.going = Math.max(0, row.going - 1);
+  }
+  if (toStatus === "interested") {
+    row.interested += 1;
+  }
+  if (toStatus === "going") {
+    row.going += 1;
+  }
+}
+
 /**
  * Lightweight inferred score. Explicit favorites must always outrank this.
  * Keep the range well below favorite-artist / favorite-venue weights.
+ * Going is a very strong preference; Interested is strong.
  */
 export function engagementScore(signals: EventSignals | undefined) {
   if (!signals) {
@@ -159,7 +197,9 @@ export function engagementScore(signals: EventSignals | undefined) {
     signals.taps * 8 +
     signals.saves * 20 +
     signals.ticketOpens * 25 +
-    signals.shares * 15
+    signals.shares * 15 +
+    (signals.interested ?? 0) * 40 +
+    (signals.going ?? 0) * 80
   );
 }
 
@@ -172,6 +212,8 @@ export function applyInteraction(
     venueId?: string | null;
     genreIds?: readonly string[];
     at?: number;
+    fromStatus?: AttendanceSignalStatus;
+    toStatus?: AttendanceSignalStatus;
   },
 ): InteractionSignals {
   const at = input.at ?? Date.now();
@@ -188,6 +230,9 @@ export function applyInteraction(
   if (input.kind === "unsave") event.saves = Math.max(0, event.saves - 1);
   if (input.kind === "ticket") event.ticketOpens += 1;
   if (input.kind === "share") event.shares += 1;
+  if (input.kind === "attendance") {
+    applyAttendanceCounts(event, input.fromStatus ?? null, input.toStatus ?? null);
+  }
   event.lastAt = at;
   events[eventId] = event;
 
@@ -205,6 +250,9 @@ export function applyInteraction(
     if (input.kind === "unsave") row.saves = Math.max(0, row.saves - 1);
     if (input.kind === "ticket") row.ticketOpens += 1;
     if (input.kind === "share") row.shares += 1;
+    if (input.kind === "attendance") {
+      applyAttendanceCounts(row, input.fromStatus ?? null, input.toStatus ?? null);
+    }
     row.lastAt = at;
     return { ...bucket, [key]: row };
   };

@@ -73,6 +73,7 @@ export type ConcertEvent = {
   startsAt: string | null;
   localDate: string | null;
   localTime: string | null;
+  doorTime: string | null;
   timezone: string | null;
   dateStatus: EventDateStatus;
   dateLabel: string;
