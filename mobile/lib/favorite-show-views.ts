@@ -8,7 +8,7 @@ import {
 } from "./show-windows.ts";
 
 export type FavoriteShowKind = "artist" | "venue";
-export type FavoriteShowView = "week" | "next" | "all";
+export type FavoriteShowView = "week" | "next";
 
 export const FAVORITE_SHOW_VIEWS: Array<{
   id: FavoriteShowView;
@@ -16,7 +16,6 @@ export const FAVORITE_SHOW_VIEWS: Array<{
 }> = [
   { id: "week", label: "This Week" },
   { id: "next", label: "Next" },
-  { id: "all", label: "All" },
 ];
 
 export function parseFavoriteShowView(value: string | undefined) {
@@ -49,10 +48,24 @@ export function favoriteShowsForView(input: {
   view: FavoriteShowView;
   shows: readonly TicketmasterShow[];
   follows: readonly FollowedItem[];
+  selectedFollowKey?: string | null;
   now?: Date;
 }) {
   const now = input.now ?? new Date();
   const upcoming = uniqueChronologicalShows(input.shows, now);
+
+  if (input.selectedFollowKey) {
+    const selected = input.follows.find(
+      (item) => item.item_key === input.selectedFollowKey,
+    );
+    if (!selected) {
+      return [];
+    }
+
+    return upcoming.filter((show) =>
+      showMatchesFollow(show, input.kind, selected),
+    );
+  }
 
   if (input.view === "week") {
     return upcoming.filter((show) => isWithinDays(show, 7, now));
@@ -67,6 +80,29 @@ export function favoriteShowsForView(input: {
   }
 
   return upcoming;
+}
+
+function normalizedName(value: string | null | undefined) {
+  return (value ?? "").trim().toLocaleLowerCase();
+}
+
+export function showMatchesFollow(
+  show: TicketmasterShow,
+  kind: FavoriteShowKind,
+  follow: FollowedItem,
+) {
+  if (kind === "venue") {
+    return (
+      show.venueId === follow.item_key ||
+      normalizedName(show.venueName) === normalizedName(follow.item_label)
+    );
+  }
+
+  return show.attractions.some(
+    (artist) =>
+      artist.id === follow.item_key ||
+      normalizedName(artist.name) === normalizedName(follow.item_label),
+  );
 }
 
 export function favoriteShowViewCopy(
@@ -103,12 +139,14 @@ export function favoriteShowViewCopy(
       empty: `No upcoming shows were found for your followed ${noun}.`,
     };
   }
+
   return {
     title:
+      kind === "artist" ? "Next up for your artists" : "Next up at your venues",
+    body:
       kind === "artist"
-        ? "All upcoming for your artists"
-        : "All upcoming at your venues",
-    body: `All upcoming dates currently returned for the ${noun} you follow.`,
+        ? "The next scheduled show for each artist you follow."
+        : "The next scheduled show at each venue you follow.",
     empty: `No upcoming shows were found for your followed ${noun}.`,
   };
 }
