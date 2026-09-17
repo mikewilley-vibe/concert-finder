@@ -38,7 +38,7 @@ import {
   radiusLine,
   showingNearLine,
 } from "@/lib/home-location";
-import { scanDateLabel } from "@/lib/show-windows";
+import { isUpcomingShow, scanDateLabel, showSortKey } from "@/lib/show-windows";
 
 type SetsState =
   | { status: "loading" }
@@ -82,6 +82,8 @@ export default function HomeScreen() {
   const follows = useFollows();
   const saved = useSavedEvents();
   const home = useHomeLocation();
+  const homeReady = home.ready;
+  const bootstrapCurrent = home.bootstrapCurrent;
   const onboarding = useFavoritesOnboarding();
   const interactions = useInteractionSignals();
   const [setsState, setSetsState] = useState<SetsState>({ status: "loading" });
@@ -94,7 +96,7 @@ export default function HomeScreen() {
   );
 
   const loadSets = useCallback(async () => {
-    if (!follows.ready || !home.ready) {
+    if (!follows.ready || !homeReady) {
       return;
     }
 
@@ -123,14 +125,14 @@ export default function HomeScreen() {
         ),
       });
     }
-  }, [follows.artists, follows.ready, follows.venues, home.location, home.ready]);
+  }, [follows.artists, follows.ready, follows.venues, home.location, homeReady]);
 
   useEffect(() => {
-    if (!home.ready) {
+    if (!homeReady) {
       return;
     }
     let cancelled = false;
-    void home.bootstrapCurrent().then((result) => {
+    void bootstrapCurrent().then((result) => {
       if (cancelled) {
         return;
       }
@@ -142,7 +144,7 @@ export default function HomeScreen() {
     return () => {
       cancelled = true;
     };
-  }, [home.bootstrapCurrent, home.ready]);
+  }, [bootstrapCurrent, homeReady]);
 
   useEffect(() => {
     if (!locationReady) {
@@ -196,6 +198,14 @@ export default function HomeScreen() {
 
   const nearYou = feed?.nearYou.slice(0, HOME_NEAR_YOU_LIMIT) ?? [];
   const yourArtists = feed ? previewYourArtists(feed.yourArtists) : [];
+  const goingShows = useMemo(
+    () =>
+      [...saved.goingShows].sort((left, right) => {
+        const byDate = showSortKey(left).localeCompare(showSortKey(right));
+        return byDate !== 0 ? byDate : left.id.localeCompare(right.id);
+      }).filter((show) => isUpcomingShow(show)),
+    [saved.goingShows],
+  );
   const nextVenueShows = useMemo(() => {
     if (setsState.status !== "ready") {
       return [];
@@ -210,7 +220,7 @@ export default function HomeScreen() {
   const showOnboarding = onboarding.ready && !progress.complete;
   const showFullOnboarding = showOnboarding && !onboarding.dismissed;
   const loading =
-    !follows.ready || !home.ready || !locationReady || setsState.status === "loading";
+    !follows.ready || !homeReady || !locationReady || setsState.status === "loading";
 
   return (
     <Screen>
@@ -226,47 +236,36 @@ export default function HomeScreen() {
         />
       </ScreenBlock>
 
-      {showFullOnboarding ? (
-        <EmptyState
-          title="Make ShowSignal yours"
-          body={`ShowSignal gets better once it knows what you like. Spend a few minutes adding favorites — artists you love and rooms you already go to. ${progress.artistLabel}. ${progress.venueLabel}.`}
-          action={
-            <View style={{ gap: 8 }}>
-              <ActionLink
-                href="/discover"
-                label="Add favorites"
-                accessibilityLabel="Add favorite artists and venues"
-              />
-              <Button
-                label="Not now"
-                variant="secondary"
-                onPress={() => {
-                  void onboarding.dismiss();
-                }}
-              />
-            </View>
-          }
-        />
-      ) : showOnboarding ? (
-        <EmptyState
-          title="A few more favorites help"
-          body={`${progress.artistLabel}. ${progress.venueLabel}. Home gets sharper as you add them.`}
-          action={
-            <ActionLink
-              href="/discover"
-              label="Add favorites"
-              accessibilityLabel="Add favorite artists and venues"
-            />
-          }
-        />
-      ) : null}
-
       {follows.error ? (
         <EmptyState title="Follows didn’t load" body={follows.error} />
       ) : null}
       {saved.error ? <EmptyState title="Saved shows" body={saved.error} /> : null}
 
       {loading ? <LoadingBlock label="Loading shows near you…" /> : null}
+
+      <ScreenBlock>
+        <Strong>I’m Going To</Strong>
+        {goingShows.length > 0 ? (
+          goingShows.map((show) => (
+            <ShowRow
+              key={show.id}
+              show={show}
+              kicker={scanDateLabel(show)}
+              onOpen={() => onOpenShow(show)}
+              trailing={
+                <GoingButton
+                  going
+                  pending={saved.isPending(show.id)}
+                  name={show.name}
+                  onPress={() => onToggleGoing(show)}
+                />
+              }
+            />
+          ))
+        ) : (
+          <Body>Concerts you mark “I’m Going” will appear here.</Body>
+        )}
+      </ScreenBlock>
 
       {setsState.status === "error" ? (
         <EmptyState
@@ -361,7 +360,7 @@ export default function HomeScreen() {
           ))}
           {follows.artists.length === 0 ? (
             <EmptyState
-              title="Make ShowSignal yours"
+              title="No artists followed yet"
               body={`Follow artists you already love and Home will surface their next dates, wherever they play. ${progress.artistLabel}. ${progress.venueLabel}.`}
               action={
                 <ActionLink
@@ -386,9 +385,9 @@ export default function HomeScreen() {
           ) : null}
           {feed.yourArtistsTotal > yourArtists.length ? (
             <ActionLink
-              href="/artists?view=all"
-              label="See all upcoming artists"
-              accessibilityLabel="See all upcoming shows from your artists"
+              href="/artists?view=next"
+              label="Open Artists"
+              accessibilityLabel="Open your followed artists"
             />
           ) : yourArtists.length > 0 ? (
             <ActionLink
@@ -446,6 +445,41 @@ export default function HomeScreen() {
             />
           ) : null}
         </ScreenBlock>
+      ) : null}
+
+      {showFullOnboarding ? (
+        <EmptyState
+          title="Make ShowSignal yours"
+          body={`ShowSignal gets better once it knows what you like. Spend a few minutes adding favorites — artists you love and rooms you already go to. ${progress.artistLabel}. ${progress.venueLabel}.`}
+          action={
+            <View style={{ gap: 8 }}>
+              <ActionLink
+                href="/discover"
+                label="Add favorites"
+                accessibilityLabel="Add favorite artists and venues"
+              />
+              <Button
+                label="Not now"
+                variant="secondary"
+                onPress={() => {
+                  void onboarding.dismiss();
+                }}
+              />
+            </View>
+          }
+        />
+      ) : showOnboarding ? (
+        <EmptyState
+          title="A few more favorites help"
+          body={`${progress.artistLabel}. ${progress.venueLabel}. Home gets sharper as you add them.`}
+          action={
+            <ActionLink
+              href="/discover"
+              label="Add favorites"
+              accessibilityLabel="Add favorite artists and venues"
+            />
+          }
+        />
       ) : null}
     </Screen>
   );

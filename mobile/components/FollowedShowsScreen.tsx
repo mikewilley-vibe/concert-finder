@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActionLink } from "@/components/ActionLink";
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
+import { FollowedItemPicker } from "@/components/FollowedItemPicker";
 import { GoingButton } from "@/components/GoingButton";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { Screen, ScreenBlock } from "@/components/Screen";
@@ -51,6 +52,9 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
+  const [selectedFollowKey, setSelectedFollowKey] = useState<string | null>(
+    null,
+  );
   const requestIdRef = useRef(0);
 
   const loadShows = useCallback(async () => {
@@ -96,6 +100,11 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
   }, [loadShows]);
 
   const followed = kind === "artist" ? follows.artists : follows.venues;
+  const selectedFollow = followed.find(
+    (item) => item.item_key === selectedFollowKey,
+  );
+  const activeSelectedFollowKey = selectedFollow?.item_key ?? null;
+
   const shows = useMemo(() => {
     const sourceShows =
       state.status === "ready" ? state.shows : [];
@@ -104,9 +113,16 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
       view,
       shows: sourceShows,
       follows: followed,
+      selectedFollowKey: activeSelectedFollowKey,
     });
-  }, [followed, kind, state, view]);
-  const copy = favoriteShowViewCopy(kind, view);
+  }, [activeSelectedFollowKey, followed, kind, state, view]);
+  const copy = selectedFollow
+    ? {
+        title: `${selectedFollow.item_label} upcoming shows`,
+        body: `All upcoming dates currently returned for ${selectedFollow.item_label}.`,
+        empty: `No upcoming shows were found for ${selectedFollow.item_label}.`,
+      }
+    : favoriteShowViewCopy(kind, view);
   const noun = kind === "artist" ? "artists" : "venues";
 
   function retry() {
@@ -176,6 +192,17 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
           selected={view}
           onSelect={(nextView) => router.setParams({ view: nextView })}
         />
+        {follows.ready && followed.length > 0 ? (
+          <FollowedItemPicker
+            kind={kind}
+            items={followed}
+            selectedKey={activeSelectedFollowKey}
+            onSelect={(nextKey) => {
+              setSelectedFollowKey(nextKey);
+              setLoadMoreError(null);
+            }}
+          />
+        ) : null}
       </ScreenBlock>
 
       {!follows.ready || state.status === "loading" ? (
@@ -235,9 +262,9 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
           {saved.error ? <Body>{saved.error}</Body> : null}
           {shows.map(renderShow)}
           {loadMoreError ? <Body>{loadMoreError}</Body> : null}
-          {view === "all" && state.nextCursors.length > 0 ? (
+          {activeSelectedFollowKey && state.nextCursors.length > 0 ? (
             <Button
-              label="Load more shows"
+              label="Load more dates"
               busy={loadingMore}
               onPress={() => {
                 void loadMore();

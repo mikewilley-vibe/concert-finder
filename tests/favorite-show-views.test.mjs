@@ -48,7 +48,7 @@ const shows = [
 
 test("favorite show views parse unknown values as This Week", () => {
   assert.equal(parseFavoriteShowView("next"), "next");
-  assert.equal(parseFavoriteShowView("all"), "all");
+  assert.equal(parseFavoriteShowView("all"), "week");
   assert.equal(parseFavoriteShowView("something-else"), "week");
 });
 
@@ -94,17 +94,33 @@ test("Next keeps one chronological show for every followed venue", () => {
   );
 });
 
-test("All keeps every unique future show in chronological order", () => {
+test("selecting an artist shows every unique upcoming date for that artist", () => {
   const result = favoriteShowsForView({
-    kind: "venue",
-    view: "all",
+    kind: "artist",
+    view: "week",
     shows,
-    follows: venueFollows,
+    follows: artistFollows,
+    selectedFollowKey: "artist-a",
     now: NOW,
   });
   assert.deepEqual(
     result.map((item) => item.id),
-    ["a-first", "a-later", "b-first"],
+    ["a-first", "a-later"],
+  );
+});
+
+test("selecting a venue shows every unique upcoming date at that venue", () => {
+  const result = favoriteShowsForView({
+    kind: "venue",
+    view: "next",
+    shows,
+    follows: venueFollows,
+    selectedFollowKey: "venue-b",
+    now: NOW,
+  });
+  assert.deepEqual(
+    result.map((item) => item.id),
+    ["a-later", "b-first"],
   );
 });
 
