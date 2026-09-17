@@ -14,9 +14,7 @@ import {
   HOME_EVENT_PAGE_SIZE,
 } from "./home-event-searches";
 import {
-  ARTIST_DAYS,
   NEARBY_DAYS,
-  artistReachMiles,
   endDateTimeAfterDays,
 } from "./show-windows";
 
@@ -24,6 +22,8 @@ const CACHE_TTL_MS = 2 * 60 * 1000;
 
 export type HomeEventSets = {
   nearby: TicketmasterShow[];
+  artists: TicketmasterShow[];
+  venues: TicketmasterShow[];
   followed: TicketmasterShow[];
 };
 
@@ -95,8 +95,6 @@ export async function loadHomeEventSets(input: {
     const fields = upcomingSearchFields(input.location);
     const hasLocation = Boolean(fields.latitude || fields.postalCode);
     const nearbyEnd = endDateTimeAfterDays(NEARBY_DAYS + 1, input.now);
-    const venueEnd = endDateTimeAfterDays(ARTIST_DAYS + 1, input.now);
-    const followRadius = artistReachMiles(input.location.radiusMiles);
     const venues = input.venues.map(toFollowedRef);
 
     const nearbyPromise = hasLocation
@@ -119,9 +117,6 @@ export async function loadHomeEventSets(input: {
             ),
           ).then(mergeShows);
 
-    const venueLocation = fields.latitude
-      ? { ...fields, radiusMiles: followRadius }
-      : fields;
     const venueChunks = chunkRefs(venues);
     const venuePromise =
       venueChunks.length === 0
@@ -131,22 +126,22 @@ export async function loadHomeEventSets(input: {
               search({
                 attractions: [],
                 venues: chunk,
-                ...venueLocation,
-                endDateTime: venueEnd,
                 pageSize: HOME_EVENT_PAGE_SIZE,
               }).then((result) => result.shows),
             ),
           ).then(mergeShows);
 
-    const followedPromise = Promise.all([artistPromise, venuePromise]).then(
-      (batches) => mergeShows(batches),
-    );
-
-    const [nearby, followed] = await Promise.all([
+    const [nearby, artists, venueShows] = await Promise.all([
       nearbyPromise,
-      followedPromise,
+      artistPromise,
+      venuePromise,
     ]);
-    const value = { nearby, followed };
+    const value = {
+      nearby,
+      artists,
+      venues: venueShows,
+      followed: mergeShows([artists, venueShows]),
+    };
     cache = { key, at: Date.now(), value };
     return value;
   })();
