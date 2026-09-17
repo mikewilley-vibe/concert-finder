@@ -15,6 +15,7 @@ import { useHomeLocation } from "@/hooks/useHomeLocation";
 import { useInteractionSignals } from "@/hooks/useInteractionSignals";
 import { useSavedEvents } from "@/hooks/useSavedEvents";
 import { apiErrorMessage, type TicketmasterShow } from "@/lib/api";
+import { favoriteShowsForView } from "@/lib/favorite-show-views";
 import { favoritesProgress } from "@/lib/favorites-progress";
 import {
   HOME_NEAR_YOU_LIMIT,
@@ -37,6 +38,7 @@ import {
   radiusLine,
   showingNearLine,
 } from "@/lib/home-location";
+import { scanDateLabel } from "@/lib/show-windows";
 
 type SetsState =
   | { status: "loading" }
@@ -194,6 +196,17 @@ export default function HomeScreen() {
 
   const nearYou = feed?.nearYou.slice(0, HOME_NEAR_YOU_LIMIT) ?? [];
   const yourArtists = feed ? previewYourArtists(feed.yourArtists) : [];
+  const nextVenueShows = useMemo(() => {
+    if (setsState.status !== "ready") {
+      return [];
+    }
+    return favoriteShowsForView({
+      kind: "venue",
+      view: "next",
+      shows: setsState.sets.venues,
+      follows: follows.venues,
+    }).slice(0, 3);
+  }, [follows.venues, setsState]);
   const showOnboarding = onboarding.ready && !progress.complete;
   const showFullOnboarding = showOnboarding && !onboarding.dismissed;
   const loading =
@@ -373,9 +386,63 @@ export default function HomeScreen() {
           ) : null}
           {feed.yourArtistsTotal > yourArtists.length ? (
             <ActionLink
-              href="/your-artists"
+              href="/artists?view=all"
               label="See all upcoming artists"
               accessibilityLabel="See all upcoming shows from your artists"
+            />
+          ) : yourArtists.length > 0 ? (
+            <ActionLink
+              href="/artists?view=next"
+              label="Open Artists"
+              accessibilityLabel="Open your followed artists"
+            />
+          ) : null}
+        </ScreenBlock>
+      ) : null}
+
+      {setsState.status === "ready" ? (
+        <ScreenBlock>
+          <Strong>Your Venues Coming Up</Strong>
+          <Body>The next scheduled show at each venue you follow.</Body>
+          {nextVenueShows.map((show) => (
+            <ShowRow
+              key={show.id}
+              show={show}
+              kicker={scanDateLabel(show)}
+              onOpen={() => onOpenShow(show)}
+              trailing={
+                <GoingButton
+                  going={saved.statusFor(show.id) === "going"}
+                  pending={saved.isPending(show.id)}
+                  name={show.name}
+                  onPress={() => onToggleGoing(show)}
+                />
+              }
+            />
+          ))}
+          {follows.venues.length === 0 ? (
+            <EmptyState
+              title="Follow your favorite venues"
+              body="Add rooms you already visit and ShowSignal will keep their next events together."
+              action={
+                <ActionLink
+                  href="/discover"
+                  label="Find venues"
+                  accessibilityLabel="Find venues to follow"
+                />
+              }
+            />
+          ) : nextVenueShows.length === 0 ? (
+            <EmptyState
+              title="No upcoming venue dates"
+              body="Nothing is currently scheduled at your followed venues."
+            />
+          ) : null}
+          {nextVenueShows.length > 0 ? (
+            <ActionLink
+              href="/venues?view=next"
+              label="Open Venues"
+              accessibilityLabel="Open your followed venues"
             />
           ) : null}
         </ScreenBlock>

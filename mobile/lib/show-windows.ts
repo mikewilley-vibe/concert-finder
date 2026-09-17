@@ -59,6 +59,10 @@ export function isWithinDays(
   return stamp >= today && stamp <= end;
 }
 
+export function isUpcomingShow(show: DatedShow, now = new Date()) {
+  return showLocalStamp(show, now) >= localStamp(now);
+}
+
 export function endDateTimeAfterDays(days: number, now = new Date()) {
   const end = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
   end.setUTCMinutes(Math.floor(end.getUTCMinutes() / 5) * 5, 0, 0);

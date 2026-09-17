@@ -1,0 +1,114 @@
+import type { TicketmasterShow } from "./api";
+import type { FollowedItem } from "./follows";
+import { pickNextUpcomingShows } from "./next-upcoming-shows.ts";
+import {
+  isUpcomingShow,
+  isWithinDays,
+  showSortKey,
+} from "./show-windows.ts";
+
+export type FavoriteShowKind = "artist" | "venue";
+export type FavoriteShowView = "week" | "next" | "all";
+
+export const FAVORITE_SHOW_VIEWS: Array<{
+  id: FavoriteShowView;
+  label: string;
+}> = [
+  { id: "week", label: "This Week" },
+  { id: "next", label: "Next" },
+  { id: "all", label: "All" },
+];
+
+export function parseFavoriteShowView(value: string | undefined) {
+  return FAVORITE_SHOW_VIEWS.some((item) => item.id === value)
+    ? (value as FavoriteShowView)
+    : "week";
+}
+
+function uniqueChronologicalShows(
+  shows: readonly TicketmasterShow[],
+  now: Date,
+) {
+  const seen = new Set<string>();
+  return [...shows]
+    .filter((show) => {
+      if (seen.has(show.id) || !isUpcomingShow(show, now)) {
+        return false;
+      }
+      seen.add(show.id);
+      return true;
+    })
+    .sort((left, right) => {
+      const byDate = showSortKey(left).localeCompare(showSortKey(right));
+      return byDate !== 0 ? byDate : left.id.localeCompare(right.id);
+    });
+}
+
+export function favoriteShowsForView(input: {
+  kind: FavoriteShowKind;
+  view: FavoriteShowView;
+  shows: readonly TicketmasterShow[];
+  follows: readonly FollowedItem[];
+  now?: Date;
+}) {
+  const now = input.now ?? new Date();
+  const upcoming = uniqueChronologicalShows(input.shows, now);
+
+  if (input.view === "week") {
+    return upcoming.filter((show) => isWithinDays(show, 7, now));
+  }
+
+  if (input.view === "next") {
+    const ids = input.follows.map((item) => item.item_key);
+    return pickNextUpcomingShows(upcoming, {
+      attractionIds: input.kind === "artist" ? ids : [],
+      venueIds: input.kind === "venue" ? ids : [],
+    });
+  }
+
+  return upcoming;
+}
+
+export function favoriteShowViewCopy(
+  kind: FavoriteShowKind,
+  view: FavoriteShowView,
+) {
+  const noun = kind === "artist" ? "artists" : "venues";
+  if (view === "week") {
+    return {
+      title:
+        kind === "artist"
+          ? "Your artists this week"
+          : "Your venues this week",
+      body:
+        kind === "artist"
+          ? "Shows from artists you follow over the next seven days."
+          : "Shows at venues you follow over the next seven days.",
+      empty:
+        kind === "artist"
+          ? "No artists you follow have a show in the next seven days."
+          : "No shows are scheduled at your followed venues in the next seven days.",
+    };
+  }
+  if (view === "next") {
+    return {
+      title:
+        kind === "artist"
+          ? "Next up for your artists"
+          : "Next up at your venues",
+      body:
+        kind === "artist"
+          ? "The next scheduled show for each artist you follow."
+          : "The next scheduled show at each venue you follow.",
+      empty: `No upcoming shows were found for your followed ${noun}.`,
+    };
+  }
+  return {
+    title:
+      kind === "artist"
+        ? "All upcoming for your artists"
+        : "All upcoming at your venues",
+    body: `All upcoming dates currently returned for the ${noun} you follow.`,
+    empty: `No upcoming shows were found for your followed ${noun}.`,
+  };
+}

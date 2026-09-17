@@ -1,6 +1,11 @@
 import { SymbolView, type AndroidSymbol } from "expo-symbols";
-import { Tabs } from "expo-router";
-import { Keyboard, type ColorValue } from "react-native";
+import { router, Tabs } from "expo-router";
+import {
+  Keyboard,
+  Pressable,
+  StyleSheet,
+  type ColorValue,
+} from "react-native";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { colors, fonts } from "@/constants/theme";
@@ -48,6 +53,24 @@ export default function TabLayout() {
           borderTopColor: colors.line,
         },
         sceneStyle: { backgroundColor: colors.background },
+        headerRight: () => (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open profile and settings"
+            hitSlop={8}
+            onPress={() => router.push("/profile")}
+            style={({ pressed }) => [
+              styles.settings,
+              pressed && styles.settingsPressed,
+            ]}
+          >
+            <TabIcon
+              ios="gearshape"
+              android="settings"
+              color={colors.foreground}
+            />
+          </Pressable>
+        ),
       }}
     >
       <Tabs.Screen
@@ -56,6 +79,24 @@ export default function TabLayout() {
           title: "Home",
           tabBarIcon: ({ color }) => (
             <TabIcon ios="house" android="home" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="artists"
+        options={{
+          title: "Artists",
+          tabBarIcon: ({ color }) => (
+            <TabIcon ios="music.note" android="person" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="venues"
+        options={{
+          title: "Venues",
+          tabBarIcon: ({ color }) => (
+            <TabIcon ios="building.2" android="home" color={color} />
           ),
         }}
       />
@@ -81,6 +122,8 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: "Profile",
+          href: null,
+          headerRight: () => null,
           tabBarIcon: ({ color }) => (
             <TabIcon ios="person" android="person" color={color} />
           ),
@@ -89,3 +132,17 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  settings: {
+    width: 44,
+    height: 44,
+    marginRight: 8,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  settingsPressed: {
+    backgroundColor: colors.panelHover,
+  },
+});
