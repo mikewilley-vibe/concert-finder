@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/components/AuthProvider";
+import { authErrorFields } from "@/lib/account";
 import type { TicketmasterShow } from "@/lib/api";
 import {
   applyAttendanceStatus,
@@ -46,6 +47,39 @@ export type SetAttendanceResult =
 
 function websiteOrigin() {
   return websiteUrl("/").replace(/\/$/, "");
+}
+
+export function savedShowsLoadMessage(error: unknown) {
+  const { message, code, status } = authErrorFields(error);
+
+  if (
+    /Failed to fetch|Network request failed|Load failed|The Internet connection appears to be offline/i.test(
+      message,
+    )
+  ) {
+    return "Network error. Saved and Going shows on this phone are still here.";
+  }
+
+  if (
+    status === 401 ||
+    code === "PGRST301" ||
+    /jwt expired|invalid jwt|not authenticated/i.test(message)
+  ) {
+    return "Your session expired. Reopen ShowSignal to refresh Going and saved shows.";
+  }
+
+  if (
+    code === "42501" ||
+    /row-level security|permission denied/i.test(message)
+  ) {
+    return "ShowSignal could not sync saved shows because of a permissions (RLS) rule.";
+  }
+
+  if (message.trim()) {
+    return message.trim();
+  }
+
+  return "Could not sync saved shows from your account.";
 }
 
 function trackAttendance(
@@ -116,18 +150,22 @@ export function useSavedEvents() {
 
     let cancelled = false;
     const timer = setTimeout(() => {
-      void refresh().catch(() => {
+      void refresh().catch((loadError: unknown) => {
         if (!cancelled) {
-          setError("Could not load saved shows.");
+          const hasLocal =
+            Object.keys(getAttendanceState().records).length > 0;
+          setError(hasLocal ? null : savedShowsLoadMessage(loadError));
           setReady(true);
         }
       });
     }, 0);
 
     const unsubscribe = subscribeUserLibrary(() => {
-      void refresh().catch(() => {
+      void refresh().catch((loadError: unknown) => {
         if (!cancelled) {
-          setError("Could not refresh saved shows.");
+          const hasLocal =
+            Object.keys(getAttendanceState().records).length > 0;
+          setError(hasLocal ? null : savedShowsLoadMessage(loadError));
         }
       });
     });

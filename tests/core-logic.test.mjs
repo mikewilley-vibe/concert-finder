@@ -28,6 +28,7 @@ import {
   homeLocationLabel,
   parsePostalCode,
   parseStoredHomeLocation,
+  showingNearLine,
   upcomingSearchFields,
 } from "../mobile/lib/home-location.ts";
 import {
@@ -364,6 +365,17 @@ test("home location postal codes match the Ticketmaster search rules", () => {
       longitude: null,
     }),
     { postalCode: "20003", radiusMiles: 50 },
+  );
+});
+
+test("Home nearby heading uses Shows near", () => {
+  const location = parseStoredHomeLocation(
+    '{"postalCode":"23505","radiusMiles":50}',
+  );
+  assert.equal(showingNearLine(location), "Shows near 23505");
+  assert.equal(
+    showingNearLine(parseStoredHomeLocation("{}")),
+    "Shows near your current location",
   );
 });
 

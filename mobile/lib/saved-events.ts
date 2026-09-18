@@ -142,7 +142,7 @@ function extendedSnapshot(userId: string, show: TicketmasterShow) {
   };
 }
 
-function isMissingColumnError(error: { message?: string; code?: string }) {
+export function isMissingColumnError(error: { message?: string; code?: string }) {
   const message = error.message?.toLowerCase() ?? "";
   return (
     error.code === "PGRST204" ||
@@ -151,7 +151,11 @@ function isMissingColumnError(error: { message?: string; code?: string }) {
     message.includes("calendar_provider") ||
     message.includes("external_calendar_event_id") ||
     message.includes("calendar_added_at") ||
-    message.includes("schema cache")
+    message.includes("venue_id") ||
+    message.includes("venue_address") ||
+    message.includes("updated_at") ||
+    message.includes("schema cache") ||
+    message.includes("does not exist")
   );
 }
 
