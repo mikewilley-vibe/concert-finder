@@ -225,6 +225,7 @@ export default function HomeScreen() {
   return (
     <Screen>
       <ScreenBlock>
+        <Eyebrow>ShowSignal</Eyebrow>
         <Strong>I’m Going To</Strong>
         {goingShows.length > 0 ? (
           goingShows.map((show) => (
@@ -249,7 +250,6 @@ export default function HomeScreen() {
       </ScreenBlock>
 
       <ScreenBlock>
-        <Eyebrow>ShowSignal</Eyebrow>
         <Title>{showingNearLine(home.location)}</Title>
         <Body>{radiusLine(home.location)}</Body>
         {locationNotice ? <Body>{locationNotice}</Body> : null}
