@@ -225,25 +225,6 @@ export default function HomeScreen() {
   return (
     <Screen>
       <ScreenBlock>
-        <Eyebrow>ShowSignal</Eyebrow>
-        <Title>{showingNearLine(home.location)}</Title>
-        <Body>{radiusLine(home.location)}</Body>
-        {locationNotice ? <Body>{locationNotice}</Body> : null}
-        <ActionLink
-          href="/profile"
-          label="Change location"
-          accessibilityLabel="Change location in Profile"
-        />
-      </ScreenBlock>
-
-      {follows.error ? (
-        <EmptyState title="Follows didn’t load" body={follows.error} />
-      ) : null}
-      {saved.error ? <EmptyState title="Saved shows" body={saved.error} /> : null}
-
-      {loading ? <LoadingBlock label="Loading shows near you…" /> : null}
-
-      <ScreenBlock>
         <Strong>I’m Going To</Strong>
         {goingShows.length > 0 ? (
           goingShows.map((show) => (
@@ -266,6 +247,24 @@ export default function HomeScreen() {
           <Body>Concerts you mark “I’m Going” will appear here.</Body>
         )}
       </ScreenBlock>
+
+      <ScreenBlock>
+        <Eyebrow>ShowSignal</Eyebrow>
+        <Title>{showingNearLine(home.location)}</Title>
+        <Body>{radiusLine(home.location)}</Body>
+        {locationNotice ? <Body>{locationNotice}</Body> : null}
+        <ActionLink
+          href="/profile"
+          label="Change location"
+          accessibilityLabel="Change location in Profile"
+        />
+      </ScreenBlock>
+
+      {follows.error ? (
+        <EmptyState title="Follows didn’t load" body={follows.error} />
+      ) : null}
+
+      {loading ? <LoadingBlock label="Loading shows near you…" /> : null}
 
       {setsState.status === "error" ? (
         <EmptyState

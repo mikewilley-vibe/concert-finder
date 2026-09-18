@@ -219,12 +219,12 @@ export function activePlaceLabel(location: HomeLocation) {
 export function showingNearLine(location: HomeLocation) {
   const place = activePlaceLabel(location);
   if (place) {
-    return `Showing shows near ${place}`;
+    return `Shows near ${place}`;
   }
   if (resolvedSource(location) === "home") {
-    return "Showing shows near your home area";
+    return "Shows near your home area";
   }
-  return "Showing shows near your current location";
+  return "Shows near your current location";
 }
 
 export function radiusLine(location: HomeLocation) {
