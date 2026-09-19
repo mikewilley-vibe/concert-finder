@@ -29,9 +29,13 @@ export default function NearbyShowsScreen() {
       {cards.length === 0 ? (
         <EmptyState
           title="No nearby list yet"
-          body="Open Home first so ShowSignal can load this week’s shows."
+          body="Open Discover first so ShowSignal can load this week’s shows."
           action={
-            <ActionLink href="/(tabs)" label="Back to Home" accessibilityLabel="Back to Home" />
+            <ActionLink
+              href="/(tabs)"
+              label="Back to Discover"
+              accessibilityLabel="Back to Discover"
+            />
           }
         />
       ) : (

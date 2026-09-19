@@ -30,7 +30,7 @@ export default function YourArtistsScreen() {
       {cards.length === 0 ? (
         <EmptyState
           title="No artist list yet"
-          body="Open Home first, or add favorite artists in Discover."
+          body="Open Discover first, or add favorite artists."
           action={
             <ActionLink
               href="/discover"

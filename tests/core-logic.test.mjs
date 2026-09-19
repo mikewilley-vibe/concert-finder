@@ -580,7 +580,7 @@ test("new-show push copy names the follow and the number of dates", () => {
     }),
     {
       title: "New Phish date",
-      body: "Open ShowSignal to see them on Home.",
+      body: "Open ShowSignal to see them in Discover.",
     },
   );
   assert.equal(

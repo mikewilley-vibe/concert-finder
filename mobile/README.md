@@ -75,16 +75,17 @@ config, app code, `.env`, logs, or examples.
 
 ## What works now
 
-- **Discover** — artist and venue search through the website Ticketmaster
-  proxy, with loading / empty / error / retry
+- **Discover** — nearby and personalized shows, the next locked show, and a
+  direct path to artist and venue search through the website Ticketmaster proxy
 - **Follow / unfollow** — `saved_items` rows (`ticketmaster_attraction` /
   `ticketmaster_venue`) under RLS
-- **Save / remove** — Ticketmaster concerts in `saved_events`
-- **Home** — upcoming shows for follows, plus a new-show inbox
-- **Saved** — saved events and follows with remove actions
-- **Profile** — guest bootstrap, email/password sign-in and sign-up, sign-out,
-  password recovery (reset opens ShowSignal when the app is installed), and
-  merge-anonymous after permanent sign-in
+- **Interested / Lock me in** — mutually exclusive concert statuses in
+  `saved_events`
+- **Artists / Venues** — followed favorites and their upcoming shows
+- **Locked** — committed concerts plus Interested shows
+- **Profile via the gear** — guest bootstrap, email/password sign-in and
+  sign-up, sign-out, password recovery (reset opens ShowSignal when the app is
+  installed), and merge-anonymous after permanent sign-in
 - Concert, artist, and venue stack screens with follow/save, share, Ticketmaster
   links, and add to Calendar
 - Two-step permanent account deletion through the authenticated website API

@@ -12,14 +12,14 @@ export default function NotFoundScreen() {
       <Screen>
         <ScreenBlock>
           <Title>This screen doesn’t exist.</Title>
-          <Body>Go back to Home to keep browsing shows.</Body>
+          <Body>Go back to Discover to keep browsing shows.</Body>
           <Link
             href="/"
             accessibilityRole="link"
-            accessibilityLabel="Back to Home"
+            accessibilityLabel="Back to Discover"
             style={styles.link}
           >
-            <Text style={styles.linkLabel}>Back to Home</Text>
+            <Text style={styles.linkLabel}>Back to Discover</Text>
           </Link>
         </ScreenBlock>
       </Screen>

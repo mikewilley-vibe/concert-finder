@@ -424,7 +424,7 @@ test("location copy names the active area and radius", () => {
       homeLatitude: null,
       homeLongitude: null,
     }),
-    "Showing shows near Richmond, VA",
+    "Shows near Richmond, VA",
   );
   assert.equal(
     radiusLine({
@@ -454,7 +454,7 @@ test("location copy names the active area and radius", () => {
       homeLatitude: null,
       homeLongitude: null,
     }),
-    "Showing shows near Richmond, VA",
+    "Shows near Richmond, VA",
   );
   assert.deepEqual(
     upcomingSearchFields({

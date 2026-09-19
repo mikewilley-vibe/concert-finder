@@ -126,7 +126,7 @@ export function TicketmasterShowCard({
             onClick={onToggleSaved}
             className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-accent px-4 text-sm font-semibold text-background transition-colors hover:bg-accent-deep focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-70 sm:w-fit"
           >
-            {savePending ? "Saving…" : saved ? "Saved" : "Save show"}
+            {savePending ? "Updating…" : saved ? "♡ Interested" : "Interested"}
           </button>
         ) : null}
         {show.ticketUrl ? (
@@ -188,7 +188,7 @@ export function TicketmasterShowResults({
         setSaveError(null);
       } catch {
         if (cancelled) return;
-        setSaveError("Saved shows are temporarily unavailable.");
+        setSaveError("Interested shows are temporarily unavailable.");
       }
     }
 
@@ -204,7 +204,7 @@ export function TicketmasterShowResults({
         })
         .catch(() => {
           if (cancelled) return;
-          setSaveError("Could not refresh saved shows.");
+          setSaveError("Could not refresh interested shows.");
         });
     }
 
@@ -249,8 +249,8 @@ export function TicketmasterShowResults({
       });
       setSaveError(
         wasSaved
-          ? "Could not remove that saved show. Try again."
-          : "Could not save that show. Try again.",
+          ? "Could not clear Interested. Try again."
+          : "Could not mark that show Interested. Try again.",
       );
     } finally {
       pendingIdsRef.current.delete(show.id);

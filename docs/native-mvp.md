@@ -5,12 +5,15 @@ avoid carrying the website's long-page layout into mobile.
 
 ## Navigation
 
-1. **Home** — new announcements and upcoming shows from followed artists and
-   venues
-2. **Discover** — search artists, venues, and their upcoming Ticketmaster shows
-3. **Saved** — saved events plus followed artists and venues
-4. **Profile** — account, home location, notification preferences, support, and
-   account deletion
+1. **Discover** — nearby shows, personalized recommendations, the next locked
+   show, and a direct path to artist and venue search
+2. **Artists** — followed artists and their upcoming shows
+3. **Venues** — followed venues and their upcoming shows
+4. **Locked** — shows the user has committed to, plus Interested shows as a
+   secondary list
+
+Profile remains available from the gear button and contains the account, home
+location, notification preferences, support, and account deletion.
 
 Concert, artist, and venue details open as separate screens rather than being
 expanded inside a long feed.
@@ -23,7 +26,7 @@ expanded inside a long feed.
 - Follow and unfollow artists and venues
 - Upcoming shows for followed items
 - Concert details with artwork, date/time, venue, status, and Ticketmaster link
-- Save and remove Ticketmaster concerts
+- Mark concerts Interested or use **Lock me in**, then clear either status
 - New-show inbox with mark-as-seen behavior
 - Loading, empty, offline, denied-permission, and retry states
 - Accessible labels, touch targets, text scaling, and contrast
@@ -52,8 +55,9 @@ moderation are not necessary to validate the core native product.
 1. Install the app and begin anonymously.
 2. Search for an artist and follow it.
 3. Load the artist's upcoming concerts.
-4. Open and save one concert.
-5. Close and reopen the app; confirm the follow and save remain.
+4. Open one concert and tap **Lock me in**.
+5. Close and reopen the app; confirm the follow and locked show remain.
 6. Sign into an existing account; confirm temporary data is transferred.
 7. Sign into the same account on another device; confirm the data appears.
-8. Remove the save and follow; confirm both devices update after refresh.
+8. Clear Locked and remove the follow; confirm both devices update after
+   refresh.

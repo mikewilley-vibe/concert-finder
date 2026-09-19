@@ -102,7 +102,7 @@ export function AccountScreen() {
               userResult.data.user,
             );
             if (merged) {
-              setNotice("Your temporary follows, saved shows, and drafts were moved to this account.");
+              setNotice("Your temporary follows, interested shows, and drafts were moved to this account.");
             }
           } catch {
             setError(
@@ -343,7 +343,7 @@ export function AccountScreen() {
       setSignInPassword("");
       if (merged) {
         setNotice(
-          "Signed in. Your temporary follows, saved shows, and drafts were moved to this account.",
+          "Signed in. Your temporary follows, interested shows, and drafts were moved to this account.",
         );
       }
     } catch (signInError) {

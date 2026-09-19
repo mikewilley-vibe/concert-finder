@@ -226,8 +226,8 @@ export default function ConcertScreen() {
           <Eyebrow>Concert</Eyebrow>
           <Title>Concert detail</Title>
           <Body>
-            Open a show from Discover, Home, or Saved to see the date, venue,
-            and tickets.
+            Open a show from Discover, Artists, Venues, or Locked to see the
+            date, venue, and tickets.
           </Body>
         </ScreenBlock>
       </Screen>
@@ -276,7 +276,7 @@ export default function ConcertScreen() {
 
       {show ? (
         <View style={styles.card}>
-          <Strong>Are you going?</Strong>
+          <Strong>Your plan</Strong>
           <View style={styles.attendanceRow}>
             <Button
               label={isInterested ? "♡ Interested" : "♡ Interested"}
@@ -300,7 +300,7 @@ export default function ConcertScreen() {
               }}
             />
           </View>
-          {isGoing ? <Body>✓ You’re going to this show.</Body> : null}
+          {isGoing ? <Body>✓ Locked — you’re going to this show.</Body> : null}
           {show.attractions.length > 0 ? <Strong>Follow</Strong> : null}
           {show.attractions.map((artist) => {
             const followed = follows.isFollowed(

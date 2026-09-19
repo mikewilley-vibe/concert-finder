@@ -413,7 +413,7 @@ export default function ProfileScreen() {
         return;
       }
       setHomeNotice(
-        "Using your current location. Upcoming shows on Home use this area.",
+        "Using your current location. Upcoming shows in Discover use this area.",
       );
     } catch {
       setHomeNotice(
@@ -840,7 +840,7 @@ export default function ProfileScreen() {
         <Strong>Notification preferences</Strong>
         <Body>
           {permanent
-            ? "Get a ping when a followed artist or venue gets a new date. The daily check still fills Home either way."
+            ? "Get a ping when a followed artist or venue gets a new date. The daily check still fills Discover either way."
             : "Save your account first. Push alerts are for permanent accounts, and they need a ShowSignal device build."}
         </Body>
         {pushBlocked ? <Body>{pushBlocked.message}</Body> : null}

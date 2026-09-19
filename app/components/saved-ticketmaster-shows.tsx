@@ -36,7 +36,7 @@ export function SavedTicketmasterShows() {
         setError(null);
       } catch {
         if (cancelled) return;
-        setError("Could not load your saved Ticketmaster shows.");
+        setError("Could not load your interested shows.");
       } finally {
         if (!cancelled) {
           setReady(true);
@@ -55,7 +55,7 @@ export function SavedTicketmasterShows() {
         })
         .catch(() => {
           if (cancelled) return;
-          setError("Could not refresh your saved Ticketmaster shows.");
+          setError("Could not refresh your interested shows.");
         });
     }
 
@@ -80,7 +80,7 @@ export function SavedTicketmasterShows() {
       await unsaveTicketmasterEvent(supabase, user.id, show.id);
       setShows((current) => current.filter((item) => item.id !== show.id));
     } catch {
-      setError("Could not remove that saved show. Try again.");
+      setError("Could not clear Interested. Try again.");
     } finally {
       setPendingId(null);
     }
@@ -93,10 +93,10 @@ export function SavedTicketmasterShows() {
   return (
     <section id="saved-ticketmaster-shows" className="scroll-mt-24">
       <h2 className="font-display text-2xl tracking-tight sm:text-3xl">
-        Saved Ticketmaster Shows
+        Interested Shows
       </h2>
       <p className="mt-2 max-w-xl text-sm leading-6 text-mute sm:text-base">
-        Shows you saved from artist and venue results.
+        Shows you’re considering from artist and venue results.
       </p>
       {error ? (
         <p

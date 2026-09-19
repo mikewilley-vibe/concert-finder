@@ -78,7 +78,7 @@ function HomeShowCard({
   );
 }
 
-export default function HomeScreen() {
+export default function DiscoverScreen() {
   const follows = useFollows();
   const saved = useSavedEvents();
   const home = useHomeLocation();
@@ -198,7 +198,7 @@ export default function HomeScreen() {
 
   const nearYou = feed?.nearYou.slice(0, HOME_NEAR_YOU_LIMIT) ?? [];
   const yourArtists = feed ? previewYourArtists(feed.yourArtists) : [];
-  const goingShows = useMemo(
+  const lockedShows = useMemo(
     () =>
       [...saved.goingShows].sort((left, right) => {
         const byDate = showSortKey(left).localeCompare(showSortKey(right));
@@ -206,6 +206,7 @@ export default function HomeScreen() {
       }).filter((show) => isUpcomingShow(show)),
     [saved.goingShows],
   );
+  const nextLockedShow = lockedShows[0];
   const nextVenueShows = useMemo(() => {
     if (setsState.status !== "ready") {
       return [];
@@ -226,27 +227,35 @@ export default function HomeScreen() {
     <Screen>
       <ScreenBlock>
         <Eyebrow>ShowSignal</Eyebrow>
-        <Strong>I’m Going To</Strong>
-        {goingShows.length > 0 ? (
-          goingShows.map((show) => (
-            <ShowRow
-              key={show.id}
-              show={show}
-              kicker={scanDateLabel(show)}
-              onOpen={() => onOpenShow(show)}
-              trailing={
-                <GoingButton
-                  going
-                  pending={saved.isPending(show.id)}
-                  name={show.name}
-                  onPress={() => onToggleGoing(show)}
-                />
-              }
-            />
-          ))
+        <Strong>Next Locked Show</Strong>
+        {nextLockedShow ? (
+          <ShowRow
+            show={nextLockedShow}
+            kicker={scanDateLabel(nextLockedShow)}
+            onOpen={() => onOpenShow(nextLockedShow)}
+            trailing={
+              <GoingButton
+                going
+                pending={saved.isPending(nextLockedShow.id)}
+                name={nextLockedShow.name}
+                onPress={() => onToggleGoing(nextLockedShow)}
+              />
+            }
+          />
         ) : (
-          <Body>Concerts you mark “I’m Going” will appear here.</Body>
+          <Body>Concerts you lock in will appear here.</Body>
         )}
+        {lockedShows.length > 0 ? (
+          <ActionLink
+            href="/saved"
+            label={
+              lockedShows.length > 1
+                ? `Open all ${lockedShows.length} locked shows`
+                : "Open Locked"
+            }
+            accessibilityLabel="Open your locked shows"
+          />
+        ) : null}
       </ScreenBlock>
 
       <ScreenBlock>
@@ -257,6 +266,11 @@ export default function HomeScreen() {
           href="/profile"
           label="Change location"
           accessibilityLabel="Change location in Profile"
+        />
+        <ActionLink
+          href="/discover"
+          label="Search artists & venues"
+          accessibilityLabel="Search for artists and venues"
         />
       </ScreenBlock>
 
@@ -317,7 +331,7 @@ export default function HomeScreen() {
               title="Nothing nearby this week"
               body={
                 hasActiveSearchLocation(home.location)
-                  ? "No shows turned up in the next 7 days for this area. Try a wider radius in Profile, or add favorites so Home can watch your artists."
+                  ? "No shows turned up in the next 7 days for this area. Try a wider radius in Profile, or add favorites so Discover can watch your artists."
                   : "Turn on location or set a home area in Profile to see what’s playing nearby this week."
               }
               action={
@@ -360,7 +374,7 @@ export default function HomeScreen() {
           {follows.artists.length === 0 ? (
             <EmptyState
               title="No artists followed yet"
-              body={`Follow artists you already love and Home will surface their next dates, wherever they play. ${progress.artistLabel}. ${progress.venueLabel}.`}
+              body={`Follow artists you already love and Discover will surface their next dates, wherever they play. ${progress.artistLabel}. ${progress.venueLabel}.`}
               action={
                 <ActionLink
                   href="/discover"
@@ -470,7 +484,7 @@ export default function HomeScreen() {
       ) : showOnboarding ? (
         <EmptyState
           title="A few more favorites help"
-          body={`${progress.artistLabel}. ${progress.venueLabel}. Home gets sharper as you add them.`}
+          body={`${progress.artistLabel}. ${progress.venueLabel}. Discover gets sharper as you add them.`}
           action={
             <ActionLink
               href="/discover"

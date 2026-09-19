@@ -32,6 +32,9 @@ yarn-error.log*
 *.log
 logs/
 
+# Accidental nested checkout; keep it locally but never package or lint it.
+/show-signal/
+
 # editor / agent
 .vscode/
 .idea/

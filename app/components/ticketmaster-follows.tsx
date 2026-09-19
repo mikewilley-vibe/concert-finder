@@ -432,7 +432,7 @@ export function TicketmasterFollows() {
         Follow artists and venues
       </h2>
       <p className="mt-2 max-w-xl text-sm leading-6 text-mute sm:text-base">
-        Follow is for artists and venues. Save show is for a concert card. This
+        Follow is for artists and venues. Interested is for a concert card. This
         app does not sell tickets.
       </p>
       <p className="mt-2 max-w-xl text-sm leading-6 text-mute">

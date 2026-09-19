@@ -76,9 +76,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: "Discover",
           tabBarIcon: ({ color }) => (
-            <TabIcon ios="house" android="home" color={color} />
+            <TabIcon ios="magnifyingglass" android="search" color={color} />
           ),
         }}
       />
@@ -103,7 +103,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="discover"
         options={{
-          title: "Discover",
+          title: "Find artists & venues",
+          href: null,
           tabBarIcon: ({ color }) => (
             <TabIcon ios="magnifyingglass" android="search" color={color} />
           ),
@@ -112,7 +113,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="saved"
         options={{
-          title: "My Shows",
+          title: "Locked",
           tabBarIcon: ({ color }) => (
             <TabIcon ios="bookmark" android="bookmark" color={color} />
           ),

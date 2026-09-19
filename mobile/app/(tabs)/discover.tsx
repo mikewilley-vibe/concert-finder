@@ -142,11 +142,11 @@ export default function DiscoverScreen() {
   return (
     <Screen>
       <ScreenBlock>
-        <Eyebrow>Discover</Eyebrow>
+        <Eyebrow>Find</Eyebrow>
         <Title>Search artists, venues, and upcoming shows.</Title>
         <Body>
           Search for an artist or venue, then tap Follow. A handful of favorites
-          makes Home personal — about {FAVORITE_ARTIST_GOAL} artists and{" "}
+          makes Discover personal — about {FAVORITE_ARTIST_GOAL} artists and{" "}
           {FAVORITE_VENUE_GOAL} venues is a great start.
         </Body>
       </ScreenBlock>

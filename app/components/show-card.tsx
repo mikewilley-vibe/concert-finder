@@ -38,8 +38,8 @@ export function ShowCard({
     !favoritesReady && !favoritesUnavailable
       ? "Loading\u2026"
       : saved
-        ? "Saved"
-        : "Save show";
+        ? "♡ Interested"
+        : "Interested";
 
   return (
     <li className="flex flex-col rounded-3xl border border-line bg-panel p-4 shadow-[0_12px_32px_rgba(0,0,0,0.32)] transition-colors hover:bg-panel-hover sm:p-5">
@@ -106,8 +106,8 @@ export function ShowCard({
             aria-pressed={saved}
             aria-label={
               saved
-                ? `Unsave ${item.title}`
-                : `Save show ${item.title}`
+                ? `Clear interested for ${item.title}`
+                : `Mark ${item.title} as interested`
             }
             aria-busy={favoriteBusy || (!favoritesReady && !favoritesUnavailable)}
             disabled={!favoritesReady || favoriteBusy}

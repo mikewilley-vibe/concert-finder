@@ -13,11 +13,11 @@ export function GoingButton({
 }) {
   return (
     <Button
-      label={going ? "✓ Going" : "I'm Going"}
+      label={going ? "✓ Locked" : "Lock me in"}
       variant={going ? "secondary" : "action"}
       disabled={pending}
       accessibilityLabel={
-        going ? `${name} marked as going` : `Mark ${name} as I'm Going`
+        going ? `${name} is locked` : `Lock in ${name}`
       }
       onPress={onPress}
     />
