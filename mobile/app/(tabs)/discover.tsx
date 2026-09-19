@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AccessibilityInfo,
   Keyboard,
@@ -12,12 +12,15 @@ import { useRouter } from "expo-router";
 
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
+import { Field } from "@/components/Field";
+import { FollowPill } from "@/components/FollowPill";
 import { ListRow } from "@/components/ListRow";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { Screen, ScreenBlock } from "@/components/Screen";
 import { Body, Eyebrow, Strong, Title } from "@/components/Typography";
 import { colors, fonts } from "@/constants/theme";
 import { useFollows } from "@/hooks/useFollows";
+import { useHomeLocation } from "@/hooks/useHomeLocation";
 import {
   apiErrorMessage,
   searchAttractions,
@@ -26,15 +29,28 @@ import {
   type TicketmasterVenue,
 } from "@/lib/api";
 import {
-  FAVORITE_ARTIST_GOAL,
-  FAVORITE_VENUE_GOAL,
+  favoritesProgress,
 } from "@/lib/favorites-progress";
+import {
+  openLocationSettings,
+  requestCurrentHomeLocation,
+} from "@/lib/current-location";
 import {
   FOLLOWED_ATTRACTION_TYPE,
   FOLLOWED_VENUE_TYPE,
   MAX_MONITORED_FOLLOWS,
   type FollowedItemType,
 } from "@/lib/follows";
+import {
+  RADIUS_OPTIONS,
+  hasActiveSearchLocation,
+  radiusLine,
+  showingNearLine,
+} from "@/lib/home-location";
+import {
+  loadOnboardingSuggestions,
+  type OnboardingSuggestions,
+} from "@/lib/onboarding-suggestions";
 
 // Ticketmaster genre-based "More like…" / related-artist recommendations
 // are paused until a better source exists. searchRecommendations and
@@ -50,6 +66,12 @@ type SearchState =
       venues: TicketmasterVenue[];
     };
 
+type SuggestionState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | ({ status: "ready" } & OnboardingSuggestions);
+
 function venueSubtitle(venue: { city?: string | null; state?: string | null }) {
   return [venue.city, venue.state].filter(Boolean).join(", ") || "Venue";
 }
@@ -61,10 +83,71 @@ function announce(message: string) {
 export default function DiscoverScreen() {
   const router = useRouter();
   const follows = useFollows();
+  const home = useHomeLocation();
   const inputRef = useRef<TextInput>(null);
   const [keyword, setKeyword] = useState("");
+  const [postalDraft, setPostalDraft] = useState("");
+  const [locationNotice, setLocationNotice] = useState<string | null>(null);
+  const [locationPending, setLocationPending] = useState(false);
+  const [gpsDenied, setGpsDenied] = useState(false);
+  const [suggestionReload, setSuggestionReload] = useState(0);
+  const [suggestions, setSuggestions] = useState<SuggestionState>({
+    status: "idle",
+  });
   const [listNotice, setListNotice] = useState<string | null>(null);
   const [state, setState] = useState<SearchState>({ status: "idle" });
+  const progress = favoritesProgress(
+    follows.artists.length,
+    follows.venues.length,
+  );
+
+  useEffect(() => {
+    if (!home.ready) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      setPostalDraft(
+        home.location.homePostalCode || home.location.postalCode,
+      );
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [
+    home.location.homePostalCode,
+    home.location.postalCode,
+    home.ready,
+  ]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      if (!home.ready || !hasActiveSearchLocation(home.location)) {
+        setSuggestions({ status: "idle" });
+        return;
+      }
+      setSuggestions({ status: "loading" });
+      void loadOnboardingSuggestions({ location: home.location })
+        .then((result) => {
+          if (!cancelled) {
+            setSuggestions({ status: "ready", ...result });
+          }
+        })
+        .catch((error) => {
+          if (!cancelled) {
+            setSuggestions({
+              status: "error",
+              message: apiErrorMessage(
+                error,
+                "Could not load suggestions right now. Try again.",
+              ),
+            });
+          }
+        });
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      cancelled = true;
+    };
+  }, [home.location, home.ready, suggestionReload]);
 
   function dismissKeyboard() {
     inputRef.current?.blur();
@@ -111,6 +194,66 @@ export default function DiscoverScreen() {
     }
   }
 
+  async function onSaveArea() {
+    dismissKeyboard();
+    const postalCode = postalDraft.trim().toUpperCase();
+    if (!postalCode) {
+      setLocationNotice("Enter a ZIP or postal code like 23220.");
+      return;
+    }
+    setLocationPending(true);
+    setLocationNotice(null);
+    setGpsDenied(false);
+    const saved = await home.save({
+      ...home.location,
+      postalCode,
+      homePostalCode: postalCode,
+      homePlaceLabel: "",
+      homeLatitude: null,
+      homeLongitude: null,
+      source: "home",
+    });
+    setLocationPending(false);
+    setLocationNotice(
+      saved
+        ? `Showing suggestions near ${postalCode}.`
+        : "Use a ZIP or postal code like 23220.",
+    );
+  }
+
+  async function onUseCurrentLocation() {
+    dismissKeyboard();
+    setLocationPending(true);
+    setLocationNotice(null);
+    setGpsDenied(false);
+    const result = await requestCurrentHomeLocation();
+    if (!result.ok) {
+      setLocationPending(false);
+      setGpsDenied(result.code === "denied");
+      setLocationNotice(result.message);
+      return;
+    }
+    const saved = await home.save({
+      ...home.location,
+      postalCode: result.location.postalCode,
+      latitude: result.location.latitude,
+      longitude: result.location.longitude,
+      placeLabel: result.location.placeLabel,
+      source: "current",
+    });
+    setLocationPending(false);
+    setLocationNotice(
+      saved
+        ? "Using your current location for suggestions."
+        : "Could not save that location. Try again.",
+    );
+  }
+
+  async function onSetRadius(radiusMiles: number) {
+    setLocationNotice(null);
+    await home.save({ ...home.location, radiusMiles });
+  }
+
   async function onToggleFollow(
     itemType: FollowedItemType,
     item: { item_key: string; item_label: string },
@@ -143,16 +286,208 @@ export default function DiscoverScreen() {
     <Screen>
       <ScreenBlock>
         <Eyebrow>Find</Eyebrow>
-        <Title>Search artists, venues, and upcoming shows.</Title>
+        <Title>Build your concert radar.</Title>
         <Body>
-          Search for an artist or venue, then tap Follow. A handful of favorites
-          makes Discover personal — about {FAVORITE_ARTIST_GOAL} artists and{" "}
-          {FAVORITE_VENUE_GOAL} venues is a great start.
+          Pick a few nearby venues and artists. No account is required — your
+          choices stay with your guest profile unless you decide to sign in.
         </Body>
       </ScreenBlock>
 
+      <View style={styles.card}>
+        <Strong>1. Choose your area</Strong>
+        <Body>
+          Use your location or enter a ZIP. You can change this anytime.
+        </Body>
+        {home.ready && hasActiveSearchLocation(home.location) ? (
+          <View style={styles.locationSummary}>
+            <Text style={styles.locationTitle}>
+              {showingNearLine(home.location)}
+            </Text>
+            <Body>{radiusLine(home.location)}</Body>
+          </View>
+        ) : null}
+        <Button
+          label="Use current location"
+          busy={locationPending}
+          onPress={() => {
+            void onUseCurrentLocation();
+          }}
+        />
+        {gpsDenied ? (
+          <Button
+            label="Open Settings"
+            variant="secondary"
+            onPress={openLocationSettings}
+          />
+        ) : null}
+        <Field
+          label="ZIP or postal code"
+          value={postalDraft}
+          onChangeText={setPostalDraft}
+          placeholder="23220"
+          autoCapitalize="characters"
+          returnKeyType="done"
+          onSubmitEditing={() => {
+            void onSaveArea();
+          }}
+        />
+        <Button
+          label="Use this ZIP"
+          variant="secondary"
+          busy={locationPending}
+          onPress={() => {
+            void onSaveArea();
+          }}
+        />
+        <Body>Search radius</Body>
+        <View style={styles.radiusOptions}>
+          {RADIUS_OPTIONS.map((miles) => {
+            const selected = home.location.radiusMiles === miles;
+            return (
+              <Pressable
+                key={miles}
+                accessibilityRole="button"
+                accessibilityLabel={`${miles} mile radius`}
+                accessibilityState={{ selected }}
+                onPress={() => {
+                  void onSetRadius(miles);
+                }}
+                style={({ pressed }) => [
+                  styles.radiusPill,
+                  selected && styles.radiusPillSelected,
+                  pressed && styles.radiusPillPressed,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.radiusLabel,
+                    selected && styles.radiusLabelSelected,
+                  ]}
+                >
+                  {miles} mi
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {locationNotice ? <Body>{locationNotice}</Body> : null}
+        {home.error ? <Body>{home.error}</Body> : null}
+      </View>
+
+      <ScreenBlock>
+        <Strong>2. Tap some favorites</Strong>
+        <View style={styles.progressRow}>
+          <Text style={styles.progress}>{progress.artistLabel}</Text>
+          <Text style={styles.progress}>{progress.venueLabel}</Text>
+        </View>
+        {!follows.ready ? (
+          <Body>Your guest profile is connecting…</Body>
+        ) : null}
+      </ScreenBlock>
+
+      {!home.ready ? <LoadingBlock label="Loading your area…" /> : null}
+
+      {home.ready && suggestions.status === "idle" ? (
+        <EmptyState
+          title="Choose an area for suggestions"
+          body="Use your current location or enter a ZIP above."
+        />
+      ) : null}
+
+      {suggestions.status === "loading" ? (
+        <LoadingBlock label="Finding nearby favorites…" />
+      ) : null}
+
+      {suggestions.status === "error" ? (
+        <EmptyState
+          title="Suggestions didn’t load"
+          body={suggestions.message}
+          action={
+            <Button
+              label="Try again"
+              onPress={() => setSuggestionReload((value) => value + 1)}
+            />
+          }
+        />
+      ) : null}
+
+      {suggestions.status === "ready" &&
+      suggestions.venues.length === 0 &&
+      suggestions.artists.length === 0 ? (
+        <EmptyState
+          title="No nearby suggestions yet"
+          body="Try a wider radius, another ZIP, or search by name below."
+        />
+      ) : null}
+
+      {suggestions.status === "ready" && suggestions.venues.length > 0 ? (
+        <ScreenBlock>
+          <Strong>Nearby venues with upcoming shows</Strong>
+          <View style={styles.pills}>
+            {suggestions.venues.map((venue) => {
+              const followed = follows.isFollowed(
+                FOLLOWED_VENUE_TYPE,
+                venue.id,
+              );
+              return (
+                <FollowPill
+                  key={venue.id}
+                  label={venue.name}
+                  meta={venue.meta}
+                  selected={followed}
+                  pending={follows.isPending(FOLLOWED_VENUE_TYPE, venue.id)}
+                  disabled={!follows.ready}
+                  onPress={() => {
+                    void onToggleFollow(
+                      FOLLOWED_VENUE_TYPE,
+                      { item_key: venue.id, item_label: venue.name },
+                      followed,
+                    );
+                  }}
+                />
+              );
+            })}
+          </View>
+        </ScreenBlock>
+      ) : null}
+
+      {suggestions.status === "ready" && suggestions.artists.length > 0 ? (
+        <ScreenBlock>
+          <Strong>Artists playing near you</Strong>
+          <View style={styles.pills}>
+            {suggestions.artists.map((artist) => {
+              const followed = follows.isFollowed(
+                FOLLOWED_ATTRACTION_TYPE,
+                artist.id,
+              );
+              return (
+                <FollowPill
+                  key={artist.id}
+                  label={artist.name}
+                  meta={artist.meta}
+                  selected={followed}
+                  pending={follows.isPending(
+                    FOLLOWED_ATTRACTION_TYPE,
+                    artist.id,
+                  )}
+                  disabled={!follows.ready}
+                  onPress={() => {
+                    void onToggleFollow(
+                      FOLLOWED_ATTRACTION_TYPE,
+                      { item_key: artist.id, item_label: artist.name },
+                      followed,
+                    );
+                  }}
+                />
+              );
+            })}
+          </View>
+        </ScreenBlock>
+      ) : null}
+
       <View style={styles.search}>
-        <Strong>Search artists and venues</Strong>
+        <Strong>3. Search for anyone else</Strong>
+        <Body>Type part of a name. We’ll include close suggestions too.</Body>
         <TextInput
           ref={inputRef}
           value={keyword}
@@ -190,10 +525,9 @@ export default function DiscoverScreen() {
       ) : null}
 
       {state.status === "idle" ? (
-        <EmptyState
-          title="Search to get started"
-          body={`Open an artist or venue to follow it and see upcoming dates. Tracking currently supports ${MAX_MONITORED_FOLLOWS} artists and venues combined.`}
-        />
+        <Body style={styles.limitNote}>
+          You can follow up to {MAX_MONITORED_FOLLOWS} artists and venues combined.
+        </Body>
       ) : null}
 
       {state.status === "loading" ? (
@@ -335,6 +669,70 @@ export default function DiscoverScreen() {
 }
 
 const styles = StyleSheet.create({
+  card: {
+    gap: 12,
+    padding: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.panel,
+  },
+  locationSummary: {
+    gap: 2,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: colors.background,
+  },
+  locationTitle: {
+    color: colors.foreground,
+    fontFamily: fonts.semibold,
+    fontSize: 15,
+  },
+  radiusOptions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  radiusPill: {
+    minHeight: 44,
+    minWidth: 66,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.line,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radiusPillSelected: {
+    borderColor: colors.accent,
+    backgroundColor: "#252b1e",
+  },
+  radiusPillPressed: {
+    opacity: 0.75,
+  },
+  radiusLabel: {
+    color: colors.foreground,
+    fontFamily: fonts.semibold,
+    fontSize: 14,
+  },
+  radiusLabelSelected: {
+    color: colors.accent,
+  },
+  progressRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  progress: {
+    color: colors.accent,
+    fontFamily: fonts.semibold,
+    fontSize: 14,
+  },
+  pills: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
   search: {
     gap: 12,
   },
@@ -372,5 +770,8 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: colors.danger,
     paddingHorizontal: 4,
+  },
+  limitNote: {
+    fontSize: 13,
   },
 });
