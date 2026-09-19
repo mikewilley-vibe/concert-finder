@@ -67,6 +67,13 @@ export type TicketPrice = {
   max: number | null;
 };
 
+export type EventSource = {
+  id: string;
+  label: string;
+  url: string | null;
+  updatedAt: string | null;
+};
+
 export type ConcertEvent = {
   id: string;
   name: string;
@@ -86,6 +93,7 @@ export type ConcertEvent = {
   matchedLabels: string[];
   sales: SaleWindow | null;
   price: TicketPrice | null;
+  source?: EventSource;
 };
 
 export type FollowedReference = {

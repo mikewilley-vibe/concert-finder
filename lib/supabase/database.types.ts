@@ -15,9 +15,21 @@ type ConcertRow = {
   created_by: string | null;
   description: string | null;
   event_date: string | null;
+  external_id: string | null;
   id: string;
+  image_url: string | null;
   is_published: boolean;
+  latitude: number | null;
+  longitude: number | null;
+  postal_code: string | null;
+  source_name: string | null;
+  source_updated_at: string | null;
+  source_url: string | null;
+  state: string | null;
+  ticket_url: string | null;
+  timezone: string | null;
   venue: string | null;
+  venue_address_line: string | null;
 };
 
 type SavedItemRow = {
@@ -105,9 +117,21 @@ export type Database = {
           | "created_by"
           | "description"
           | "event_date"
+          | "external_id"
           | "id"
+          | "image_url"
           | "is_published"
+          | "latitude"
+          | "longitude"
+          | "postal_code"
+          | "source_name"
+          | "source_updated_at"
+          | "source_url"
+          | "state"
+          | "ticket_url"
+          | "timezone"
           | "venue"
+          | "venue_address_line"
         >;
         Update: Partial<ConcertRow>;
         Relationships: [];

@@ -25,7 +25,8 @@ expanded inside a long feed.
 - Artist and venue search
 - Follow and unfollow artists and venues
 - Upcoming shows for followed items
-- Concert details with artwork, date/time, venue, status, and Ticketmaster link
+- Concert details with artwork, date/time, venue, prominent disruption status,
+  source/freshness, and an official listing link
 - Mark concerts Interested or use **Lock me in**, then clear either status
 - New-show inbox with mark-as-seen behavior
 - Loading, empty, offline, denied-permission, and retry states
@@ -38,8 +39,8 @@ expanded inside a long feed.
 - Moderation and publishing
 - Scheduled processing administration
 
-The app may display approved community listings later, but submission and
-moderation are not necessary to validate the core native product.
+The app displays approved community/Local Buzz listings alongside Ticketmaster
+results. Submission and moderation remain website-only for this release.
 
 ## Add after the core app is reliable
 
@@ -48,7 +49,8 @@ moderation are not necessary to validate the core native product.
 - Calendar integration
 - Native sharing and notification deep links
 - Personalized recommendations beyond followed artists and venues
-- Additional concert-data providers
+- Additional concert-data providers beyond Ticketmaster and approved Local
+  Buzz/community listings
 
 ## Release acceptance journey
 

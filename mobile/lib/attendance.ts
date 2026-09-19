@@ -119,6 +119,10 @@ function parseShowSnapshot(value: unknown): TicketmasterShow | null {
   assign("status", record.status);
   assign("statusLabel", record.statusLabel);
   assign("priceLabel", record.priceLabel);
+  assign("sourceId", record.sourceId);
+  assign("sourceName", record.sourceName);
+  assign("sourceUrl", record.sourceUrl);
+  assign("sourceUpdatedAt", record.sourceUpdatedAt);
 
   if (typeof record.venueLatitude === "number" && Number.isFinite(record.venueLatitude)) {
     show.venueLatitude = record.venueLatitude;

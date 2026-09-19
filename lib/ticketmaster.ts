@@ -1100,6 +1100,12 @@ export function mapTicketmasterEvent(
     matchedLabels,
     sales: eventSaleWindow(event),
     price: eventPrice(event),
+    source: {
+      id: "ticketmaster",
+      label: "Ticketmaster",
+      url: null,
+      updatedAt: null,
+    },
   };
 
   const url = typeof event.url === "string" ? event.url.trim() : "";
@@ -1187,6 +1193,7 @@ function mergeShows(
       matchedLabels: show.matchedLabels,
       sales: show.sales,
       price: show.price,
+      source: show.source,
     }));
 }
 

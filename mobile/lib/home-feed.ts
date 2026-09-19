@@ -462,10 +462,11 @@ function badgesFor(ranked: RankedShow<TicketmasterShow>) {
   } else if (ranked.favoriteVenue) {
     badges.push("Favorite venue");
   }
+  if (ranked.show.statusLabel) {
+    badges.push(ranked.show.statusLabel);
+  }
   if (ranked.show.priceLabel) {
     badges.push(ranked.show.priceLabel);
-  } else if (ranked.show.statusLabel) {
-    badges.push(ranked.show.statusLabel);
   }
   return badges;
 }

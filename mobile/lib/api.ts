@@ -47,6 +47,10 @@ export type TicketmasterShow = {
   status?: string;
   statusLabel?: string;
   priceLabel?: string;
+  sourceId?: string;
+  sourceName?: string;
+  sourceUrl?: string;
+  sourceUpdatedAt?: string;
 };
 
 export type FollowedRef = {
@@ -77,6 +81,12 @@ type NativeApiShow = {
     currency: string;
     min: number | null;
     max: number | null;
+  } | null;
+  source?: {
+    id: string;
+    label: string;
+    url: string | null;
+    updatedAt: string | null;
   } | null;
   venue: {
     id?: string | null;
@@ -318,6 +328,8 @@ function statusLabel(status: string | null | undefined) {
       return "Canceled";
     case "postponed":
       return "Postponed";
+    case "rescheduled":
+      return "Rescheduled";
     default:
       return undefined;
   }
@@ -361,6 +373,15 @@ function mapShow(show: NativeApiShow): TicketmasterShow {
   const priceLabel = formatPriceLabel(show.price);
   if (priceLabel) {
     mapped.priceLabel = priceLabel;
+  }
+  if (show.source) {
+    mapped.sourceId = show.source.id;
+    mapped.sourceName = show.source.label;
+    mapped.sourceUrl = show.source.url ?? undefined;
+    mapped.sourceUpdatedAt = show.source.updatedAt ?? undefined;
+  } else {
+    mapped.sourceId = "ticketmaster";
+    mapped.sourceName = "Ticketmaster";
   }
   return mapped;
 }

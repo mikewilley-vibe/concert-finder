@@ -21,6 +21,10 @@ import { FOLLOWED_ATTRACTION_TYPE } from "@/lib/follows";
 import { openCalendarSettings } from "@/lib/calendar";
 import { shareConcert } from "@/lib/share";
 import { showPlace, showWhen } from "@/lib/show-format";
+import {
+  eventSourceLine,
+  eventStatusPresentation,
+} from "@/lib/event-metadata";
 
 function firstString(value: string | string[] | undefined) {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
@@ -42,6 +46,10 @@ function showFromParams(params: {
   state?: string;
   url?: string;
   image?: string;
+  status?: string;
+  statusLabel?: string;
+  sourceName?: string;
+  sourceUpdatedAt?: string;
 }): TicketmasterShow | null {
   const id = firstString(params.id);
   const name = firstString(params.name);
@@ -68,6 +76,10 @@ function showFromParams(params: {
   const venueAddress = firstString(params.venueAddress);
   const url = firstString(params.url);
   const image = firstString(params.image);
+  const status = firstString(params.status);
+  const statusLabel = firstString(params.statusLabel);
+  const sourceName = firstString(params.sourceName);
+  const sourceUpdatedAt = firstString(params.sourceUpdatedAt);
   if (timeLabel) show.timeLabel = timeLabel;
   if (localDate) show.localDate = localDate;
   if (localTime) show.localTime = localTime;
@@ -77,6 +89,10 @@ function showFromParams(params: {
   if (venueAddress) show.venueAddress = venueAddress;
   if (url) show.url = url;
   if (image) show.image = image;
+  if (status) show.status = status;
+  if (statusLabel) show.statusLabel = statusLabel;
+  if (sourceName) show.sourceName = sourceName;
+  if (sourceUpdatedAt) show.sourceUpdatedAt = sourceUpdatedAt;
   return show;
 }
 
@@ -97,6 +113,10 @@ export default function ConcertScreen() {
     state?: string;
     url?: string;
     image?: string;
+    status?: string;
+    statusLabel?: string;
+    sourceName?: string;
+    sourceUpdatedAt?: string;
   }>();
   const eventId = firstString(params.id);
   const snapshot = useMemo(
@@ -117,6 +137,10 @@ export default function ConcertScreen() {
         state: firstString(params.state),
         url: firstString(params.url),
         image: firstString(params.image),
+        status: firstString(params.status),
+        statusLabel: firstString(params.statusLabel),
+        sourceName: firstString(params.sourceName),
+        sourceUpdatedAt: firstString(params.sourceUpdatedAt),
       }),
     [
       eventId,
@@ -134,6 +158,10 @@ export default function ConcertScreen() {
       params.state,
       params.url,
       params.image,
+      params.status,
+      params.statusLabel,
+      params.sourceName,
+      params.sourceUpdatedAt,
     ],
   );
   const saved = useSavedEvents();
@@ -217,7 +245,7 @@ export default function ConcertScreen() {
       artistIds: show.attractions.map((artist) => artist.id),
       venueId: show.venueId,
     });
-  }, [show?.id]);
+  }, [interactions, show]);
 
   if (eventId === "preview") {
     return (
@@ -239,6 +267,7 @@ export default function ConcertScreen() {
   const attendance = show ? saved.statusFor(show.id) : null;
   const isInterested = attendance === "interested";
   const isGoing = attendance === "going";
+  const status = show ? eventStatusPresentation(show) : null;
 
   return (
     <Screen>
@@ -276,6 +305,14 @@ export default function ConcertScreen() {
 
       {show ? (
         <View style={styles.card}>
+          {status?.disrupted ? (
+            <View accessibilityRole="alert" style={styles.statusBanner}>
+              <Strong style={styles.statusTitle}>{status.label}</Strong>
+              <Body style={styles.statusBody}>
+                Plans may have changed. Check the official listing before you go.
+              </Body>
+            </View>
+          ) : null}
           <Strong>Your plan</Strong>
           <View style={styles.attendanceRow}>
             <Button
@@ -346,11 +383,16 @@ export default function ConcertScreen() {
           {show.dateLabel === "Date TBA" ? (
             <Body>Date to be announced</Body>
           ) : null}
+          <Body style={styles.source}>{eventSourceLine(show)}</Body>
           {show.url ? (
             <Button
-              label="View on Ticketmaster"
+              label={
+                show.sourceName === "Ticketmaster"
+                  ? "View on Ticketmaster"
+                  : "View official listing"
+              }
               variant="secondary"
-              accessibilityLabel={`View ${show.name} on Ticketmaster`}
+              accessibilityLabel={`View the official listing for ${show.name}`}
               onPress={() => {
                 void interactions.track({
                   kind: "ticket",
@@ -426,5 +468,27 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
+  },
+  statusBanner: {
+    gap: 3,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    backgroundColor: "#2b1912",
+  },
+  statusTitle: {
+    color: colors.danger,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  statusBody: {
+    color: colors.foreground,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  source: {
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

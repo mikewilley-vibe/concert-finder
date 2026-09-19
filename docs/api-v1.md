@@ -9,7 +9,7 @@ by passing its deployed API origin to `createConcertFinderApiClient`.
 |---|---|---|
 | `GET` | `/api/v1/ticketmaster/attractions?keyword=` | Artist search and typo suggestions |
 | `GET` | `/api/v1/ticketmaster/venues?keyword=` | Venue search |
-| `POST` | `/api/v1/ticketmaster/events` | Event discovery, followed-item shows, location, and pagination |
+| `POST` | `/api/v1/ticketmaster/events` | Cross-source event discovery, followed-item shows, location, and pagination |
 | `POST` | `/api/v1/ticketmaster/recommendations` | Related artists and venues from upcoming genre-matched events |
 | `GET` | `/api/v1/ticketmaster/event-details?ids=` | Details for up to eight event IDs |
 | `POST` | `/api/v1/account/merge-anonymous` | Authenticated anonymous-account transfer |
@@ -53,6 +53,21 @@ If `radiusMiles` is omitted, the search defaults to **100 miles**. An optional
 venue, or keyword) request Ticketmaster `classificationName=music` so Home is
 not filled with sports and theater. Event payloads include `price` when
 Ticketmaster provides `priceRanges`.
+
+The event response also includes a `source` object (`id`, `label`, optional
+listing URL, and optional `updatedAt`). The first page is enriched with
+approved published community records, including records labeled **Local Buzz
+757**. Local rows must have a usable future date and must match the requested
+artist, venue, keyword, or location. Location searches only include a local
+row when it has coordinates inside the radius or an exact matching postal
+code; rows with unknown location are not guessed into a nearby feed.
+
+Ticketmaster remains the preferred record when both sources describe the same
+artist, local date, venue, and city. If community storage is unavailable or
+has not yet received the source-metadata migration, Ticketmaster search still
+works; legacy published community rows can still appear with the generic
+`Community listing` source. The path retains `ticketmaster` for v1 client
+compatibility even though its event result is now cross-source.
 
 A **single** followed artist or venue with no location (artist/venue detail) is
 collected across up to four Ticketmaster pages (200 events) so the listing is
