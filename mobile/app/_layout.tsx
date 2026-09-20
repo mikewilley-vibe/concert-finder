@@ -92,6 +92,10 @@ export default function RootLayout() {
               name="your-artists"
               options={{ title: "Your artists" }}
             />
+            <Stack.Screen
+              name="manage-follows"
+              options={{ title: "My artists & venues" }}
+            />
           </Stack>
         </KeyboardProvider>
       </AuthProvider>

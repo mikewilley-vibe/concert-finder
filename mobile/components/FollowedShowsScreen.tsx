@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ActionLink } from "@/components/ActionLink";
@@ -188,6 +188,11 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
         <Eyebrow>{kind === "artist" ? "Your artists" : "Your venues"}</Eyebrow>
         <Title>{copy.title}</Title>
         <Body>{copy.body}</Body>
+        <ActionLink
+          href={"/manage-follows" as Href}
+          label={`Manage followed ${noun}`}
+          accessibilityLabel={`View and unfollow your ${noun}`}
+        />
         <ShowViewTabs
           selected={view}
           onSelect={(nextView) => router.setParams({ view: nextView })}
