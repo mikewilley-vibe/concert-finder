@@ -134,8 +134,11 @@ export default function ProfileScreen() {
     if (!home.ready) {
       return;
     }
-    setPostalDraft(home.location.homePostalCode || home.location.postalCode);
-    setRadiusDraft(home.location.radiusMiles);
+    const timer = setTimeout(() => {
+      setPostalDraft(home.location.homePostalCode || home.location.postalCode);
+      setRadiusDraft(home.location.radiusMiles);
+    }, 0);
+    return () => clearTimeout(timer);
   }, [
     home.location.homePostalCode,
     home.location.postalCode,
@@ -145,8 +148,8 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (!configured || !permanent || !user?.id) {
-      setPushEnabled(false);
-      return;
+      const timer = setTimeout(() => setPushEnabled(false), 0);
+      return () => clearTimeout(timer);
     }
     let cancelled = false;
     void hasEnabledPushToken(getSupabaseClient(), user.id)
@@ -242,7 +245,7 @@ export default function ProfileScreen() {
         );
       } else if (result.merged) {
         setNotice(
-          "Signed in. Your guest follows and saved shows were moved to this account.",
+          "Signed in. Your guest follows and concert plans were moved to this account.",
         );
       } else {
         setNotice("Signed in.");
@@ -378,7 +381,7 @@ export default function ProfileScreen() {
       setHomeNotice(
         nextPostal
           ? "Home area saved. Choose Home area below when you want shows near there."
-          : "Home area cleared. Home uses your current location when it’s available.",
+          : "Home area cleared. Discover uses your current location when it’s available.",
       );
     } catch {
       setHomeNotice("Could not save that location. Try again.");
@@ -581,7 +584,7 @@ export default function ProfileScreen() {
         <View style={styles.card}>
           <Strong>Create account</Strong>
           <Body>
-            First verify your email. Your follows and saved shows stay with
+            First verify your email. Your follows and concert plans stay with
             this guest session while you finish setup.
           </Body>
           <Field
@@ -630,7 +633,7 @@ export default function ProfileScreen() {
         <View style={styles.card}>
           <Strong>I already have an account</Strong>
           <Body>
-            Sign in with email and password. Guest follows and saved shows from
+            Sign in with email and password. Guest follows and concert plans from
             this device can move with you.
           </Body>
           <Field

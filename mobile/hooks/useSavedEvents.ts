@@ -57,7 +57,7 @@ export function savedShowsLoadMessage(error: unknown) {
       message,
     )
   ) {
-    return "Network error. Saved and Going shows on this phone are still here.";
+    return "Network error. Your Locked and Interested shows on this phone are still here.";
   }
 
   if (
@@ -65,21 +65,21 @@ export function savedShowsLoadMessage(error: unknown) {
     code === "PGRST301" ||
     /jwt expired|invalid jwt|not authenticated/i.test(message)
   ) {
-    return "Your session expired. Reopen ShowSignal to refresh Going and saved shows.";
+    return "Your session expired. Reopen ShowSignal to refresh Locked and Interested shows.";
   }
 
   if (
     code === "42501" ||
     /row-level security|permission denied/i.test(message)
   ) {
-    return "ShowSignal could not sync saved shows because of a permissions (RLS) rule.";
+    return "ShowSignal could not sync your concert plans because of a permissions (RLS) rule.";
   }
 
   if (message.trim()) {
     return message.trim();
   }
 
-  return "Could not sync saved shows from your account.";
+  return "Could not sync your concert plans from your account.";
 }
 
 function trackAttendance(

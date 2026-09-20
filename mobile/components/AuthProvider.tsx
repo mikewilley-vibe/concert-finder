@@ -143,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             );
             if (!cancelled && merged) {
               setTransferNotice(
-                "Your guest follows and saved shows were moved to this account.",
+                "Your guest follows and concert plans were moved to this account.",
               );
             }
           } catch {
@@ -195,7 +195,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             );
             if (!cancelled && merged) {
               setTransferNotice(
-                "Your guest follows and saved shows were moved to this account.",
+                "Your guest follows and concert plans were moved to this account.",
               );
             }
           } catch {

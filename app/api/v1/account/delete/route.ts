@@ -7,7 +7,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export const ACCOUNT_DELETE_CONFIRMATION_HEADER = "x-confirm-account-delete";
+const ACCOUNT_DELETE_CONFIRMATION_HEADER = "x-confirm-account-delete";
 
 function headerConfirmed(request: Request) {
   return (

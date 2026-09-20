@@ -10,7 +10,7 @@ import type {
   EventSearchRequest,
 } from "../../shared/api/v1";
 import {
-  loadSavedTicketmasterEventIds,
+  loadSavedTicketmasterEvents,
   saveTicketmasterEvent,
   SAVED_EVENTS_CHANGED_EVENT,
   unsaveTicketmasterEvent,
@@ -20,6 +20,7 @@ import { getSupabaseBrowserClient } from "../../lib/supabase/browser-client";
 
 export type ShowResult = ConcertEvent;
 export type UpcomingShowsRequest = EventSearchRequest;
+export type WebAttendanceStatus = "interested" | "going";
 
 const concertFinderApi = createConcertFinderApiClient();
 
@@ -82,18 +83,25 @@ function placeLabel(show: ShowResult) {
 
 export function TicketmasterShowCard({
   show,
-  saved = false,
-  savePending = false,
-  savesReady = true,
-  onToggleSaved,
+  attendanceStatus = null,
+  statusPending = false,
+  statusesReady = true,
+  onToggleStatus,
 }: {
   show: ShowResult;
-  saved?: boolean;
-  savePending?: boolean;
-  savesReady?: boolean;
-  onToggleSaved?: () => void;
+  attendanceStatus?: WebAttendanceStatus | null;
+  statusPending?: boolean;
+  statusesReady?: boolean;
+  onToggleStatus?: (status: WebAttendanceStatus) => void;
 }) {
   const place = placeLabel(show);
+  const disrupted = ["canceled", "cancelled", "postponed", "rescheduled"].includes(
+    show.status?.toLowerCase() ?? "",
+  );
+  const statusLabel = show.status
+    ? show.status.charAt(0).toUpperCase() + show.status.slice(1).toLowerCase()
+    : null;
+  const sourceLabel = show.source?.label || "Ticketmaster";
 
   return (
     <li className="flex flex-col rounded-3xl border border-line bg-panel p-4 shadow-[0_12px_32px_rgba(0,0,0,0.32)] sm:p-5">
@@ -116,28 +124,55 @@ export function TicketmasterShowCard({
         <p className="mt-1 text-sm text-foreground">{show.venue.name}</p>
       ) : null}
       {place ? <p className="mt-0.5 text-sm text-mute">{place}</p> : null}
+      {disrupted ? (
+        <p
+          role="alert"
+          className="mt-3 rounded-2xl border border-red-400 bg-red-950/30 px-3 py-2 text-sm font-semibold text-red-300"
+        >
+          {statusLabel} — check the official listing before you go.
+        </p>
+      ) : null}
+      <p className="mt-3 text-xs text-mute">Source: {sourceLabel}</p>
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-        {onToggleSaved ? (
-          <button
-            type="button"
-            aria-pressed={saved}
-            aria-busy={savePending}
-            disabled={!savesReady || savePending}
-            onClick={onToggleSaved}
-            className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-accent px-4 text-sm font-semibold text-background transition-colors hover:bg-accent-deep focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-70 sm:w-fit"
-          >
-            {savePending ? "Updating…" : saved ? "♡ Interested" : "Interested"}
-          </button>
+        {onToggleStatus ? (
+          <>
+            <button
+              type="button"
+              aria-pressed={attendanceStatus === "interested"}
+              aria-busy={statusPending}
+              disabled={!statusesReady || statusPending}
+              onClick={() => onToggleStatus("interested")}
+              className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-line px-4 text-sm font-semibold text-foreground transition-colors hover:bg-panel-hover focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-70 sm:w-fit"
+            >
+              {attendanceStatus === "interested" ? "♡ Interested" : "Interested"}
+            </button>
+            <button
+              type="button"
+              aria-pressed={attendanceStatus === "going"}
+              aria-busy={statusPending}
+              disabled={!statusesReady || statusPending}
+              onClick={() => onToggleStatus("going")}
+              className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-accent px-4 text-sm font-semibold text-background transition-colors hover:bg-accent-deep focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-70 sm:w-fit"
+            >
+              {statusPending
+                ? "Updating…"
+                : attendanceStatus === "going"
+                  ? "✓ Locked"
+                  : "Lock me in"}
+            </button>
+          </>
         ) : null}
         {show.ticketUrl ? (
           <a
             href={show.ticketUrl}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label={`View ${show.name} on Ticketmaster`}
+            aria-label={`View the official listing for ${show.name}`}
             className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-line px-4 text-sm font-semibold text-foreground transition-colors hover:bg-panel-hover focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent sm:w-fit"
           >
-            View on Ticketmaster
+            {sourceLabel === "Ticketmaster"
+              ? "View on Ticketmaster"
+              : "View official listing"}
           </a>
         ) : null}
       </div>
@@ -164,16 +199,21 @@ export function TicketmasterShowResults({
   onSearchWithoutZip?: () => void;
   compact?: boolean;
 }) {
-  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [savedStatuses, setSavedStatuses] = useState<
+    Map<string, WebAttendanceStatus>
+  >(new Map());
   const [savesReady, setSavesReady] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const pendingIdsRef = useRef<Set<string>>(new Set());
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
 
-  async function readSavedIds() {
+  async function readSavedStatuses() {
     const supabase = getSupabaseBrowserClient();
     await ensureAnonymousUser(supabase);
-    return loadSavedTicketmasterEventIds(supabase);
+    const savedShows = await loadSavedTicketmasterEvents(supabase);
+    return new Map(
+      savedShows.map((show) => [show.id, show.attendanceStatus] as const),
+    );
   }
 
   useEffect(() => {
@@ -181,30 +221,30 @@ export function TicketmasterShowResults({
 
     async function boot() {
       try {
-        const next = await readSavedIds();
+        const next = await readSavedStatuses();
         if (cancelled) return;
-        setSavedIds(next);
+        setSavedStatuses(next);
         setSavesReady(true);
         setSaveError(null);
       } catch {
         if (cancelled) return;
-        setSaveError("Interested shows are temporarily unavailable.");
+        setSaveError("Concert plans are temporarily unavailable.");
       }
     }
 
     void boot();
 
     function onSavedEventsChanged() {
-      void readSavedIds()
+      void readSavedStatuses()
         .then((next) => {
           if (cancelled) return;
-          setSavedIds(next);
+          setSavedStatuses(next);
           setSavesReady(true);
           setSaveError(null);
         })
         .catch(() => {
           if (cancelled) return;
-          setSaveError("Could not refresh interested shows.");
+          setSaveError("Could not refresh concert plans.");
         });
     }
 
@@ -218,39 +258,42 @@ export function TicketmasterShowResults({
     };
   }, []);
 
-  async function toggleSaved(show: ShowResult) {
+  async function toggleStatus(show: ShowResult, status: WebAttendanceStatus) {
     if (!savesReady || pendingIdsRef.current.has(show.id)) return;
 
-    const wasSaved = savedIds.has(show.id);
+    const previous = savedStatuses.get(show.id) ?? null;
+    const nextStatus = previous === status ? null : status;
     pendingIdsRef.current.add(show.id);
     setPendingIds(new Set(pendingIdsRef.current));
     setSaveError(null);
-    setSavedIds((current) => {
-      const next = new Set(current);
-      if (wasSaved) next.delete(show.id);
-      else next.add(show.id);
+    setSavedStatuses((current) => {
+      const next = new Map(current);
+      if (nextStatus) next.set(show.id, nextStatus);
+      else next.delete(show.id);
       return next;
     });
 
     try {
       const supabase = getSupabaseBrowserClient();
       const user = await ensureAnonymousUser(supabase);
-      if (wasSaved) {
+      if (!nextStatus) {
         await unsaveTicketmasterEvent(supabase, user.id, show.id);
       } else {
-        await saveTicketmasterEvent(supabase, user.id, show);
+        await saveTicketmasterEvent(supabase, user.id, show, nextStatus);
       }
     } catch {
-      setSavedIds((current) => {
-        const next = new Set(current);
-        if (wasSaved) next.add(show.id);
+      setSavedStatuses((current) => {
+        const next = new Map(current);
+        if (previous) next.set(show.id, previous);
         else next.delete(show.id);
         return next;
       });
       setSaveError(
-        wasSaved
-          ? "Could not clear Interested. Try again."
-          : "Could not mark that show Interested. Try again.",
+        nextStatus === "going"
+          ? "Could not lock in that show. Try again."
+          : nextStatus === "interested"
+            ? "Could not mark that show Interested. Try again."
+            : "Could not clear that show. Try again.",
       );
     } finally {
       pendingIdsRef.current.delete(show.id);
@@ -327,11 +370,11 @@ export function TicketmasterShowResults({
           <TicketmasterShowCard
             key={show.id}
             show={show}
-            saved={savedIds.has(show.id)}
-            savePending={pendingIds.has(show.id)}
-            savesReady={savesReady}
-            onToggleSaved={() => {
-              void toggleSaved(show);
+            attendanceStatus={savedStatuses.get(show.id) ?? null}
+            statusPending={pendingIds.has(show.id)}
+            statusesReady={savesReady}
+            onToggleStatus={(status) => {
+              void toggleStatus(show, status);
             }}
           />
         ))}

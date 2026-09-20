@@ -65,7 +65,7 @@ export async function notifyUserOfNewShows(input: {
           sound: "default",
           title: copy.title,
           body: copy.body,
-          data: { screen: "home" },
+          data: { screen: "discover" },
         })),
       ),
     });

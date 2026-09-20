@@ -34,7 +34,10 @@ export function SiteHeader() {
           </Link>
           <nav aria-label="Primary" className="flex items-center gap-1 sm:gap-2">
             <Link href="/#shows-for-you" className={navLinkClass}>
-              Upcoming
+              Discover
+            </Link>
+            <Link href="/#saved-ticketmaster-shows" className={navLinkClass}>
+              Locked
             </Link>
             <Link href="/#follows" className={navLinkClass}>
               Follow

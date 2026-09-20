@@ -11,7 +11,7 @@ import {
 
 const homeTitle = "ShowSignal · Never miss your next show";
 const homeDescription =
-  "Follow artists and venues, see upcoming concerts, and keep a listings board — for music fans who want to stay aware of what's coming.";
+  "Follow artists and venues, discover upcoming concerts, and keep Locked and Interested plans together.";
 
 export const metadata: Metadata = {
   title: {
@@ -63,8 +63,8 @@ export default function Home() {
           </h1>
           <p className="max-w-xl text-base leading-7 text-mute sm:text-lg sm:leading-8">
             ShowSignal helps you stay aware of concerts. Follow the bands you
-            love, see what&apos;s coming to venues you follow, and keep a listings
-            board of shows.
+            love, see what&apos;s coming to venues you follow, and keep Locked and
+            Interested plans together.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row">
             <a

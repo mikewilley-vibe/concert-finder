@@ -3,18 +3,20 @@
 import { useEffect, useState } from "react";
 import {
   loadSavedTicketmasterEvents,
+  saveTicketmasterEvent,
   SAVED_EVENTS_CHANGED_EVENT,
+  type SavedConcertEvent,
   unsaveTicketmasterEvent,
 } from "../../lib/saved-events";
 import { ensureAnonymousUser } from "../../lib/saved-concerts";
 import { getSupabaseBrowserClient } from "../../lib/supabase/browser-client";
 import {
   TicketmasterShowCard,
-  type ShowResult,
+  type WebAttendanceStatus,
 } from "./ticketmaster-show-results";
 
 export function SavedTicketmasterShows() {
-  const [shows, setShows] = useState<ShowResult[]>([]);
+  const [shows, setShows] = useState<SavedConcertEvent[]>([]);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -36,7 +38,7 @@ export function SavedTicketmasterShows() {
         setError(null);
       } catch {
         if (cancelled) return;
-        setError("Could not load your interested shows.");
+        setError("Could not load your concert plans.");
       } finally {
         if (!cancelled) {
           setReady(true);
@@ -55,7 +57,7 @@ export function SavedTicketmasterShows() {
         })
         .catch(() => {
           if (cancelled) return;
-          setError("Could not refresh your interested shows.");
+          setError("Could not refresh your concert plans.");
         });
     }
 
@@ -69,7 +71,10 @@ export function SavedTicketmasterShows() {
     };
   }, []);
 
-  async function remove(show: ShowResult) {
+  async function updateStatus(
+    show: SavedConcertEvent,
+    status: WebAttendanceStatus,
+  ) {
     if (pendingId) return;
     setPendingId(show.id);
     setError(null);
@@ -77,10 +82,19 @@ export function SavedTicketmasterShows() {
     try {
       const supabase = getSupabaseBrowserClient();
       const user = await ensureAnonymousUser(supabase);
-      await unsaveTicketmasterEvent(supabase, user.id, show.id);
-      setShows((current) => current.filter((item) => item.id !== show.id));
+      if (show.attendanceStatus === status) {
+        await unsaveTicketmasterEvent(supabase, user.id, show.id);
+        setShows((current) => current.filter((item) => item.id !== show.id));
+      } else {
+        await saveTicketmasterEvent(supabase, user.id, show, status);
+        setShows((current) =>
+          current.map((item) =>
+            item.id === show.id ? { ...item, attendanceStatus: status } : item,
+          ),
+        );
+      }
     } catch {
-      setError("Could not clear Interested. Try again.");
+      setError("Could not update that concert plan. Try again.");
     } finally {
       setPendingId(null);
     }
@@ -93,10 +107,10 @@ export function SavedTicketmasterShows() {
   return (
     <section id="saved-ticketmaster-shows" className="scroll-mt-24">
       <h2 className="font-display text-2xl tracking-tight sm:text-3xl">
-        Interested Shows
+        Locked & Interested
       </h2>
       <p className="mt-2 max-w-xl text-sm leading-6 text-mute sm:text-base">
-        Shows you’re considering from artist and venue results.
+        Shows you’ve committed to, plus the ones you’re still considering.
       </p>
       {error ? (
         <p
@@ -112,10 +126,10 @@ export function SavedTicketmasterShows() {
             <TicketmasterShowCard
               key={show.id}
               show={show}
-              saved
-              savePending={pendingId === show.id}
-              onToggleSaved={() => {
-                void remove(show);
+              attendanceStatus={show.attendanceStatus}
+              statusPending={pendingId === show.id}
+              onToggleStatus={(status) => {
+                void updateStatus(show, status);
               }}
             />
           ))}

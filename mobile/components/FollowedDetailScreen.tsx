@@ -153,7 +153,7 @@ export function FollowedDetailScreen({
       {state.status === "ready" && state.shows.length === 0 ? (
         <EmptyState
           title="No upcoming shows"
-          body="Ticketmaster has no upcoming dates for this listing right now."
+          body="No upcoming dates were found for this listing right now."
         />
       ) : null}
 
@@ -162,10 +162,10 @@ export function FollowedDetailScreen({
           <Strong>Upcoming shows</Strong>
           <Body>
             {state.shows.length === 1
-              ? "1 upcoming Ticketmaster date."
-              : `${state.shows.length} upcoming Ticketmaster dates.`}
+              ? "1 upcoming date."
+              : `${state.shows.length} upcoming dates.`}
             {state.capped
-              ? " Showing the next dates Ticketmaster returned."
+              ? " Showing the next available dates."
               : ""}
           </Body>
           {saved.error ? <Body>{saved.error}</Body> : null}

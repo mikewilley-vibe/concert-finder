@@ -4,6 +4,7 @@ import type { AppSupabaseClient } from "./supabase/database.types";
 export const SAVED_EVENTS_CHANGED_EVENT = "my-shows:saved-events-changed";
 
 type SavedEventRow = {
+  provider: unknown;
   provider_event_id: unknown;
   name: unknown;
   date_label: unknown;
@@ -30,6 +31,11 @@ type SavedEventRow = {
   venue_longitude: unknown;
   attractions: unknown;
   matched_labels: unknown;
+  attendance_status: unknown;
+};
+
+export type SavedConcertEvent = ConcertEvent & {
+  attendanceStatus: "interested" | "going";
 };
 
 function optionalString(value: unknown) {
@@ -84,8 +90,7 @@ export async function loadSavedTicketmasterEventIds(
 ) {
   const { data, error } = await supabase
     .from("saved_events")
-    .select("provider_event_id")
-    .eq("provider", "ticketmaster");
+    .select("provider_event_id");
 
   if (error) {
     throw error;
@@ -104,9 +109,8 @@ export async function loadSavedTicketmasterEvents(
   const { data, error } = await supabase
     .from("saved_events")
     .select(
-      "provider_event_id, name, starts_at, local_date, local_time, timezone, date_status, date_label, time_label, venue_id, venue_name, venue_address_line, city, state, venue_state_code, venue_postal_code, venue_country_code, venue_latitude, venue_longitude, image_url, ticket_url, event_status, sale_starts_at, sale_ends_at, attractions, matched_labels",
+      "provider, provider_event_id, name, starts_at, local_date, local_time, timezone, date_status, date_label, time_label, venue_id, venue_name, venue_address_line, city, state, venue_state_code, venue_postal_code, venue_country_code, venue_latitude, venue_longitude, image_url, ticket_url, event_status, sale_starts_at, sale_ends_at, attractions, matched_labels, attendance_status",
     )
-    .eq("provider", "ticketmaster")
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -125,7 +129,8 @@ export async function loadSavedTicketmasterEvents(
     const localTime = optionalString(row.local_time) ?? null;
     const saleStartsAt = optionalString(row.sale_starts_at) ?? null;
     const saleEndsAt = optionalString(row.sale_ends_at) ?? null;
-    const show: ConcertEvent = {
+    const provider = optionalString(row.provider) ?? "ticketmaster";
+    const show: SavedConcertEvent = {
       id,
       name,
       startsAt: optionalString(row.starts_at) ?? null,
@@ -162,6 +167,13 @@ export async function loadSavedTicketmasterEvents(
           ? { startsAt: saleStartsAt, endsAt: saleEndsAt }
           : null,
       price: null,
+      source: {
+        id: provider,
+        label: provider === "ticketmaster" ? "Ticketmaster" : "Community listing",
+        url: null,
+        updatedAt: null,
+      },
+      attendanceStatus: row.attendance_status === "going" ? "going" : "interested",
     };
     return [show];
   });
@@ -171,11 +183,16 @@ export async function saveTicketmasterEvent(
   supabase: AppSupabaseClient,
   userId: string,
   show: ConcertEvent,
+  attendanceStatus: "interested" | "going" = "interested",
 ) {
+  const provider =
+    !show.source?.id || show.source.id === "ticketmaster"
+      ? "ticketmaster"
+      : "community";
   const { error } = await supabase.from("saved_events").upsert(
     {
       user_id: userId,
-      provider: "ticketmaster",
+      provider,
       provider_event_id: show.id,
       name: show.name,
       starts_at: show.startsAt,
@@ -202,7 +219,7 @@ export async function saveTicketmasterEvent(
       sale_ends_at: show.sales?.endsAt ?? null,
       attractions: show.attractions,
       matched_labels: show.matchedLabels,
-      attendance_status: "interested",
+      attendance_status: attendanceStatus,
     },
     { onConflict: "user_id,provider,provider_event_id" },
   );
@@ -222,7 +239,6 @@ export async function unsaveTicketmasterEvent(
     .from("saved_events")
     .delete()
     .eq("user_id", userId)
-    .eq("provider", "ticketmaster")
     .eq("provider_event_id", eventId);
 
   if (error) {
