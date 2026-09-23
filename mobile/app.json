@@ -3,7 +3,7 @@
     "name": "ShowSignal",
     "slug": "local-shows",
     "scheme": "showsignal",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "dark",
@@ -20,7 +20,8 @@
         "NSCalendarsWriteOnlyAccessUsageDescription": "ShowSignal adds concerts you choose to your calendar.",
         "NSCalendarsFullAccessUsageDescription": "ShowSignal adds concerts you choose to your calendar.",
         "NSCalendarsUsageDescription": "ShowSignal adds concerts you choose to your calendar."
-      }
+      },
+      "buildNumber": "35"
     },
     "android": {
       "package": "com.mikewilley.localshows",
@@ -40,7 +41,10 @@
               "pathPrefix": "/auth/callback"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "adaptiveIcon": {
