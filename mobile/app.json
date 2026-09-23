@@ -21,7 +21,7 @@
         "NSCalendarsFullAccessUsageDescription": "ShowSignal adds concerts you choose to your calendar.",
         "NSCalendarsUsageDescription": "ShowSignal adds concerts you choose to your calendar."
       },
-      "buildNumber": "35"
+      "buildNumber": "36"
     },
     "android": {
       "package": "com.mikewilley.localshows",
