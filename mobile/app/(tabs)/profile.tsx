@@ -39,7 +39,7 @@ import {
   signOutToGuest,
 } from "@/lib/auth";
 import { ApiError, deleteAccount } from "@/lib/api";
-import { websiteUrl } from "@/lib/config";
+import { DEFAULT_API_BASE_URL, websiteUrl } from "@/lib/config";
 import { completeEmailDomain, EMAIL_DOMAINS } from "@/lib/email-domains";
 import {
   DEFAULT_RADIUS_MILES,
@@ -128,6 +128,10 @@ export default function ProfileScreen() {
 
   function openWebsite(path: string) {
     void Linking.openURL(websiteUrl(path));
+  }
+
+  function openProductionPage(path: "/privacy" | "/support") {
+    void Linking.openURL(`${DEFAULT_API_BASE_URL}${path}`);
   }
 
   useEffect(() => {
@@ -891,10 +895,23 @@ export default function ProfileScreen() {
       <View style={styles.card}>
         <Strong>Support and privacy</Strong>
         <Body>
-          Policies and help live on the Concert Finder website.
+          Policies and help are on the ShowSignal website. Anyone can open
+          them without signing in.
         </Body>
         <Button
+          label="Privacy"
+          accessibilityLabel="Open the ShowSignal privacy policy"
+          onPress={() => openProductionPage("/privacy")}
+        />
+        <Button
+          label="Support"
+          variant="secondary"
+          accessibilityLabel="Open ShowSignal support"
+          onPress={() => openProductionPage("/support")}
+        />
+        <Button
           label="Open the website"
+          variant="secondary"
           onPress={() => openWebsite("/")}
         />
         <Button
