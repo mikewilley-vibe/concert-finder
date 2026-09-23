@@ -8,7 +8,7 @@
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "dark",
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.mikewilley.localshows",
       "associatedDomains": [
         "applinks:concert-finder-eta.vercel.app",
@@ -21,7 +21,7 @@
         "NSCalendarsFullAccessUsageDescription": "ShowSignal adds concerts you choose to your calendar.",
         "NSCalendarsUsageDescription": "ShowSignal adds concerts you choose to your calendar."
       },
-      "buildNumber": "36"
+      "buildNumber": "37"
     },
     "android": {
       "package": "com.mikewilley.localshows",
