@@ -8,6 +8,7 @@ import { GoingButton } from "@/components/GoingButton";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { Screen, ScreenBlock } from "@/components/Screen";
 import { Body, Eyebrow, Strong, Title } from "@/components/Typography";
+import { WeatherCard } from "@/components/WeatherCard";
 import { colors } from "@/constants/theme";
 import { useFollows } from "@/hooks/useFollows";
 import { useInteractionSignals } from "@/hooks/useInteractionSignals";
@@ -21,6 +22,9 @@ import { FOLLOWED_ATTRACTION_TYPE } from "@/lib/follows";
 import { openCalendarSettings } from "@/lib/calendar";
 import { shareConcert } from "@/lib/share";
 import { showPlace, showWhen } from "@/lib/show-format";
+import { classifyShowVenue } from "@/lib/outdoor";
+import { getShowWeather } from "@/lib/weather";
+import type { WeatherSnapshot } from "@/lib/weather";
 
 function firstString(value: string | string[] | undefined) {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
@@ -145,6 +149,13 @@ export default function ConcertScreen() {
   const [calendarNotice, setCalendarNotice] = useState<string | null>(null);
   const [calendarPending, setCalendarPending] = useState(false);
   const [calendarDenied, setCalendarDenied] = useState(false);
+  const [weatherResult, setWeatherResult] = useState<{
+    showId: string;
+    snapshot: WeatherSnapshot | null;
+  } | null>(null);
+  const attendance = show ? saved.statusFor(show.id) : null;
+  const isInterested = attendance === "interested";
+  const isGoing = attendance === "going";
 
   async function onAddToCalendar() {
     if (!show) {
@@ -219,6 +230,21 @@ export default function ConcertScreen() {
     });
   }, [show?.id]);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!show || !isGoing || classifyShowVenue(show) !== "outdoor") {
+      return () => {
+        cancelled = true;
+      };
+    }
+    void getShowWeather(show).then((next) => {
+      if (!cancelled) setWeatherResult({ showId: show.id, snapshot: next });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [show, isGoing]);
+
   if (eventId === "preview") {
     return (
       <Screen>
@@ -236,10 +262,6 @@ export default function ConcertScreen() {
 
   const place = show ? showPlace(show) : "";
   const when = show ? showWhen(show) : "";
-  const attendance = show ? saved.statusFor(show.id) : null;
-  const isInterested = attendance === "interested";
-  const isGoing = attendance === "going";
-
   return (
     <Screen>
       <ScreenBlock>
@@ -301,6 +323,11 @@ export default function ConcertScreen() {
             />
           </View>
           {isGoing ? <Body>✓ You’re going to this show.</Body> : null}
+          {isGoing && classifyShowVenue(show) === "outdoor" ? (
+            <WeatherCard
+              weather={weatherResult?.showId === show.id ? weatherResult.snapshot : null}
+            />
+          ) : null}
           {show.attractions.length > 0 ? <Strong>Follow</Strong> : null}
           {show.attractions.map((artist) => {
             const followed = follows.isFollowed(
