@@ -34,6 +34,69 @@ const primaryButtonClass =
 const secondaryButtonClass =
   "inline-flex min-h-10 shrink-0 touch-manipulation items-center justify-center rounded-full border border-line px-4 text-sm font-semibold text-foreground transition-colors hover:bg-panel-hover focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-70";
 
+function FollowAction({
+  name,
+  followed,
+  pending,
+  ready,
+  onToggle,
+}: {
+  name: string;
+  followed: boolean;
+  pending: boolean;
+  ready: boolean;
+  onToggle: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+
+  if (followed && confirming) {
+    return (
+      <div className="flex shrink-0 flex-col gap-2">
+        <button
+          type="button"
+          disabled={!ready || pending}
+          aria-label={`Confirm remove ${name}`}
+          onClick={() => {
+            setConfirming(false);
+            onToggle();
+          }}
+          className={secondaryButtonClass}
+        >
+          Remove
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          aria-label={`Keep following ${name}`}
+          onClick={() => setConfirming(false)}
+          className={secondaryButtonClass}
+        >
+          Keep
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      disabled={!ready || pending}
+      aria-pressed={followed}
+      aria-label={followed ? `Remove ${name}` : `Follow ${name}`}
+      onClick={() => {
+        if (followed) {
+          setConfirming(true);
+          return;
+        }
+        onToggle();
+      }}
+      className={secondaryButtonClass}
+    >
+      {followed ? "Following" : "Follow"}
+    </button>
+  );
+}
+
 function ArtistFollowRow({
   attraction,
   followed,
@@ -66,20 +129,13 @@ function ArtistFollowRow({
       <p className="min-w-0 flex-1 font-display text-base tracking-tight">
         {attraction.name}
       </p>
-      <button
-        type="button"
-        disabled={!ready || pending}
-        aria-pressed={followed}
-        aria-label={
-          followed
-            ? `Unfollow ${attraction.name}`
-            : `Follow ${attraction.name}`
-        }
-        onClick={onToggle}
-        className={secondaryButtonClass}
-      >
-        {followed ? "Following" : "Follow"}
-      </button>
+      <FollowAction
+        name={attraction.name}
+        followed={followed}
+        pending={pending}
+        ready={ready}
+        onToggle={onToggle}
+      />
     </li>
   );
 }
@@ -250,6 +306,58 @@ function useSavedFollows() {
   };
 }
 
+function RemoveFollowButton({
+  name,
+  disabled,
+  onRemove,
+}: {
+  name: string;
+  disabled: boolean;
+  onRemove: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+
+  if (confirming) {
+    return (
+      <span className="flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          disabled={disabled}
+          aria-label={`Confirm remove ${name}`}
+          onClick={() => {
+            setConfirming(false);
+            onRemove();
+          }}
+          className="inline-flex min-h-11 shrink-0 touch-manipulation items-center px-3 text-sm font-semibold text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+        >
+          Remove
+        </button>
+        <button
+          type="button"
+          disabled={disabled}
+          aria-label={`Keep ${name}`}
+          onClick={() => setConfirming(false)}
+          className="inline-flex min-h-11 shrink-0 touch-manipulation items-center px-3 text-sm font-semibold text-mute focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+        >
+          Keep
+        </button>
+      </span>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      aria-label={`Remove ${name}`}
+      disabled={disabled}
+      onClick={() => setConfirming(true)}
+      className="inline-flex min-h-11 shrink-0 touch-manipulation items-center px-3 text-sm font-semibold text-mute hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+    >
+      Remove
+    </button>
+  );
+}
+
 function FollowManageDisclosure({
   id,
   title,
@@ -267,7 +375,7 @@ function FollowManageDisclosure({
   pendingKeys: Set<string>;
   onRemove: (item: FollowedItem) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const panelId = `${id}-panel`;
   const countLabel =
     items.length === 1
@@ -306,15 +414,11 @@ function FollowManageDisclosure({
               className="flex items-center justify-between gap-3 rounded-full border border-line bg-background px-4 py-2"
             >
               <span className="min-w-0 truncate text-sm">{item.item_label}</span>
-              <button
-                type="button"
-                aria-label={`Unfollow ${item.item_label}`}
+              <RemoveFollowButton
+                name={item.item_label}
                 disabled={pendingKeys.has(`${itemType}:${item.item_key}`)}
-                onClick={() => onRemove(item)}
-                className="inline-flex min-h-11 shrink-0 touch-manipulation items-center px-3 text-sm font-semibold text-mute hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
-              >
-                Unfollow
-              </button>
+                onRemove={() => onRemove(item)}
+              />
             </li>
           ))}
         </ul>
@@ -326,6 +430,7 @@ function FollowManageDisclosure({
 export function TicketmasterFollows() {
   const [artistKeyword, setArtistKeyword] = useState("");
   const [venueKeyword, setVenueKeyword] = useState("");
+  const [venueCity, setVenueCity] = useState("");
   const [artistPending, setArtistPending] = useState(false);
   const [venuePending, setVenuePending] = useState(false);
   const [artistError, setArtistError] = useState<string | null>(null);
@@ -400,10 +505,10 @@ export function TicketmasterFollows() {
     setVenueError(null);
 
     try {
-      const data = await concertFinderApi.searchVenues(
-        nextKeyword,
-        controller.signal,
-      );
+      const data = await concertFinderApi.searchVenues(nextKeyword, {
+        signal: controller.signal,
+        city: venueCity,
+      });
       setVenueResults(data.venues);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
@@ -586,6 +691,20 @@ export function TicketmasterFollows() {
               maxLength={80}
               className={fieldClass}
             />
+            <label className="sr-only" htmlFor="follow-venue-city">
+              City
+            </label>
+            <input
+              id="follow-venue-city"
+              type="search"
+              value={venueCity}
+              onChange={(event) => setVenueCity(event.target.value)}
+              placeholder="City (optional), like Washington"
+              autoComplete="off"
+              enterKeyHint="search"
+              maxLength={40}
+              className={fieldClass}
+            />
             <button
               type="submit"
               disabled={venuePending}
@@ -603,7 +722,9 @@ export function TicketmasterFollows() {
             ) : null}
             {venueResults && venueResults.length === 0 ? (
               <p className="mt-4 text-sm text-mute">
-                No Ticketmaster venues matched that search.
+                {venueCity.trim()
+                  ? `No Ticketmaster venues matched that name in ${venueCity.trim()}. Try the city name Ticketmaster uses, or leave the city blank.`
+                  : "No Ticketmaster venues matched that search."}
               </p>
             ) : null}
             {venueResults && venueResults.length > 0 ? (
@@ -635,16 +756,12 @@ export function TicketmasterFollows() {
                         <p className="mt-0.5 text-sm text-mute">{place}</p>
                       ) : null}
                     </div>
-                    <button
-                      type="button"
-                      disabled={!ready || pending}
-                      aria-pressed={followed}
-                      aria-label={
-                        followed
-                          ? `Unfollow ${venue.name}`
-                          : `Follow ${venue.name}`
-                      }
-                      onClick={() =>
+                    <FollowAction
+                      name={venue.name}
+                      followed={followed}
+                      pending={pending}
+                      ready={ready}
+                      onToggle={() =>
                         void toggleFollow(
                           FOLLOWED_VENUE_TYPE,
                           {
@@ -654,10 +771,7 @@ export function TicketmasterFollows() {
                           followed,
                         )
                       }
-                      className={secondaryButtonClass}
-                    >
-                      {followed ? "Following" : "Follow"}
-                    </button>
+                    />
                   </li>
                 );
               })}

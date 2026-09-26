@@ -21,6 +21,7 @@ import {
   HOME_NEAR_YOU_LIMIT,
   buildHomeFeed,
   favoriteIdsFromFollows,
+  followBadgeLabel,
   homeArtistKicker,
   homeShowMeta,
   previewYourArtists,
@@ -52,6 +53,7 @@ function HomeShowCard({
   onToggleGoing,
   onOpen,
   kicker,
+  badge,
 }: {
   card: HomeCard;
   going: boolean;
@@ -59,11 +61,13 @@ function HomeShowCard({
   onToggleGoing: (show: TicketmasterShow) => void;
   onOpen: (show: TicketmasterShow) => void;
   kicker?: string;
+  badge?: string | null;
 }) {
   return (
     <ShowRow
       show={card.show}
       kicker={kicker ?? card.scanDate}
+      badge={badge ?? followBadgeLabel(card)}
       subtitle={homeShowMeta(card)}
       onOpen={() => onOpen(card.show)}
       trailing={
@@ -269,8 +273,13 @@ export default function DiscoverScreen() {
         />
         <ActionLink
           href="/discover"
-          label="Search artists & venues"
-          accessibilityLabel="Search for artists and venues"
+          label="Add artists & venues"
+          accessibilityLabel="Search for artists and venues to follow"
+        />
+        <ActionLink
+          href={{ pathname: "/discover", params: { mode: "following" } }}
+          label="Manage follows"
+          accessibilityLabel="See followed artists and venues and remove one"
         />
       </ScreenBlock>
 
@@ -306,50 +315,6 @@ export default function DiscoverScreen() {
             onToggleGoing={onToggleGoing}
             onOpen={onOpenShow}
           />
-        </ScreenBlock>
-      ) : null}
-
-      {setsState.status === "ready" && feed ? (
-        <ScreenBlock>
-          <Strong>Near You This Week</Strong>
-          <Body>
-            Live music within {home.location.radiusMiles} miles over the next 7
-            days.
-          </Body>
-          {nearYou.map((card) => (
-            <HomeShowCard
-              key={card.show.id}
-              card={card}
-              going={saved.statusFor(card.show.id) === "going"}
-              pending={saved.isPending(card.show.id)}
-              onToggleGoing={onToggleGoing}
-              onOpen={onOpenShow}
-            />
-          ))}
-          {nearYou.length === 0 ? (
-            <EmptyState
-              title="Nothing nearby this week"
-              body={
-                hasActiveSearchLocation(home.location)
-                  ? "No shows turned up in the next 7 days for this area. Try a wider radius in Profile, or add favorites so Discover can watch your artists."
-                  : "Turn on location or set a home area in Profile to see what’s playing nearby this week."
-              }
-              action={
-                <ActionLink
-                  href="/profile"
-                  label="Set location"
-                  accessibilityLabel="Set location in Profile"
-                />
-              }
-            />
-          ) : null}
-          {feed.nearYouTotal > HOME_NEAR_YOU_LIMIT ? (
-            <ActionLink
-              href="/nearby"
-              label="See all nearby this week"
-              accessibilityLabel="See all nearby shows this week"
-            />
-          ) : null}
         </ScreenBlock>
       ) : null}
 
@@ -420,6 +385,7 @@ export default function DiscoverScreen() {
             <ShowRow
               key={show.id}
               show={show}
+              badge="Your venue"
               kicker={scanDateLabel(show)}
               onOpen={() => onOpenShow(show)}
               trailing={
@@ -438,7 +404,7 @@ export default function DiscoverScreen() {
               body="Add rooms you already visit and ShowSignal will keep their next events together."
               action={
                 <ActionLink
-                  href="/discover"
+                  href={{ pathname: "/discover", params: { mode: "venues" } }}
                   label="Find venues"
                   accessibilityLabel="Find venues to follow"
                 />
@@ -455,6 +421,50 @@ export default function DiscoverScreen() {
               href="/venues?view=next"
               label="Open Venues"
               accessibilityLabel="Open your followed venues"
+            />
+          ) : null}
+        </ScreenBlock>
+      ) : null}
+
+      {setsState.status === "ready" && feed ? (
+        <ScreenBlock>
+          <Strong>Near You This Week</Strong>
+          <Body>
+            Live music within {home.location.radiusMiles} miles over the next 7
+            days.
+          </Body>
+          {nearYou.map((card) => (
+            <HomeShowCard
+              key={card.show.id}
+              card={card}
+              going={saved.statusFor(card.show.id) === "going"}
+              pending={saved.isPending(card.show.id)}
+              onToggleGoing={onToggleGoing}
+              onOpen={onOpenShow}
+            />
+          ))}
+          {nearYou.length === 0 ? (
+            <EmptyState
+              title="Nothing nearby this week"
+              body={
+                hasActiveSearchLocation(home.location)
+                  ? "No shows turned up in the next 7 days for this area. Try a wider radius in Profile, or add favorites so Discover can watch your artists."
+                  : "Turn on location or set a home area in Profile to see what’s playing nearby this week."
+              }
+              action={
+                <ActionLink
+                  href="/profile"
+                  label="Set location"
+                  accessibilityLabel="Set location in Profile"
+                />
+              }
+            />
+          ) : null}
+          {feed.nearYouTotal > HOME_NEAR_YOU_LIMIT ? (
+            <ActionLink
+              href="/nearby"
+              label="See all nearby this week"
+              accessibilityLabel="See all nearby shows this week"
             />
           ) : null}
         </ScreenBlock>

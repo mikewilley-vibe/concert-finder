@@ -85,6 +85,8 @@ export default function Home() {
         <div className="flex flex-col gap-12 sm:gap-16">
           <TicketmasterFollows />
 
+          <FollowedItemsManage />
+
           <SavedTicketmasterShows />
 
           <section id="whats-coming" className="scroll-mt-24">
@@ -96,8 +98,6 @@ export default function Home() {
             </p>
             <ShowList />
           </section>
-
-          <FollowedItemsManage />
         </div>
       </main>
 

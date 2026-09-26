@@ -156,6 +156,60 @@ test("zero favorites still fills Near You This Week", () => {
   assert.deepEqual(feed.yourArtists, []);
 });
 
+test("Near You treats a matching venue name as a followed venue", () => {
+  const namedVenue = show("norva-night", {
+    localDate: "2026-09-20",
+    attractions: [{ id: "other", name: "Other" }],
+    venueId: "event-venue-id",
+    venueName: "The Norva",
+  });
+  const soonerGeneric = show("generic-sooner", {
+    localDate: "2026-09-16",
+    attractions: [{ id: "stranger", name: "Stranger" }],
+    venueId: "other-venue",
+    venueName: "Other Hall",
+  });
+  const feed = buildHomeFeed({
+    nearbyShows: [soonerGeneric, namedVenue],
+    followedShows: [],
+    favorites: favoriteIdsFromFollows(
+      [],
+      [{ item_key: "discovery-venue", item_label: "The Norva" }],
+    ),
+    origin: RICHMOND,
+    radiusMiles: 100,
+    now: NOW,
+  });
+  assert.equal(feed.nearYou[0].show.id, "norva-night");
+  assert.equal(feed.nearYou[0].favoriteVenue, true);
+});
+
+test("Near You lists followed venues ahead of earlier generic shows", () => {
+  const laterFavoriteVenue = show("fav-venue-later", {
+    localDate: "2026-09-20",
+    attractions: [{ id: "other", name: "Other" }],
+    venueId: "venue-fav",
+  });
+  const soonerGeneric = show("generic-sooner", {
+    localDate: "2026-09-16",
+    attractions: [{ id: "stranger", name: "Stranger" }],
+    venueId: "other-venue",
+  });
+  const feed = buildHomeFeed({
+    nearbyShows: [soonerGeneric, laterFavoriteVenue],
+    followedShows: [],
+    favorites,
+    origin: RICHMOND,
+    radiusMiles: 100,
+    now: NOW,
+  });
+  assert.deepEqual(
+    feed.nearYou.map((item) => item.show.id),
+    ["fav-venue-later", "generic-sooner"],
+  );
+  assert.equal(feed.nearYou[0].favoriteVenue, true);
+});
+
 test("generic nearby shows never become On Your Radar", () => {
   const generic = show("generic", {
     attractions: [{ id: "stranger", name: "Stranger" }],

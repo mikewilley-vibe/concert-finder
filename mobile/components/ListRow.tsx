@@ -1,13 +1,14 @@
 import type { ReactNode } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { colors } from "@/constants/theme";
+import { colors, fonts } from "@/constants/theme";
 import { Body, Eyebrow, Strong } from "./Typography";
 
 export function ListRow({
   title,
   subtitle,
   kicker,
+  badge,
   onPress,
   accessibilityLabel,
   trailing,
@@ -15,12 +16,18 @@ export function ListRow({
   title: string;
   subtitle?: string;
   kicker?: string;
+  badge?: string;
   onPress?: () => void;
   accessibilityLabel?: string;
   trailing?: ReactNode;
 }) {
   const copy = (
     <View style={styles.copy}>
+      {badge ? (
+        <View style={styles.badge}>
+          <Text style={styles.badgeLabel}>{badge}</Text>
+        </View>
+      ) : null}
       {kicker ? <Eyebrow>{kicker}</Eyebrow> : null}
       <Strong>{title}</Strong>
       {subtitle ? <Body style={styles.subtitle}>{subtitle}</Body> : null}
@@ -74,5 +81,21 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  badge: {
+    alignSelf: "flex-start",
+    borderRadius: 999,
+    backgroundColor: "#252b1e",
+    borderWidth: 1,
+    borderColor: "#667637",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  badgeLabel: {
+    color: colors.accent,
+    fontFamily: fonts.semibold,
+    fontSize: 11,
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
   },
 });

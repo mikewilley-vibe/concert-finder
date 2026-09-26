@@ -69,11 +69,18 @@ export function createConcertFinderApiClient(options?: {
       return readJson<ArtistSearchData>(response);
     },
 
-    async searchVenues(keyword: string, signal?: AbortSignal) {
+    async searchVenues(
+      keyword: string,
+      options?: { signal?: AbortSignal; city?: string },
+    ) {
       const params = new URLSearchParams({ keyword });
+      const city = options?.city?.trim() ?? "";
+      if (city) {
+        params.set("city", city);
+      }
       const response = await fetchImpl(
         apiUrl(baseUrl, `/api/v1/ticketmaster/venues?${params}`),
-        { signal },
+        { signal: options?.signal },
       );
       return readJson<VenueSearchData>(response);
     },

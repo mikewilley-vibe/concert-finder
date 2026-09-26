@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import {
   parseSearchKeyword,
+  parseVenueCity,
   searchTicketmasterVenues,
 } from "../../../../lib/ticketmaster";
 import { ticketmasterRateLimitResponse } from "../../../../lib/api-rate-limit";
@@ -23,7 +24,12 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const result = await searchTicketmasterVenues(parsed.keyword);
+  const city = parseVenueCity(request.nextUrl.searchParams.get("city"));
+  if (!city.ok) {
+    return Response.json({ error: city.message }, { status: city.status });
+  }
+
+  const result = await searchTicketmasterVenues(parsed.keyword, city.city);
   if (!result.ok) {
     return Response.json(
       { error: result.message },
