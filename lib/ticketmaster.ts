@@ -45,6 +45,8 @@ export const MAX_EVENT_PAGE = 49;
 export const MAX_FOLLOWED_LISTING_PAGES = 4;
 const MIN_KEYWORD_LENGTH = 2;
 const MAX_KEYWORD_LENGTH = 80;
+const MAX_CITY_LENGTH = 40;
+const VENUE_CITY_CANDIDATE_LIMIT = 40;
 const ID_PATTERN = /^[A-Za-z0-9_-]{4,64}$/;
 
 export type TicketmasterAttraction = ArtistSummary;
@@ -99,6 +101,53 @@ export function parseSearchKeyword(value: string | null) {
 }
 
 export const parseAttractionKeyword = parseSearchKeyword;
+
+export function parseVenueCity(value: string | null) {
+  const city = normalizeKeyword(value);
+  if (!city) {
+    return { ok: true as const, city: "" };
+  }
+
+  if (city.length < MIN_KEYWORD_LENGTH) {
+    return {
+      ok: false as const,
+      status: 400,
+      message: "Enter at least 2 characters for the city, or leave it blank.",
+    };
+  }
+
+  if (city.length > MAX_CITY_LENGTH) {
+    return {
+      ok: false as const,
+      status: 400,
+      message: "Keep the city under 40 characters.",
+    };
+  }
+
+  if (!/^[A-Za-z][A-Za-z .,'-]*$/.test(city)) {
+    return {
+      ok: false as const,
+      status: 400,
+      message: "Use letters for the city name.",
+    };
+  }
+
+  return { ok: true as const, city };
+}
+
+export function venuesMatchingCity<T extends { city: string | null }>(
+  venues: readonly T[],
+  city: string,
+) {
+  const needle = city.trim().toLowerCase();
+  if (!needle) {
+    return [...venues];
+  }
+
+  return venues.filter((venue) =>
+    (venue.city ?? "").toLowerCase().includes(needle),
+  );
+}
 
 function isHttpUrl(value: string) {
   try {
@@ -347,7 +396,7 @@ function emptyVenue(): TicketmasterVenue {
   };
 }
 
-function mapVenues(payload: unknown): TicketmasterVenue[] {
+function mapVenues(payload: unknown, limit = RESULT_LIMIT): TicketmasterVenue[] {
   if (!payload || typeof payload !== "object") {
     return [];
   }
@@ -363,7 +412,7 @@ function mapVenues(payload: unknown): TicketmasterVenue[] {
     }
 
     venues.push(venue);
-    if (venues.length >= RESULT_LIMIT) {
+    if (venues.length >= limit) {
       break;
     }
   }
@@ -555,16 +604,26 @@ export async function searchTicketmasterAttractionsForFollow(
 
 export async function searchTicketmasterVenues(
   keyword: string,
+  city = "",
 ): Promise<VenueSearchResult> {
+  const trimmedCity = city.trim();
+  const limit = trimmedCity ? VENUE_CITY_CANDIDATE_LIMIT : RESULT_LIMIT;
   const result = await ticketmasterGet(VENUES_PATH, {
     keyword,
-    size: String(RESULT_LIMIT),
+    size: String(limit),
+    ...(trimmedCity ? { city: trimmedCity } : {}),
   });
   if (!result.ok) {
     return result;
   }
 
-  return { ok: true, venues: mapVenues(result.payload) };
+  return {
+    ok: true,
+    venues: venuesMatchingCity(
+      mapVenues(result.payload, limit),
+      trimmedCity,
+    ).slice(0, RESULT_LIMIT),
+  };
 }
 
 function parseFollowedRefs(value: unknown): FollowedRef[] | null {

@@ -210,8 +210,12 @@ export function searchAttractions(keyword: string) {
   }));
 }
 
-export function searchVenues(keyword: string) {
+export function searchVenues(keyword: string, city?: string) {
   const params = new URLSearchParams({ keyword });
+  const trimmedCity = city?.trim() ?? "";
+  if (trimmedCity) {
+    params.set("city", trimmedCity);
+  }
   return apiFetch<{
     venues: Array<{
       id: string;

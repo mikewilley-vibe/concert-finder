@@ -8,7 +8,7 @@ by passing its deployed API origin to `createConcertFinderApiClient`.
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/api/v1/ticketmaster/attractions?keyword=` | Artist search and typo suggestions |
-| `GET` | `/api/v1/ticketmaster/venues?keyword=` | Venue search |
+| `GET` | `/api/v1/ticketmaster/venues?keyword=&city=` | Venue search. `city` is optional and narrows results to that city name. |
 | `POST` | `/api/v1/ticketmaster/events` | Event discovery, followed-item shows, location, and pagination |
 | `POST` | `/api/v1/ticketmaster/recommendations` | Related artists and venues from upcoming genre-matched events |
 | `GET` | `/api/v1/ticketmaster/event-details?ids=` | Details for up to eight event IDs |

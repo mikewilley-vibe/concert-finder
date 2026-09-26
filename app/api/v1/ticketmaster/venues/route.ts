@@ -3,6 +3,7 @@ import { apiV1Error, apiV1Success, ticketmasterErrorCode } from "@/lib/api-v1-re
 import { ticketmasterRateLimitResponse } from "@/lib/api-rate-limit";
 import {
   parseSearchKeyword,
+  parseVenueCity,
   searchTicketmasterVenues,
 } from "@/lib/ticketmaster";
 
@@ -27,7 +28,12 @@ export async function GET(request: NextRequest) {
     return apiV1Error(request, parsed.status, "bad_request", parsed.message);
   }
 
-  const result = await searchTicketmasterVenues(parsed.keyword);
+  const city = parseVenueCity(request.nextUrl.searchParams.get("city"));
+  if (!city.ok) {
+    return apiV1Error(request, city.status, "bad_request", city.message);
+  }
+
+  const result = await searchTicketmasterVenues(parsed.keyword, city.city);
   if (!result.ok) {
     return apiV1Error(
       request,
