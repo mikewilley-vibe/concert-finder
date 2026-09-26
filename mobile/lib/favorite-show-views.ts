@@ -1,6 +1,5 @@
 import type { TicketmasterShow } from "./api";
 import type { FollowedItem } from "./follows";
-import { pickNextUpcomingShows } from "./next-upcoming-shows.ts";
 import {
   isUpcomingShow,
   isWithinDays,
@@ -72,10 +71,23 @@ export function favoriteShowsForView(input: {
   }
 
   if (input.view === "next") {
-    const ids = input.follows.map((item) => item.item_key);
-    return pickNextUpcomingShows(upcoming, {
-      attractionIds: input.kind === "artist" ? ids : [],
-      venueIds: input.kind === "venue" ? ids : [],
+    const picked: TicketmasterShow[] = [];
+    const seenShows = new Set<string>();
+    for (const follow of input.follows) {
+      const match = upcoming.find(
+        (show) =>
+          !seenShows.has(show.id) &&
+          showMatchesFollow(show, input.kind, follow),
+      );
+      if (!match) {
+        continue;
+      }
+      picked.push(match);
+      seenShows.add(match.id);
+    }
+    return picked.sort((left, right) => {
+      const byDate = showSortKey(left).localeCompare(showSortKey(right));
+      return byDate !== 0 ? byDate : left.id.localeCompare(right.id);
     });
   }
 

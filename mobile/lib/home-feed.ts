@@ -26,11 +26,14 @@ export type GeoPoint = {
 
 export type FavoriteIdSource = {
   item_key: string;
+  item_label?: string | null;
 };
 
 export type FavoriteIds = {
   artistIds: ReadonlySet<string>;
   venueIds: ReadonlySet<string>;
+  artistNames: ReadonlySet<string>;
+  venueNames: ReadonlySet<string>;
 };
 
 export type DatedShow = {
@@ -43,6 +46,7 @@ export type RankableShow = {
   startsAt?: string | null;
   localDate?: string | null;
   venueId?: string | null;
+  venueName?: string | null;
   venueLatitude?: number | null;
   venueLongitude?: number | null;
   attractions: Array<{ id: string; name?: string | null }>;
@@ -194,6 +198,14 @@ function idSet(items: readonly FavoriteIdSource[]) {
   return new Set(items.map((item) => item.item_key.trim()).filter(Boolean));
 }
 
+function nameSet(items: readonly FavoriteIdSource[]) {
+  return new Set(
+    items
+      .map((item) => item.item_label?.trim().toLocaleLowerCase() ?? "")
+      .filter(Boolean),
+  );
+}
+
 export function favoriteIdsFromFollows(
   artists: readonly FavoriteIdSource[],
   venues: readonly FavoriteIdSource[],
@@ -201,28 +213,34 @@ export function favoriteIdsFromFollows(
   return {
     artistIds: idSet(artists),
     venueIds: idSet(venues),
+    artistNames: nameSet(artists),
+    venueNames: nameSet(venues),
   };
 }
 
 export function showHasFavoriteArtist(
-  show: { attractions?: Array<{ id?: string | null }> },
+  show: { attractions?: Array<{ id?: string | null; name?: string | null }> },
   artistIds: ReadonlySet<string>,
+  artistNames: ReadonlySet<string> = new Set(),
 ) {
-  return favoriteArtistIdsOnShow(show, artistIds).length > 0;
+  return favoriteArtistIdsOnShow(show, artistIds, artistNames).length > 0;
 }
 
 function favoriteArtistIdsOnShow(
-  show: { attractions?: Array<{ id?: string | null }> },
+  show: { attractions?: Array<{ id?: string | null; name?: string | null }> },
   artistIds: ReadonlySet<string>,
+  artistNames: ReadonlySet<string> = new Set(),
 ) {
-  if (artistIds.size === 0) {
+  if (artistIds.size === 0 && artistNames.size === 0) {
     return [];
   }
   const ids: string[] = [];
   const seen = new Set<string>();
   for (const artist of show.attractions ?? []) {
     const id = artist.id?.trim() ?? "";
-    if (!id || !artistIds.has(id) || seen.has(id)) {
+    const name = artist.name?.trim().toLocaleLowerCase() ?? "";
+    const matched = (id && artistIds.has(id)) || (name && artistNames.has(name));
+    if (!id || !matched || seen.has(id)) {
       continue;
     }
     seen.add(id);
@@ -243,14 +261,16 @@ function attractionName(
 }
 
 export function showHasFavoriteVenue(
-  show: { venueId?: string | null },
+  show: { venueId?: string | null; venueName?: string | null },
   venueIds: ReadonlySet<string>,
+  venueNames: ReadonlySet<string> = new Set(),
 ) {
-  if (venueIds.size === 0) {
-    return false;
-  }
   const venueId = show.venueId?.trim() ?? "";
-  return Boolean(venueId) && venueIds.has(venueId);
+  if (venueId && venueIds.has(venueId)) {
+    return true;
+  }
+  const venueName = show.venueName?.trim().toLocaleLowerCase() ?? "";
+  return Boolean(venueName) && venueNames.has(venueName);
 }
 
 function engagementScore(signals: {
@@ -314,8 +334,16 @@ export function scoreShow<T extends RankableShow>(
   context: RankingContext,
 ): RankedShow<T> {
   const now = context.now ?? new Date();
-  const favoriteArtist = showHasFavoriteArtist(show, context.favorites.artistIds);
-  const favoriteVenue = showHasFavoriteVenue(show, context.favorites.venueIds);
+  const favoriteArtist = showHasFavoriteArtist(
+    show,
+    context.favorites.artistIds,
+    context.favorites.artistNames,
+  );
+  const favoriteVenue = showHasFavoriteVenue(
+    show,
+    context.favorites.venueIds,
+    context.favorites.venueNames,
+  );
   const miles = showDistanceMiles(show, context.origin);
   const inRadius =
     miles == null ? context.origin == null : miles <= context.radiusMiles;
@@ -356,14 +384,14 @@ function compareNearYouShows<T extends RankableShow>(
   left: RankedShow<T>,
   right: RankedShow<T>,
 ) {
-  const byDate = showSortKey(left.show).localeCompare(showSortKey(right.show));
-  if (byDate !== 0) {
-    return byDate;
-  }
   const leftFavorite = Number(left.favoriteArtist) * 2 + Number(left.favoriteVenue);
   const rightFavorite = Number(right.favoriteArtist) * 2 + Number(right.favoriteVenue);
   if (rightFavorite !== leftFavorite) {
     return rightFavorite - leftFavorite;
+  }
+  const byDate = showSortKey(left.show).localeCompare(showSortKey(right.show));
+  if (byDate !== 0) {
+    return byDate;
   }
   const leftMiles = left.distanceMiles ?? Number.POSITIVE_INFINITY;
   const rightMiles = right.distanceMiles ?? Number.POSITIVE_INFINITY;
@@ -455,13 +483,21 @@ function uniqueShows(shows: readonly TicketmasterShow[]) {
   return unique;
 }
 
+export function followBadgeLabel(card: {
+  favoriteArtist: boolean;
+  favoriteVenue: boolean;
+}) {
+  if (card.favoriteArtist) {
+    return "Your artist";
+  }
+  if (card.favoriteVenue) {
+    return "Your venue";
+  }
+  return null;
+}
+
 function badgesFor(ranked: RankedShow<TicketmasterShow>) {
   const badges: string[] = [];
-  if (ranked.favoriteArtist) {
-    badges.push("Favorite artist");
-  } else if (ranked.favoriteVenue) {
-    badges.push("Favorite venue");
-  }
   if (ranked.show.priceLabel) {
     badges.push(ranked.show.priceLabel);
   } else if (ranked.show.statusLabel) {

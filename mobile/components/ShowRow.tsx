@@ -11,23 +11,27 @@ export function ShowRow({
   trailing,
   kicker,
   subtitle,
+  badge,
   onOpen,
 }: {
   show: TicketmasterShow;
   trailing?: ReactNode;
   kicker?: string;
   subtitle?: string;
+  badge?: string | null;
   onOpen?: () => void;
 }) {
   const router = useRouter();
   const resolvedSubtitle = subtitle ?? showSubtitle(show);
+  const badgeLabel = badge?.trim() ?? "";
 
   return (
     <ListRow
       title={show.name}
       kicker={kicker}
       subtitle={resolvedSubtitle}
-      accessibilityLabel={`${kicker ? `${kicker}. ` : ""}${show.name}. ${resolvedSubtitle}`}
+      badge={badgeLabel || undefined}
+      accessibilityLabel={`${badgeLabel ? `${badgeLabel}. ` : ""}${kicker ? `${kicker}. ` : ""}${show.name}. ${resolvedSubtitle}`}
       onPress={() => {
         onOpen?.();
         router.push({
