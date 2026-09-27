@@ -13,12 +13,22 @@ import {
   type FollowedItemType,
 } from "../../lib/saved-follows";
 import { ensureAnonymousUser } from "../../lib/saved-concerts";
+import { dismissSuggestion } from "../../lib/suggestion-dismissals";
 import { getSupabaseBrowserClient } from "../../lib/supabase/browser-client";
+import {
+  readStoredSuggestionLocation,
+  SuggestionPills,
+} from "./suggestion-pills";
 import {
   ConcertFinderApiError,
   createConcertFinderApiClient,
 } from "../../shared/api/client";
-import type { ArtistSummary, VenueSummary } from "../../shared/api/v1";
+import type {
+  ArtistSummary,
+  SuggestionsData,
+  SuggestionPill,
+  VenueSummary,
+} from "../../shared/api/v1";
 
 type AttractionResult = ArtistSummary;
 type VenueResult = VenueSummary;
@@ -249,7 +259,7 @@ function useSavedFollows() {
   ) {
     const pendingId = `${itemType}:${item.item_key}`;
     if (!ready || pendingKeysRef.current.has(pendingId)) {
-      return;
+      return false;
     }
 
     markPending(pendingId, true);
@@ -291,9 +301,11 @@ function useSavedFollows() {
         return current.filter((row) => row.item_key !== item.item_key);
       });
       setFollowError(followsMessage(error));
+      return false;
     } finally {
       markPending(pendingId, false);
     }
+    return true;
   }
 
   return {
@@ -446,6 +458,85 @@ export function TicketmasterFollows() {
   const venueRequestRef = useRef<AbortController | null>(null);
   const { bands, venues, ready, pendingKeys, followError, toggleFollow } =
     useSavedFollows();
+  const [suggestions, setSuggestions] = useState<SuggestionsData | null>(null);
+  const followKey = `${bands.map((item) => item.item_key).join(",")}|${venues.map((item) => item.item_key).join(",")}`;
+
+  useEffect(() => {
+    if (!ready) {
+      return;
+    }
+    let cancelled = false;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const supabase = getSupabaseBrowserClient();
+          const { data } = await supabase.auth.getSession();
+          const accessToken = data.session?.access_token;
+          if (!accessToken) {
+            return;
+          }
+          const next = await concertFinderApi.loadSuggestions(
+            accessToken,
+            { location: readStoredSuggestionLocation() },
+            controller.signal,
+          );
+          if (!cancelled) {
+            setSuggestions(next);
+          }
+        } catch (error) {
+          if (error instanceof DOMException && error.name === "AbortError") {
+            return;
+          }
+          if (!cancelled) {
+            setSuggestions({ artists: [], venues: [], lastfm: "skipped" });
+          }
+        }
+      })();
+    }, 0);
+    return () => {
+      cancelled = true;
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [followKey, ready]);
+
+  async function followSuggestion(
+    pill: SuggestionPill,
+    itemType: FollowedItemType,
+  ) {
+    const followed = await toggleFollow(
+      itemType,
+      { item_key: pill.id, item_label: pill.name },
+      false,
+    );
+    return followed === true;
+  }
+
+  async function unfollowSuggestion(
+    pill: SuggestionPill,
+    itemType: FollowedItemType,
+  ) {
+    const unfollowed = await toggleFollow(
+      itemType,
+      { item_key: pill.id, item_label: pill.name },
+      true,
+    );
+    return unfollowed === true;
+  }
+
+  async function dismissPill(pill: SuggestionPill, itemType: FollowedItemType) {
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const user = await ensureAnonymousUser(supabase);
+      return await dismissSuggestion(supabase, user.id, itemType, {
+        id: pill.id,
+        name: pill.name,
+      });
+    } catch {
+      return false;
+    }
+  }
 
   async function searchArtists(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -557,6 +648,16 @@ export function TicketmasterFollows() {
       <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-2">
         <div>
           <h3 className="font-display text-xl tracking-tight">Find an artist</h3>
+          <SuggestionPills
+            label="Suggestions"
+            pills={suggestions?.artists ?? []}
+            followedIds={followedBandKeys}
+            onFollow={(pill) => followSuggestion(pill, FOLLOWED_ATTRACTION_TYPE)}
+            onUnfollow={(pill) =>
+              unfollowSuggestion(pill, FOLLOWED_ATTRACTION_TYPE)
+            }
+            onDismiss={(pill) => dismissPill(pill, FOLLOWED_ATTRACTION_TYPE)}
+          />
           <form
             onSubmit={searchArtists}
             className="mt-4 flex flex-col gap-3 sm:flex-row"
@@ -673,6 +774,14 @@ export function TicketmasterFollows() {
 
         <div>
           <h3 className="font-display text-xl tracking-tight">Find a venue</h3>
+          <SuggestionPills
+            label="Suggestions"
+            pills={suggestions?.venues ?? []}
+            followedIds={followedVenueKeys}
+            onFollow={(pill) => followSuggestion(pill, FOLLOWED_VENUE_TYPE)}
+            onUnfollow={(pill) => unfollowSuggestion(pill, FOLLOWED_VENUE_TYPE)}
+            onDismiss={(pill) => dismissPill(pill, FOLLOWED_VENUE_TYPE)}
+          />
           <form
             onSubmit={searchVenues}
             className="mt-4 flex flex-col gap-3 sm:flex-row"
