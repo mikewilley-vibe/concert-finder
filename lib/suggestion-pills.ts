@@ -7,7 +7,6 @@ import {
 export const SUGGESTION_LIMIT = 12;
 const MONTH_DAYS = 31;
 const NAME_MATCH = 0.92;
-const DISTANCE_BAND_MILES = 15;
 const UNKNOWN_DISTANCE_BAND = 999;
 
 const MONTHS = [
@@ -218,7 +217,7 @@ function distanceBand(miles: number | null) {
   if (miles === null || !Number.isFinite(miles) || miles < 0) {
     return UNKNOWN_DISTANCE_BAND;
   }
-  return Math.floor(miles / DISTANCE_BAND_MILES);
+  return Math.round(miles);
 }
 
 function preferThisShow(
