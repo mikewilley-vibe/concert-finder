@@ -648,16 +648,6 @@ export function TicketmasterFollows() {
       <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-2">
         <div>
           <h3 className="font-display text-xl tracking-tight">Find an artist</h3>
-          <SuggestionPills
-            label="Suggestions"
-            pills={suggestions?.artists ?? []}
-            followedIds={followedBandKeys}
-            onFollow={(pill) => followSuggestion(pill, FOLLOWED_ATTRACTION_TYPE)}
-            onUnfollow={(pill) =>
-              unfollowSuggestion(pill, FOLLOWED_ATTRACTION_TYPE)
-            }
-            onDismiss={(pill) => dismissPill(pill, FOLLOWED_ATTRACTION_TYPE)}
-          />
           <form
             onSubmit={searchArtists}
             className="mt-4 flex flex-col gap-3 sm:flex-row"
@@ -770,18 +760,20 @@ export function TicketmasterFollows() {
               </ul>
             </div>
           ) : null}
+          <SuggestionPills
+            label="Suggestions"
+            pills={suggestions?.artists ?? []}
+            followedIds={followedBandKeys}
+            onFollow={(pill) => followSuggestion(pill, FOLLOWED_ATTRACTION_TYPE)}
+            onUnfollow={(pill) =>
+              unfollowSuggestion(pill, FOLLOWED_ATTRACTION_TYPE)
+            }
+            onDismiss={(pill) => dismissPill(pill, FOLLOWED_ATTRACTION_TYPE)}
+          />
         </div>
 
         <div>
           <h3 className="font-display text-xl tracking-tight">Find a venue</h3>
-          <SuggestionPills
-            label="Suggestions"
-            pills={suggestions?.venues ?? []}
-            followedIds={followedVenueKeys}
-            onFollow={(pill) => followSuggestion(pill, FOLLOWED_VENUE_TYPE)}
-            onUnfollow={(pill) => unfollowSuggestion(pill, FOLLOWED_VENUE_TYPE)}
-            onDismiss={(pill) => dismissPill(pill, FOLLOWED_VENUE_TYPE)}
-          />
           <form
             onSubmit={searchVenues}
             className="mt-4 flex flex-col gap-3 sm:flex-row"
@@ -886,6 +878,14 @@ export function TicketmasterFollows() {
               })}
             </ul>
           ) : null}
+          <SuggestionPills
+            label="Suggestions"
+            pills={suggestions?.venues ?? []}
+            followedIds={followedVenueKeys}
+            onFollow={(pill) => followSuggestion(pill, FOLLOWED_VENUE_TYPE)}
+            onUnfollow={(pill) => unfollowSuggestion(pill, FOLLOWED_VENUE_TYPE)}
+            onDismiss={(pill) => dismissPill(pill, FOLLOWED_VENUE_TYPE)}
+          />
         </div>
       </div>
     </section>

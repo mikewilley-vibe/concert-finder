@@ -13,6 +13,7 @@ export function SuggestionPills({
   onFollow,
   onUnfollow,
   onDismiss,
+  initialCount,
 }: {
   label: string;
   pills: SuggestionPill[];
@@ -20,9 +21,11 @@ export function SuggestionPills({
   onFollow: (pill: SuggestionPill) => Promise<boolean>;
   onUnfollow: (pill: SuggestionPill) => Promise<boolean>;
   onDismiss: (pill: SuggestionPill) => Promise<boolean>;
+  initialCount?: number;
 }) {
   const [hidden, setHidden] = useState<Record<string, true>>({});
   const [undo, setUndo] = useState<SuggestionPill | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     if (!undo) {
@@ -33,6 +36,9 @@ export function SuggestionPills({
   }, [undo]);
 
   const visible = pills.filter((pill) => !hidden[pill.id] && !followedIds.has(pill.id));
+  const shown =
+    initialCount && !expanded ? visible.slice(0, initialCount) : visible;
+  const hasMore = Boolean(initialCount) && !expanded && visible.length > shown.length;
   if (visible.length === 0 && !undo) {
     return null;
   }
@@ -84,7 +90,7 @@ export function SuggestionPills({
     <View style={styles.wrap}>
       <Text style={styles.heading}>{label}</Text>
       <View style={styles.pills}>
-        {visible.map((pill) => (
+        {shown.map((pill) => (
           <View key={pill.id} style={styles.pill}>
             <Pressable
               accessibilityRole="button"
@@ -115,6 +121,16 @@ export function SuggestionPills({
           </View>
         ))}
       </View>
+      {hasMore ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="More suggestions"
+          onPress={() => setExpanded(true)}
+          style={styles.more}
+        >
+          <Text style={styles.moreLabel}>More</Text>
+        </Pressable>
+      ) : null}
       {undo ? (
         <View style={styles.undoRow}>
           <Text style={styles.undoText}>Following {undo.name}</Text>
@@ -189,6 +205,15 @@ const styles = StyleSheet.create({
     color: colors.mute,
     fontSize: 20,
     lineHeight: 22,
+  },
+  more: {
+    alignSelf: "flex-start",
+    paddingVertical: 4,
+  },
+  moreLabel: {
+    color: colors.accent,
+    fontFamily: fonts.semibold,
+    fontSize: 14,
   },
   undoRow: {
     flexDirection: "row",

@@ -302,14 +302,6 @@ export default function DiscoverScreen() {
 
       {mode === "artists" ? (
         <>
-        <SuggestionPills
-          label="Suggestions"
-          pills={suggestions.artists}
-          followedIds={new Set(follows.artists.map((item) => item.item_key))}
-          onFollow={(pill) => followSuggestion(pill, FOLLOWED_ATTRACTION_TYPE)}
-          onUnfollow={(pill) => unfollowSuggestion(pill, FOLLOWED_ATTRACTION_TYPE)}
-          onDismiss={(pill) => dismissPill(pill, FOLLOWED_ATTRACTION_TYPE)}
-        />
         <ArtistSearch
           inputRef={artistInputRef}
           keyword={artistKeyword}
@@ -333,19 +325,20 @@ export default function DiscoverScreen() {
             );
           }}
         />
+        <SuggestionPills
+          label="Suggestions"
+          pills={suggestions.artists}
+          followedIds={new Set(follows.artists.map((item) => item.item_key))}
+          initialCount={6}
+          onFollow={(pill) => followSuggestion(pill, FOLLOWED_ATTRACTION_TYPE)}
+          onUnfollow={(pill) => unfollowSuggestion(pill, FOLLOWED_ATTRACTION_TYPE)}
+          onDismiss={(pill) => dismissPill(pill, FOLLOWED_ATTRACTION_TYPE)}
+        />
         </>
       ) : null}
 
       {mode === "venues" ? (
         <>
-        <SuggestionPills
-          label="Suggestions"
-          pills={suggestions.venues}
-          followedIds={new Set(follows.venues.map((item) => item.item_key))}
-          onFollow={(pill) => followSuggestion(pill, FOLLOWED_VENUE_TYPE)}
-          onUnfollow={(pill) => unfollowSuggestion(pill, FOLLOWED_VENUE_TYPE)}
-          onDismiss={(pill) => dismissPill(pill, FOLLOWED_VENUE_TYPE)}
-        />
         <VenueSearch
           inputRef={venueInputRef}
           keyword={venueKeyword}
@@ -375,6 +368,15 @@ export default function DiscoverScreen() {
               followed,
             );
           }}
+        />
+        <SuggestionPills
+          label="Suggestions"
+          pills={suggestions.venues}
+          followedIds={new Set(follows.venues.map((item) => item.item_key))}
+          initialCount={6}
+          onFollow={(pill) => followSuggestion(pill, FOLLOWED_VENUE_TYPE)}
+          onUnfollow={(pill) => unfollowSuggestion(pill, FOLLOWED_VENUE_TYPE)}
+          onDismiss={(pill) => dismissPill(pill, FOLLOWED_VENUE_TYPE)}
         />
         </>
       ) : null}
