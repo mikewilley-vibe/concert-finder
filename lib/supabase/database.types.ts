@@ -77,6 +77,15 @@ type PushTokenRow = {
   user_id: string;
 };
 
+type SuggestionDismissalRow = {
+  created_at: string;
+  id: string;
+  item_key: string;
+  item_label: string | null;
+  item_type: string;
+  user_id: string;
+};
+
 type WatchStateRow = {
   id: string;
   initialized_at: string | null;
@@ -110,6 +119,12 @@ export type Database = {
           | "venue"
         >;
         Update: Partial<ConcertRow>;
+        Relationships: [];
+      };
+      suggestion_dismissals: {
+        Row: SuggestionDismissalRow;
+        Insert: Insert<SuggestionDismissalRow, "created_at" | "id" | "item_label">;
+        Update: Partial<SuggestionDismissalRow>;
         Relationships: [];
       };
       saved_items: {
