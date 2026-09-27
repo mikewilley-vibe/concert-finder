@@ -10,15 +10,20 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
+import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
 import { FollowedRoster } from "@/components/FollowedRoster";
 import { ListRow } from "@/components/ListRow";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { Screen, ScreenBlock } from "@/components/Screen";
+import { SuggestionPills } from "@/components/SuggestionPills";
 import { Body, Eyebrow, Strong, Title } from "@/components/Typography";
 import { colors, fonts } from "@/constants/theme";
 import { useFollows } from "@/hooks/useFollows";
+import { useHomeLocation } from "@/hooks/useHomeLocation";
+import { useInteractionSignals } from "@/hooks/useInteractionSignals";
+import { useSuggestionPills } from "@/hooks/useSuggestionPills";
 import {
   apiErrorMessage,
   searchAttractions,
@@ -37,6 +42,8 @@ import {
   type FollowedItem,
   type FollowedItemType,
 } from "@/lib/follows";
+import { dismissSuggestion, type SuggestionPill } from "@/lib/suggestions";
+import { getSupabaseClient } from "@/lib/supabase";
 
 // Ticketmaster genre-based "More like…" / related-artist recommendations
 // are paused until a better source exists. searchRecommendations and
@@ -77,6 +84,21 @@ export default function DiscoverScreen() {
   const routeMode = Array.isArray(params.mode) ? params.mode[0] : params.mode;
   const mode = parseMode(routeMode);
   const follows = useFollows();
+  const auth = useAuth();
+  const home = useHomeLocation();
+  const interactions = useInteractionSignals();
+  const suggestions = useSuggestionPills({
+    enabled:
+      follows.ready &&
+      home.ready &&
+      interactions.ready &&
+      Boolean(auth.user?.id),
+    locationKey: `${home.location.postalCode}|${home.location.latitude ?? ""}|${home.location.longitude ?? ""}|${home.location.radiusMiles}`,
+    signalsKey: `${Object.keys(interactions.signals.artists).length}:${Object.keys(interactions.signals.venues).length}`,
+    followsKey: `${follows.artists.map((item) => item.item_key).join(",")}|${follows.venues.map((item) => item.item_key).join(",")}`,
+    location: home.location,
+    signals: interactions.signals,
+  });
   const artistInputRef = useRef<TextInput>(null);
   const venueInputRef = useRef<TextInput>(null);
   const [artistKeyword, setArtistKeyword] = useState("");
@@ -207,6 +229,39 @@ export default function DiscoverScreen() {
     void onToggleFollow(itemType, item, true);
   }
 
+  async function followSuggestion(pill: SuggestionPill, itemType: FollowedItemType) {
+    const result = await follows.toggleFollow(
+      itemType,
+      { item_key: pill.id, item_label: pill.name },
+      false,
+    );
+    return result.ok;
+  }
+
+  async function unfollowSuggestion(pill: SuggestionPill, itemType: FollowedItemType) {
+    const result = await follows.toggleFollow(
+      itemType,
+      { item_key: pill.id, item_label: pill.name },
+      true,
+    );
+    return result.ok;
+  }
+
+  async function dismissPill(pill: SuggestionPill, itemType: FollowedItemType) {
+    const userId = auth.user?.id;
+    if (!userId) {
+      return false;
+    }
+    try {
+      return await dismissSuggestion(getSupabaseClient(), userId, itemType, {
+        id: pill.id,
+        name: pill.name,
+      });
+    } catch {
+      return false;
+    }
+  }
+
   return (
     <Screen>
       <ScreenBlock>
@@ -246,6 +301,7 @@ export default function DiscoverScreen() {
       ) : null}
 
       {mode === "artists" ? (
+        <>
         <ArtistSearch
           inputRef={artistInputRef}
           keyword={artistKeyword}
@@ -269,9 +325,20 @@ export default function DiscoverScreen() {
             );
           }}
         />
+        <SuggestionPills
+          label="Suggestions"
+          pills={suggestions.artists}
+          followedIds={new Set(follows.artists.map((item) => item.item_key))}
+          initialCount={6}
+          onFollow={(pill) => followSuggestion(pill, FOLLOWED_ATTRACTION_TYPE)}
+          onUnfollow={(pill) => unfollowSuggestion(pill, FOLLOWED_ATTRACTION_TYPE)}
+          onDismiss={(pill) => dismissPill(pill, FOLLOWED_ATTRACTION_TYPE)}
+        />
+        </>
       ) : null}
 
       {mode === "venues" ? (
+        <>
         <VenueSearch
           inputRef={venueInputRef}
           keyword={venueKeyword}
@@ -302,6 +369,16 @@ export default function DiscoverScreen() {
             );
           }}
         />
+        <SuggestionPills
+          label="Suggestions"
+          pills={suggestions.venues}
+          followedIds={new Set(follows.venues.map((item) => item.item_key))}
+          initialCount={6}
+          onFollow={(pill) => followSuggestion(pill, FOLLOWED_VENUE_TYPE)}
+          onUnfollow={(pill) => unfollowSuggestion(pill, FOLLOWED_VENUE_TYPE)}
+          onDismiss={(pill) => dismissPill(pill, FOLLOWED_VENUE_TYPE)}
+        />
+        </>
       ) : null}
 
       {mode === "following" ? (

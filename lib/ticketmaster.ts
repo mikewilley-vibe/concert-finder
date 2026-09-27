@@ -1280,6 +1280,7 @@ type UpcomingSearchInput = {
   endDateTime?: string;
   page: number;
   pageSize: number;
+  sort?: "date,asc" | "distance,asc";
 };
 
 async function fetchUpcomingShowBatches(
@@ -1295,7 +1296,7 @@ async function fetchUpcomingShowBatches(
     const params: Record<string, string> = {
       size: String(input.pageSize),
       page: String(input.page),
-      sort: "date,asc",
+      sort: input.sort ?? "date,asc",
       startDateTime,
       ...ticketmasterLocationParams(origin),
     };

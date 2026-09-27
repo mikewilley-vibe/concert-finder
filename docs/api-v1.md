@@ -10,6 +10,7 @@ by passing its deployed API origin to `createConcertFinderApiClient`.
 | `GET` | `/api/v1/ticketmaster/attractions?keyword=` | Artist search and typo suggestions |
 | `GET` | `/api/v1/ticketmaster/venues?keyword=&city=` | Venue search. `city` is optional and narrows results to that city name. |
 | `POST` | `/api/v1/ticketmaster/events` | Event discovery, followed-item shows, location, and pagination |
+| `POST` | `/api/v1/suggestions` | Suggestion pills for artists and venues. Requires a Supabase access token. |
 | `POST` | `/api/v1/ticketmaster/recommendations` | Related artists and venues from upcoming genre-matched events |
 | `GET` | `/api/v1/ticketmaster/event-details?ids=` | Details for up to eight event IDs |
 | `POST` | `/api/v1/account/merge-anonymous` | Authenticated anonymous-account transfer |
@@ -88,6 +89,36 @@ This API therefore:
 `latlong` itself is marked deprecated on Discovery in favor of `geoPoint`
 (geohash). It still works for this product path; if TM removes it, resolve the
 origin the same way and switch the query param, keeping the local filter.
+
+## Suggestion pills
+
+`POST /api/v1/suggestions` with `Authorization: Bearer <supabase access token>`
+returns up to 12 artist pills and 12 venue pills. Every pill names a real
+connection in `reason`.
+
+Artist pills, in order:
+
+1. Last.fm `artist.getSimilar` for followed artists, kept only when that artist
+   has an upcoming Ticketmaster show inside the home radius. The key is read
+   from `LASTFM_API_KEY` on the server. If the key is missing or Last.fm fails,
+   this source is skipped and the other sources still return.
+2. The user's saved, interested, going, or opened artists who have a show in
+   that same area.
+3. Other artists playing in the area, so a new account still sees pills.
+
+Venue pills are rooms where a followed artist is playing, rooms from the user's
+own saved or opened shows, then the nearby rooms with the most shows in the
+next month.
+
+The optional `location` uses the same postal code, coordinates, and radius as
+event search. Radius defaults to 100 miles. Send `openedArtists` and
+`openedVenues` (`id` plus `signal` of `opened`, `saved`, `interested`, or
+`going`) for activity that lives only on the device.
+
+Dismissals are stored in `suggestion_dismissals` (see
+`supabase/migrations/20260927153639_suggestion_dismissals.sql`). Followed and
+dismissed items are left out. Apply that migration before dismissals can stick.
+Do not put `LASTFM_API_KEY` in a public or Expo env var.
 
 ## Related artists and venues
 
