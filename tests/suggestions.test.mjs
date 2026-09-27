@@ -24,6 +24,8 @@ function show({
   venueId,
   venueName,
   artists,
+  latitude = null,
+  longitude = null,
 }) {
   return {
     id,
@@ -32,6 +34,8 @@ function show({
     state: "VA",
     venueId,
     venueName,
+    latitude,
+    longitude,
     attractions: artists,
   };
 }
@@ -194,6 +198,117 @@ test("cold start uses nearby artists and the busiest venues", () => {
   assert.match(pills.venues[0]?.reason ?? "", /Hosts 3 shows this month/);
 });
 
+test("closer shows rank above farther ones, and relevance stays above nearby fillers", () => {
+  const origin = { latitude: 36.8508, longitude: -76.2859 };
+  const pills = buildSuggestionPills({
+    now: NOW,
+    origin,
+    follows: {
+      artists: [{ id: "hozier", name: "Hozier" }],
+      venues: [],
+    },
+    dismissed: { artists: [], venues: [] },
+    similar: [
+      {
+        seedName: "Hozier",
+        artists: [{ name: "Far Similar", match: 0.9 }],
+      },
+    ],
+    activity: {
+      artists: [{ id: "far-going", name: "Far Going", signal: "going" }],
+      venues: [],
+    },
+    shows: [
+      show({
+        id: "norfolk",
+        date: "2026-10-18",
+        city: "Norfolk",
+        venueId: "norva",
+        venueName: "The Norva",
+        artists: [{ id: "local", name: "Local Act", imageUrl: null }],
+        latitude: 36.866,
+        longitude: -76.292,
+      }),
+      show({
+        id: "beach",
+        date: "2026-10-08",
+        city: "Virginia Beach",
+        venueId: "beach",
+        venueName: "Beach Room",
+        artists: [{ id: "beach", name: "Beach Act", imageUrl: null }],
+        latitude: 36.852,
+        longitude: -75.978,
+      }),
+      ...Array.from({ length: 4 }, (_, index) =>
+        show({
+          id: `richmond-${index}`,
+          date: "2026-10-06",
+          city: "Richmond",
+          venueId: "allianz",
+          venueName: "Allianz Amphitheater",
+          artists: [{ id: "richmond", name: "Richmond Act", imageUrl: null }],
+          latitude: 37.54,
+          longitude: -77.436,
+        }),
+      ),
+      show({
+        id: "similar-far",
+        date: "2026-10-06",
+        city: "Richmond",
+        venueId: "national",
+        venueName: "The National",
+        artists: [{ id: "far-similar", name: "Far Similar", imageUrl: null }],
+        latitude: 37.54,
+        longitude: -77.436,
+      }),
+      show({
+        id: "going-far",
+        date: "2026-10-09",
+        city: "Petersburg",
+        venueId: "vsu",
+        venueName: "VSU Multi-Purpose Center",
+        artists: [{ id: "far-going", name: "Far Going", imageUrl: null }],
+        latitude: 37.23,
+        longitude: -77.4,
+      }),
+      show({
+        id: "both-far",
+        date: "2026-10-06",
+        city: "Richmond",
+        venueId: "allianz",
+        venueName: "Allianz Amphitheater",
+        artists: [{ id: "both", name: "Both Cities", imageUrl: null }],
+        latitude: 37.54,
+        longitude: -77.436,
+      }),
+      show({
+        id: "both-near",
+        date: "2026-10-20",
+        city: "Norfolk",
+        venueId: "norva",
+        venueName: "The Norva",
+        artists: [{ id: "both", name: "Both Cities", imageUrl: null }],
+        latitude: 36.866,
+        longitude: -76.292,
+      }),
+    ],
+  });
+
+  assert.deepEqual(
+    pills.artists.map((pill) => pill.name),
+    ["Far Similar", "Far Going", "Both Cities", "Local Act", "Beach Act", "Richmond Act"],
+  );
+  assert.equal(pills.artists[2]?.reason, "Norfolk · Oct 20");
+  assert.equal(pills.artists[3]?.reason, "Norfolk · Oct 18");
+  assert.equal(pills.venues[0]?.name, "The Norva");
+  assert.equal(pills.venues[1]?.name, "Beach Room");
+  const venueNames = pills.venues.map((pill) => pill.name);
+  assert.ok(venueNames.indexOf("Beach Room") < venueNames.indexOf("Allianz Amphitheater"));
+  assert.ok(
+    venueNames.indexOf("Allianz Amphitheater") < venueNames.indexOf("The National"),
+  );
+});
+
 test("suggestion pills stop at 12", () => {
   const shows = Array.from({ length: 15 }, (_, index) =>
     show({
@@ -278,6 +393,39 @@ test("Last.fm responses are parsed, cached, and failures stay empty", async () =
     process.env.LASTFM_API_KEY = previous;
   }
   clearLastFmSimilarCache();
+});
+
+test("nearby suggestions load closer shows and later shows", async () => {
+  const nearbySorts = [];
+  const followedSorts = [];
+  await loadSuggestionPills(
+    {
+      now: NOW,
+      follows: { artists: [{ id: "hozier", name: "Hozier" }], venues: [] },
+      dismissed: { artists: [], venues: [] },
+      activity: { artists: [], venues: [] },
+      savedShows: [],
+      location: {
+        postalCode: "23505",
+        latitude: 36.85,
+        longitude: -76.29,
+        radiusMiles: 100,
+      },
+    },
+    {
+      similarArtists: async () => ({ ok: true, artists: [], skipped: true }),
+      loadShows: async (input) => {
+        if (input.attractions.length === 0) {
+          nearbySorts.push(input.sort);
+        } else {
+          followedSorts.push(input.sort);
+        }
+        return [];
+      },
+    },
+  );
+  assert.deepEqual(nearbySorts.sort(), ["date,asc", "distance,asc"]);
+  assert.deepEqual(followedSorts, ["date,asc"]);
 });
 
 test("suggestions still return nearby pills when Last.fm is skipped", async () => {

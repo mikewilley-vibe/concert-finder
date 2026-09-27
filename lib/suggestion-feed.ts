@@ -35,10 +35,13 @@ export type SuggestionLocation = {
 
 export type LastFmStatus = "ok" | "skipped" | "error";
 
+type ShowSort = "date,asc" | "distance,asc";
+
 type ShowLoader = (input: {
   attractions: SuggestionFollow[];
   location: SuggestionLocation;
   endDateTime: string;
+  sort?: ShowSort;
 }) => Promise<SuggestionShowFact[]>;
 
 function toFact(show: TicketmasterShow): SuggestionShowFact {
@@ -49,6 +52,8 @@ function toFact(show: TicketmasterShow): SuggestionShowFact {
     state: show.venue.state,
     venueId: show.venue.id.trim() || null,
     venueName: show.venue.name.trim() || null,
+    latitude: show.venue.latitude,
+    longitude: show.venue.longitude,
     attractions: show.attractions.flatMap((artist) => {
       const id = artist.id.trim();
       const name = artist.name.trim();
@@ -64,8 +69,10 @@ async function loadTicketmasterShows(input: {
   attractions: SuggestionFollow[];
   location: SuggestionLocation;
   endDateTime: string;
+  sort?: ShowSort;
 }) {
   const result = await searchUpcomingShows({
+    sort: input.sort,
     attractions: input.attractions.map((artist) => ({
       id: artist.id,
       label: artist.name,
@@ -90,6 +97,19 @@ async function loadTicketmasterShows(input: {
 
 function hasLocation(location: SuggestionLocation) {
   return Boolean(location.postalCode) || location.latitude !== null;
+}
+
+function dedupeShows(shows: SuggestionShowFact[]) {
+  const seen = new Set<string>();
+  const unique: SuggestionShowFact[] = [];
+  for (const show of shows) {
+    if (!show.id || seen.has(show.id)) {
+      continue;
+    }
+    seen.add(show.id);
+    unique.push(show);
+  }
+  return unique;
 }
 
 function windowEnd(now: Date) {
@@ -263,17 +283,26 @@ export async function loadSuggestionPills(
   const similarArtists = deps?.similarArtists ?? getSimilarArtists;
   const seeds = input.follows.artists.slice(0, SEED_LIMIT);
 
-  const [nearby, followed, similarResults, origin] = await Promise.all([
+  const [nearbyByDistance, nearbyByDate, followed, similarResults, origin] =
+    await Promise.all([
     loadShows({
       attractions: [],
       location: input.location,
       endDateTime,
+      sort: "distance,asc",
+    }).catch(() => [] as SuggestionShowFact[]),
+    loadShows({
+      attractions: [],
+      location: input.location,
+      endDateTime,
+      sort: "date,asc",
     }).catch(() => [] as SuggestionShowFact[]),
     seeds.length > 0
       ? loadShows({
           attractions: seeds,
           location: input.location,
           endDateTime,
+          sort: "date,asc",
         }).catch(() => [] as SuggestionShowFact[])
       : Promise.resolve([] as SuggestionShowFact[]),
     Promise.all(
@@ -330,7 +359,8 @@ export async function loadSuggestionPills(
         artists: row.result.artists,
       })),
     activity: input.activity,
-    shows: [...nearby, ...followed, ...savedShows],
+    shows: dedupeShows([...nearbyByDistance, ...nearbyByDate, ...followed, ...savedShows]),
+    origin,
     now,
   });
 

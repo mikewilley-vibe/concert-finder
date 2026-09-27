@@ -1,3 +1,4 @@
+import { distanceMiles, type GeoPoint } from "./geo.ts";
 import {
   nameSimilarity,
   normalizeNameForComparison,
@@ -6,6 +7,8 @@ import {
 export const SUGGESTION_LIMIT = 12;
 const MONTH_DAYS = 31;
 const NAME_MATCH = 0.92;
+const DISTANCE_BAND_MILES = 15;
+const UNKNOWN_DISTANCE_BAND = 999;
 
 const MONTHS = [
   "Jan",
@@ -43,6 +46,8 @@ export type SuggestionShowFact = {
   state: string | null;
   venueId: string | null;
   venueName: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   attractions: Array<{
     id: string;
     name: string;
@@ -71,6 +76,7 @@ type RankedPill = {
   priority: number;
   score: number;
   date: string;
+  distance: number;
 };
 
 const SIGNAL_RANK: Record<SuggestionSignal, number> = {
@@ -88,6 +94,7 @@ type ArtistHit = {
   state: string | null;
   localDate: string | null;
   showCount: number;
+  distanceMiles: number | null;
 };
 
 type VenueHit = {
@@ -98,6 +105,7 @@ type VenueHit = {
   showCount: number;
   soonestDate: string | null;
   followedPlay: { artistName: string; localDate: string | null } | null;
+  distanceMiles: number | null;
 };
 
 function todayIso(now: Date) {
@@ -178,6 +186,63 @@ function sooner(left: string | null, right: string | null) {
     return left;
   }
   return left <= right ? left : right;
+}
+
+function milesOf(show: SuggestionShowFact, origin: GeoPoint | null) {
+  if (
+    !origin ||
+    typeof show.latitude !== "number" ||
+    typeof show.longitude !== "number" ||
+    !Number.isFinite(show.latitude) ||
+    !Number.isFinite(show.longitude)
+  ) {
+    return null;
+  }
+  return distanceMiles(origin, {
+    latitude: show.latitude,
+    longitude: show.longitude,
+  });
+}
+
+function minMiles(current: number | null, next: number | null) {
+  if (current === null) {
+    return next;
+  }
+  if (next === null) {
+    return current;
+  }
+  return Math.min(current, next);
+}
+
+function distanceBand(miles: number | null) {
+  if (miles === null || !Number.isFinite(miles) || miles < 0) {
+    return UNKNOWN_DISTANCE_BAND;
+  }
+  return Math.floor(miles / DISTANCE_BAND_MILES);
+}
+
+function preferThisShow(
+  currentMiles: number | null,
+  nextMiles: number | null,
+  currentDate: string | null,
+  nextDate: string | null,
+) {
+  if (nextMiles !== null && currentMiles !== null) {
+    const delta = nextMiles - currentMiles;
+    if (delta < -0.05) {
+      return true;
+    }
+    if (delta > 0.05) {
+      return false;
+    }
+  } else if (nextMiles !== null) {
+    return true;
+  } else if (currentMiles !== null) {
+    return false;
+  }
+  const left = currentDate ?? "9999-99-99";
+  const right = nextDate ?? "9999-99-99";
+  return right < left;
 }
 
 export function mergeSimilarArtists(groups: SimilarArtistGroup[]) {
@@ -289,6 +354,7 @@ function indexShows(
   shows: SuggestionShowFact[],
   follows: SuggestionFollow[],
   today: string,
+  origin: GeoPoint | null,
 ) {
   const artists = new Map<string, ArtistHit>();
   const artistNames = new Map<string, string>();
@@ -307,6 +373,7 @@ function indexShows(
       if (!id || !name) {
         continue;
       }
+      const miles = milesOf(show, origin);
       const current = artists.get(id);
       if (!current) {
         artists.set(id, {
@@ -317,19 +384,25 @@ function indexShows(
           state: show.state,
           localDate: show.localDate,
           showCount: month ? 1 : 0,
+          distanceMiles: miles,
         });
       } else {
-        const nextDate = sooner(current.localDate, show.localDate);
-        const dateChanged = nextDate !== current.localDate;
+        const useShow = preferThisShow(
+          current.distanceMiles,
+          miles,
+          current.localDate,
+          show.localDate,
+        );
         artists.set(id, {
           ...current,
-          imageUrl: dateChanged
+          imageUrl: useShow
             ? (attraction.imageUrl ?? current.imageUrl)
             : current.imageUrl,
-          city: dateChanged ? (show.city ?? current.city) : current.city,
-          state: dateChanged ? (show.state ?? current.state) : current.state,
-          localDate: nextDate,
+          city: useShow ? (show.city ?? current.city) : current.city,
+          state: useShow ? (show.state ?? current.state) : current.state,
+          localDate: useShow ? show.localDate : current.localDate,
           showCount: current.showCount + (month ? 1 : 0),
+          distanceMiles: minMiles(current.distanceMiles, miles),
         });
       }
       for (const key of nameKeys(name)) {
@@ -352,6 +425,7 @@ function indexShows(
         nameKeys(name).some((key) => followedNames.has(key))
       );
     });
+    const miles = milesOf(show, origin);
     const current = venues.get(venueId);
     const play =
       played && played.name.trim()
@@ -366,9 +440,16 @@ function indexShows(
         showCount: month ? 1 : 0,
         soonestDate: show.localDate,
         followedPlay: play,
+        distanceMiles: miles,
       });
       continue;
     }
+    const usePlace = preferThisShow(
+      current.distanceMiles,
+      miles,
+      current.soonestDate,
+      show.localDate,
+    );
     const nextDate = sooner(current.soonestDate, show.localDate);
     const nextPlay = [current.followedPlay, play]
       .filter((item): item is { artistName: string; localDate: string | null } =>
@@ -379,12 +460,12 @@ function indexShows(
       )[0] ?? null;
     venues.set(venueId, {
       ...current,
-      city: nextDate !== current.soonestDate ? (show.city ?? current.city) : current.city,
-      state:
-        nextDate !== current.soonestDate ? (show.state ?? current.state) : current.state,
+      city: usePlace ? (show.city ?? current.city) : current.city,
+      state: usePlace ? (show.state ?? current.state) : current.state,
       showCount: current.showCount + (month ? 1 : 0),
       soonestDate: nextDate,
       followedPlay: nextPlay,
+      distanceMiles: minMiles(current.distanceMiles, miles),
     });
   }
 
@@ -416,6 +497,7 @@ function takePills(ranked: RankedPill[]) {
   ranked.sort(
     (left, right) =>
       left.priority - right.priority ||
+      left.distance - right.distance ||
       right.score - left.score ||
       left.date.localeCompare(right.date) ||
       left.pill.name.localeCompare(right.pill.name),
@@ -453,14 +535,17 @@ export function buildSuggestionPills(input: {
   similar: SimilarArtistGroup[];
   activity: { artists: SuggestionActivity[]; venues: SuggestionActivity[] };
   shows: SuggestionShowFact[];
+  origin?: GeoPoint | null;
   now?: Date;
 }) {
   const now = input.now ?? new Date();
   const today = todayIso(now);
+  const origin = input.origin ?? null;
   const { artists, artistNames, venues } = indexShows(
     input.shows,
     input.follows.artists,
     today,
+    origin,
   );
   const followedArtistIds = new Set(input.follows.artists.map((item) => item.id));
   const followedArtistNames = blockedNames(input.follows.artists);
@@ -494,6 +579,7 @@ export function buildSuggestionPills(input: {
     usedArtists.add(hit.id);
     artistRanked.push({
       priority: 0,
+      distance: distanceBand(hit.distanceMiles),
       score: similar.score,
       date: hit.localDate ?? "9999-99-99",
       pill: {
@@ -516,6 +602,7 @@ export function buildSuggestionPills(input: {
     usedArtists.add(hit.id);
     artistRanked.push({
       priority: 1,
+      distance: distanceBand(hit.distanceMiles),
       score: SIGNAL_RANK[activity.signal],
       date: hit.localDate ?? "9999-99-99",
       pill: {
@@ -536,6 +623,7 @@ export function buildSuggestionPills(input: {
   for (const hit of nearbyArtists) {
     artistRanked.push({
       priority: 2,
+      distance: distanceBand(hit.distanceMiles),
       score: hit.showCount,
       date: hit.localDate ?? "9999-99-99",
       pill: {
@@ -571,6 +659,7 @@ export function buildSuggestionPills(input: {
     const date = shortShowDate(hit.followedPlay.localDate);
     venueRanked.push({
       priority: 0,
+      distance: distanceBand(hit.distanceMiles),
       score: 1,
       date: hit.followedPlay.localDate ?? "9999-99-99",
       pill: {
@@ -595,6 +684,7 @@ export function buildSuggestionPills(input: {
     usedVenues.add(hit.id);
     venueRanked.push({
       priority: 1,
+      distance: distanceBand(hit.distanceMiles),
       score: SIGNAL_RANK[activity.signal],
       date: hit.soonestDate ?? "9999-99-99",
       pill: {
@@ -615,6 +705,7 @@ export function buildSuggestionPills(input: {
     }
     venueRanked.push({
       priority: 2,
+      distance: distanceBand(hit.distanceMiles),
       score: hit.showCount,
       date: hit.soonestDate ?? "9999-99-99",
       pill: {
