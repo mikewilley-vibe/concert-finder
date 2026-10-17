@@ -311,9 +311,10 @@ function FollowManageDisclosure({
                 aria-label={`Unfollow ${item.item_label}`}
                 disabled={pendingKeys.has(`${itemType}:${item.item_key}`)}
                 onClick={() => onRemove(item)}
-                className="inline-flex min-h-11 shrink-0 touch-manipulation items-center px-3 text-sm font-semibold text-mute hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+                title={`Unfollow ${item.item_label}`}
+                className="inline-flex min-h-11 min-w-11 shrink-0 touch-manipulation items-center justify-center text-2xl font-semibold text-mute hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
               >
-                Unfollow
+                <span aria-hidden="true">×</span>
               </button>
             </li>
           ))}
