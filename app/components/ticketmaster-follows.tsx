@@ -363,9 +363,10 @@ function RemoveFollowButton({
       aria-label={`Remove ${name}`}
       disabled={disabled}
       onClick={() => setConfirming(true)}
-      className="inline-flex min-h-11 shrink-0 touch-manipulation items-center px-3 text-sm font-semibold text-mute hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+      title={`Remove ${name}`}
+      className="inline-flex min-h-11 min-w-11 shrink-0 touch-manipulation items-center justify-center text-2xl font-semibold text-mute hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
     >
-      Remove
+      <span aria-hidden="true">×</span>
     </button>
   );
 }
