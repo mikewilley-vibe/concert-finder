@@ -178,3 +178,35 @@ export type MergeAnonymousData = {
 export type DeleteAccountData = {
   deleted: true;
 };
+
+export type SuggestionSignal = "opened" | "saved" | "interested" | "going";
+
+export type SuggestionPill = {
+  id: string;
+  name: string;
+  reason: string;
+  source: "similar" | "nearby" | "activity" | "hosts";
+  imageUrl: string | null;
+  city: string | null;
+  state: string | null;
+};
+
+export type SuggestionsRequest = {
+  location?: EventSearchLocation;
+  openedArtists?: Array<{
+    id: string;
+    name?: string;
+    signal: SuggestionSignal;
+  }>;
+  openedVenues?: Array<{
+    id: string;
+    name?: string;
+    signal: SuggestionSignal;
+  }>;
+};
+
+export type SuggestionsData = {
+  artists: SuggestionPill[];
+  venues: SuggestionPill[];
+  lastfm: "ok" | "skipped" | "error";
+};

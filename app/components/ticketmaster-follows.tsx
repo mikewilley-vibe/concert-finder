@@ -13,12 +13,22 @@ import {
   type FollowedItemType,
 } from "../../lib/saved-follows";
 import { ensureAnonymousUser } from "../../lib/saved-concerts";
+import { dismissSuggestion } from "../../lib/suggestion-dismissals";
 import { getSupabaseBrowserClient } from "../../lib/supabase/browser-client";
+import {
+  readStoredSuggestionLocation,
+  SuggestionPills,
+} from "./suggestion-pills";
 import {
   ConcertFinderApiError,
   createConcertFinderApiClient,
 } from "../../shared/api/client";
-import type { ArtistSummary, VenueSummary } from "../../shared/api/v1";
+import type {
+  ArtistSummary,
+  SuggestionsData,
+  SuggestionPill,
+  VenueSummary,
+} from "../../shared/api/v1";
 
 type AttractionResult = ArtistSummary;
 type VenueResult = VenueSummary;
@@ -33,6 +43,69 @@ const primaryButtonClass =
 
 const secondaryButtonClass =
   "inline-flex min-h-10 shrink-0 touch-manipulation items-center justify-center rounded-full border border-line px-4 text-sm font-semibold text-foreground transition-colors hover:bg-panel-hover focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-70";
+
+function FollowAction({
+  name,
+  followed,
+  pending,
+  ready,
+  onToggle,
+}: {
+  name: string;
+  followed: boolean;
+  pending: boolean;
+  ready: boolean;
+  onToggle: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+
+  if (followed && confirming) {
+    return (
+      <div className="flex shrink-0 flex-col gap-2">
+        <button
+          type="button"
+          disabled={!ready || pending}
+          aria-label={`Confirm remove ${name}`}
+          onClick={() => {
+            setConfirming(false);
+            onToggle();
+          }}
+          className={secondaryButtonClass}
+        >
+          Remove
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          aria-label={`Keep following ${name}`}
+          onClick={() => setConfirming(false)}
+          className={secondaryButtonClass}
+        >
+          Keep
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      disabled={!ready || pending}
+      aria-pressed={followed}
+      aria-label={followed ? `Remove ${name}` : `Follow ${name}`}
+      onClick={() => {
+        if (followed) {
+          setConfirming(true);
+          return;
+        }
+        onToggle();
+      }}
+      className={secondaryButtonClass}
+    >
+      {followed ? "Following" : "Follow"}
+    </button>
+  );
+}
 
 function ArtistFollowRow({
   attraction,
@@ -66,20 +139,13 @@ function ArtistFollowRow({
       <p className="min-w-0 flex-1 font-display text-base tracking-tight">
         {attraction.name}
       </p>
-      <button
-        type="button"
-        disabled={!ready || pending}
-        aria-pressed={followed}
-        aria-label={
-          followed
-            ? `Unfollow ${attraction.name}`
-            : `Follow ${attraction.name}`
-        }
-        onClick={onToggle}
-        className={secondaryButtonClass}
-      >
-        {followed ? "Following" : "Follow"}
-      </button>
+      <FollowAction
+        name={attraction.name}
+        followed={followed}
+        pending={pending}
+        ready={ready}
+        onToggle={onToggle}
+      />
     </li>
   );
 }
@@ -193,7 +259,7 @@ function useSavedFollows() {
   ) {
     const pendingId = `${itemType}:${item.item_key}`;
     if (!ready || pendingKeysRef.current.has(pendingId)) {
-      return;
+      return false;
     }
 
     markPending(pendingId, true);
@@ -235,9 +301,11 @@ function useSavedFollows() {
         return current.filter((row) => row.item_key !== item.item_key);
       });
       setFollowError(followsMessage(error));
+      return false;
     } finally {
       markPending(pendingId, false);
     }
+    return true;
   }
 
   return {
@@ -248,6 +316,59 @@ function useSavedFollows() {
     followError,
     toggleFollow,
   };
+}
+
+function RemoveFollowButton({
+  name,
+  disabled,
+  onRemove,
+}: {
+  name: string;
+  disabled: boolean;
+  onRemove: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+
+  if (confirming) {
+    return (
+      <span className="flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          disabled={disabled}
+          aria-label={`Confirm remove ${name}`}
+          onClick={() => {
+            setConfirming(false);
+            onRemove();
+          }}
+          className="inline-flex min-h-11 shrink-0 touch-manipulation items-center px-3 text-sm font-semibold text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+        >
+          Remove
+        </button>
+        <button
+          type="button"
+          disabled={disabled}
+          aria-label={`Keep ${name}`}
+          onClick={() => setConfirming(false)}
+          className="inline-flex min-h-11 shrink-0 touch-manipulation items-center px-3 text-sm font-semibold text-mute focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+        >
+          Keep
+        </button>
+      </span>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      aria-label={`Remove ${name}`}
+      disabled={disabled}
+      onClick={() => setConfirming(true)}
+      title={`Remove ${name}`}
+      className="inline-flex min-h-11 min-w-11 shrink-0 touch-manipulation items-center justify-center text-2xl font-semibold text-mute hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+    >
+      <span aria-hidden="true">×</span>
+    </button>
+  );
 }
 
 function FollowManageDisclosure({
@@ -267,7 +388,7 @@ function FollowManageDisclosure({
   pendingKeys: Set<string>;
   onRemove: (item: FollowedItem) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const panelId = `${id}-panel`;
   const countLabel =
     items.length === 1
@@ -306,16 +427,11 @@ function FollowManageDisclosure({
               className="flex items-center justify-between gap-3 rounded-full border border-line bg-background px-4 py-2"
             >
               <span className="min-w-0 truncate text-sm">{item.item_label}</span>
-              <button
-                type="button"
-                aria-label={`Unfollow ${item.item_label}`}
+              <RemoveFollowButton
+                name={item.item_label}
                 disabled={pendingKeys.has(`${itemType}:${item.item_key}`)}
-                onClick={() => onRemove(item)}
-                title={`Unfollow ${item.item_label}`}
-                className="inline-flex min-h-11 min-w-11 shrink-0 touch-manipulation items-center justify-center text-2xl font-semibold text-mute hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
-              >
-                <span aria-hidden="true">×</span>
-              </button>
+                onRemove={() => onRemove(item)}
+              />
             </li>
           ))}
         </ul>
@@ -327,6 +443,7 @@ function FollowManageDisclosure({
 export function TicketmasterFollows() {
   const [artistKeyword, setArtistKeyword] = useState("");
   const [venueKeyword, setVenueKeyword] = useState("");
+  const [venueCity, setVenueCity] = useState("");
   const [artistPending, setArtistPending] = useState(false);
   const [venuePending, setVenuePending] = useState(false);
   const [artistError, setArtistError] = useState<string | null>(null);
@@ -342,6 +459,85 @@ export function TicketmasterFollows() {
   const venueRequestRef = useRef<AbortController | null>(null);
   const { bands, venues, ready, pendingKeys, followError, toggleFollow } =
     useSavedFollows();
+  const [suggestions, setSuggestions] = useState<SuggestionsData | null>(null);
+  const followKey = `${bands.map((item) => item.item_key).join(",")}|${venues.map((item) => item.item_key).join(",")}`;
+
+  useEffect(() => {
+    if (!ready) {
+      return;
+    }
+    let cancelled = false;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const supabase = getSupabaseBrowserClient();
+          const { data } = await supabase.auth.getSession();
+          const accessToken = data.session?.access_token;
+          if (!accessToken) {
+            return;
+          }
+          const next = await concertFinderApi.loadSuggestions(
+            accessToken,
+            { location: readStoredSuggestionLocation() },
+            controller.signal,
+          );
+          if (!cancelled) {
+            setSuggestions(next);
+          }
+        } catch (error) {
+          if (error instanceof DOMException && error.name === "AbortError") {
+            return;
+          }
+          if (!cancelled) {
+            setSuggestions({ artists: [], venues: [], lastfm: "skipped" });
+          }
+        }
+      })();
+    }, 0);
+    return () => {
+      cancelled = true;
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [followKey, ready]);
+
+  async function followSuggestion(
+    pill: SuggestionPill,
+    itemType: FollowedItemType,
+  ) {
+    const followed = await toggleFollow(
+      itemType,
+      { item_key: pill.id, item_label: pill.name },
+      false,
+    );
+    return followed === true;
+  }
+
+  async function unfollowSuggestion(
+    pill: SuggestionPill,
+    itemType: FollowedItemType,
+  ) {
+    const unfollowed = await toggleFollow(
+      itemType,
+      { item_key: pill.id, item_label: pill.name },
+      true,
+    );
+    return unfollowed === true;
+  }
+
+  async function dismissPill(pill: SuggestionPill, itemType: FollowedItemType) {
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const user = await ensureAnonymousUser(supabase);
+      return await dismissSuggestion(supabase, user.id, itemType, {
+        id: pill.id,
+        name: pill.name,
+      });
+    } catch {
+      return false;
+    }
+  }
 
   async function searchArtists(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -401,10 +597,10 @@ export function TicketmasterFollows() {
     setVenueError(null);
 
     try {
-      const data = await concertFinderApi.searchVenues(
-        nextKeyword,
-        controller.signal,
-      );
+      const data = await concertFinderApi.searchVenues(nextKeyword, {
+        signal: controller.signal,
+        city: venueCity,
+      });
       setVenueResults(data.venues);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
@@ -565,6 +761,16 @@ export function TicketmasterFollows() {
               </ul>
             </div>
           ) : null}
+          <SuggestionPills
+            label="Suggestions"
+            pills={suggestions?.artists ?? []}
+            followedIds={followedBandKeys}
+            onFollow={(pill) => followSuggestion(pill, FOLLOWED_ATTRACTION_TYPE)}
+            onUnfollow={(pill) =>
+              unfollowSuggestion(pill, FOLLOWED_ATTRACTION_TYPE)
+            }
+            onDismiss={(pill) => dismissPill(pill, FOLLOWED_ATTRACTION_TYPE)}
+          />
         </div>
 
         <div>
@@ -587,6 +793,20 @@ export function TicketmasterFollows() {
               maxLength={80}
               className={fieldClass}
             />
+            <label className="sr-only" htmlFor="follow-venue-city">
+              City
+            </label>
+            <input
+              id="follow-venue-city"
+              type="search"
+              value={venueCity}
+              onChange={(event) => setVenueCity(event.target.value)}
+              placeholder="City (optional), like Washington"
+              autoComplete="off"
+              enterKeyHint="search"
+              maxLength={40}
+              className={fieldClass}
+            />
             <button
               type="submit"
               disabled={venuePending}
@@ -604,7 +824,9 @@ export function TicketmasterFollows() {
             ) : null}
             {venueResults && venueResults.length === 0 ? (
               <p className="mt-4 text-sm text-mute">
-                No Ticketmaster venues matched that search.
+                {venueCity.trim()
+                  ? `No Ticketmaster venues matched that name in ${venueCity.trim()}. Try the city name Ticketmaster uses, or leave the city blank.`
+                  : "No Ticketmaster venues matched that search."}
               </p>
             ) : null}
             {venueResults && venueResults.length > 0 ? (
@@ -636,16 +858,12 @@ export function TicketmasterFollows() {
                         <p className="mt-0.5 text-sm text-mute">{place}</p>
                       ) : null}
                     </div>
-                    <button
-                      type="button"
-                      disabled={!ready || pending}
-                      aria-pressed={followed}
-                      aria-label={
-                        followed
-                          ? `Unfollow ${venue.name}`
-                          : `Follow ${venue.name}`
-                      }
-                      onClick={() =>
+                    <FollowAction
+                      name={venue.name}
+                      followed={followed}
+                      pending={pending}
+                      ready={ready}
+                      onToggle={() =>
                         void toggleFollow(
                           FOLLOWED_VENUE_TYPE,
                           {
@@ -655,15 +873,20 @@ export function TicketmasterFollows() {
                           followed,
                         )
                       }
-                      className={secondaryButtonClass}
-                    >
-                      {followed ? "Following" : "Follow"}
-                    </button>
+                    />
                   </li>
                 );
               })}
             </ul>
           ) : null}
+          <SuggestionPills
+            label="Suggestions"
+            pills={suggestions?.venues ?? []}
+            followedIds={followedVenueKeys}
+            onFollow={(pill) => followSuggestion(pill, FOLLOWED_VENUE_TYPE)}
+            onUnfollow={(pill) => unfollowSuggestion(pill, FOLLOWED_VENUE_TYPE)}
+            onDismiss={(pill) => dismissPill(pill, FOLLOWED_VENUE_TYPE)}
+          />
         </div>
       </div>
     </section>

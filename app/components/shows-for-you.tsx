@@ -310,8 +310,11 @@ export function ShowsForYou() {
       className="grid grid-cols-1 items-start gap-10 lg:grid-cols-2 lg:gap-8"
     >
       <section id="upcoming-artist-shows" className="min-w-0 scroll-mt-24">
-        <h2 className="font-display text-2xl tracking-tight sm:text-3xl">
-          Upcoming Shows by Artist
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-accent">
+          Following
+        </p>
+        <h2 className="mt-2 font-display text-2xl tracking-tight sm:text-3xl">
+          Your artists coming up
         </h2>
         <p className="mt-2 text-sm leading-6 text-mute sm:text-base">
           See where followed artists are playing. Add a ZIP to narrow it.
@@ -393,8 +396,11 @@ export function ShowsForYou() {
       </section>
 
       <section id="upcoming-venue-shows" className="min-w-0 scroll-mt-24">
-        <h2 className="font-display text-2xl tracking-tight sm:text-3xl">
-          Upcoming Shows by Venue
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-accent">
+          Following
+        </p>
+        <h2 className="mt-2 font-display text-2xl tracking-tight sm:text-3xl">
+          Your venues coming up
         </h2>
         <p className="mt-2 text-sm leading-6 text-mute sm:text-base">
           See what&apos;s coming at venues you follow.

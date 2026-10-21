@@ -135,7 +135,7 @@ function errorMessage(payload: JsonRecord, fallback: string) {
   return fallback;
 }
 
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   headers.set("Accept", "application/json");
   if (init?.body && !headers.has("Content-Type")) {
@@ -210,8 +210,12 @@ export function searchAttractions(keyword: string) {
   }));
 }
 
-export function searchVenues(keyword: string) {
+export function searchVenues(keyword: string, city?: string) {
   const params = new URLSearchParams({ keyword });
+  const trimmedCity = city?.trim() ?? "";
+  if (trimmedCity) {
+    params.set("city", trimmedCity);
+  }
   return apiFetch<{
     venues: Array<{
       id: string;

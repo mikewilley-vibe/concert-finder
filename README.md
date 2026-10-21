@@ -89,6 +89,8 @@ npm run build
   the oldest unchecked records.
 - Event-search requests accept up to 50 results per page and expose `hasMore`
   and `nextPage` metadata.
+- Venue search accepts an optional `city` (at least 2 letters). Ticketmaster
+  returns at most 8 matching venues. A blank city searches by name only.
 - A single event request accepts up to 25 followed artist/venue references.
 - Location, sharing, calendar, and push alerts are in the ShowSignal app
 (`mobile/`). The shared API accepts postal or coordinate radius searches.

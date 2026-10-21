@@ -130,26 +130,31 @@ export default function ProfileScreen() {
     void Linking.openURL(websiteUrl(path));
   }
 
-  useEffect(() => {
-    if (!home.ready) {
-      return;
-    }
+  const locationSyncKey = home.ready
+    ? `${home.location.homePostalCode}|${home.location.postalCode}|${home.location.radiusMiles}`
+    : null;
+  const [syncedLocation, setSyncedLocation] = useState<string | null>(null);
+  if (locationSyncKey && locationSyncKey !== syncedLocation) {
+    setSyncedLocation(locationSyncKey);
     setPostalDraft(home.location.homePostalCode || home.location.postalCode);
     setRadiusDraft(home.location.radiusMiles);
-  }, [
-    home.location.homePostalCode,
-    home.location.postalCode,
-    home.location.radiusMiles,
-    home.ready,
-  ]);
+  }
+
+  const pushUserId = configured && permanent && user?.id ? user.id : null;
+  const [pushUserSeen, setPushUserSeen] = useState<string | null>(pushUserId);
+  if (pushUserId !== pushUserSeen) {
+    setPushUserSeen(pushUserId);
+    if (!pushUserId) {
+      setPushEnabled(false);
+    }
+  }
 
   useEffect(() => {
-    if (!configured || !permanent || !user?.id) {
-      setPushEnabled(false);
+    if (!pushUserId) {
       return;
     }
     let cancelled = false;
-    void hasEnabledPushToken(getSupabaseClient(), user.id)
+    void hasEnabledPushToken(getSupabaseClient(), pushUserId)
       .then((enabled) => {
         if (!cancelled) {
           setPushEnabled(enabled);
@@ -163,7 +168,7 @@ export default function ProfileScreen() {
     return () => {
       cancelled = true;
     };
-  }, [configured, permanent, user?.id]);
+  }, [pushUserId]);
 
   async function onEnablePushAlerts() {
     if (!user?.id) {

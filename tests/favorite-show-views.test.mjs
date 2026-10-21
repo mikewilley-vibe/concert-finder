@@ -94,6 +94,24 @@ test("Next keeps one chronological show for every followed venue", () => {
   );
 });
 
+test("Next matches a followed venue when Ticketmaster uses a different venue id", () => {
+  const alias = {
+    ...show("poe", "2026-09-26", "someone", "event-venue"),
+    venueName: "The Norva",
+  };
+  const result = favoriteShowsForView({
+    kind: "venue",
+    view: "next",
+    shows: [alias],
+    follows: [{ item_key: "discovery-venue", item_label: "The Norva" }],
+    now: NOW,
+  });
+  assert.deepEqual(
+    result.map((item) => item.id),
+    ["poe"],
+  );
+});
+
 test("selecting an artist shows every unique upcoming date for that artist", () => {
   const result = favoriteShowsForView({
     kind: "artist",

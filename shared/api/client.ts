@@ -9,6 +9,8 @@ import type {
   MergeAnonymousData,
   RecommendationsData,
   RecommendationsRequest,
+  SuggestionsData,
+  SuggestionsRequest,
   VenueSearchData,
 } from "./v1";
 
@@ -69,11 +71,18 @@ export function createConcertFinderApiClient(options?: {
       return readJson<ArtistSearchData>(response);
     },
 
-    async searchVenues(keyword: string, signal?: AbortSignal) {
+    async searchVenues(
+      keyword: string,
+      options?: { signal?: AbortSignal; city?: string },
+    ) {
       const params = new URLSearchParams({ keyword });
+      const city = options?.city?.trim() ?? "";
+      if (city) {
+        params.set("city", city);
+      }
       const response = await fetchImpl(
         apiUrl(baseUrl, `/api/v1/ticketmaster/venues?${params}`),
-        { signal },
+        { signal: options?.signal },
       );
       return readJson<VenueSearchData>(response);
     },
@@ -105,6 +114,26 @@ export function createConcertFinderApiClient(options?: {
         },
       );
       return readJson<RecommendationsData>(response);
+    },
+
+    async loadSuggestions(
+      accessToken: string,
+      body: SuggestionsRequest,
+      signal?: AbortSignal,
+    ) {
+      const response = await fetchImpl(
+        apiUrl(baseUrl, "/api/v1/suggestions"),
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          signal,
+          body: JSON.stringify(body),
+        },
+      );
+      return readJson<SuggestionsData>(response);
     },
 
     async eventDetails(ids: string[], signal?: AbortSignal) {

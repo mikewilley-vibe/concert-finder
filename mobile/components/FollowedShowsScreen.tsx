@@ -5,6 +5,7 @@ import { ActionLink } from "@/components/ActionLink";
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
 import { FollowedItemPicker } from "@/components/FollowedItemPicker";
+import { FollowedRoster } from "@/components/FollowedRoster";
 import { GoingButton } from "@/components/GoingButton";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { Screen, ScreenBlock } from "@/components/Screen";
@@ -31,6 +32,11 @@ import {
   type FavoriteShowKind,
   type FavoriteShowView,
 } from "@/lib/favorite-show-views";
+import {
+  FOLLOWED_ATTRACTION_TYPE,
+  FOLLOWED_VENUE_TYPE,
+  type FollowedItemType,
+} from "@/lib/follows";
 import { scanDateLabel } from "@/lib/show-windows";
 
 type LoadState =
@@ -192,6 +198,29 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
           selected={view}
           onSelect={(nextView) => router.setParams({ view: nextView })}
         />
+        {follows.ready && followed.length > 0 ? (
+          <FollowedRoster
+            title={kind === "artist" ? "Artists you follow" : "Venues you follow"}
+            empty={`No followed ${noun} yet. Search and tap Follow.`}
+            items={followed}
+            itemType={
+              (kind === "artist"
+                ? FOLLOWED_ATTRACTION_TYPE
+                : FOLLOWED_VENUE_TYPE) satisfies FollowedItemType
+            }
+            isPending={follows.isPending}
+            itemError={follows.itemError}
+            onRemove={(item) => {
+              void follows.toggleFollow(
+                kind === "artist"
+                  ? FOLLOWED_ATTRACTION_TYPE
+                  : FOLLOWED_VENUE_TYPE,
+                item,
+                true,
+              );
+            }}
+          />
+        ) : null}
         {follows.ready && followed.length > 0 ? (
           <FollowedItemPicker
             kind={kind}
