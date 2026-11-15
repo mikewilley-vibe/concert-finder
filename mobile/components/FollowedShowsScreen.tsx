@@ -4,8 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActionLink } from "@/components/ActionLink";
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
-import { FollowedItemPicker } from "@/components/FollowedItemPicker";
-import { FollowedRoster } from "@/components/FollowedRoster";
+import { FollowedListAccordion } from "@/components/FollowedListAccordion";
 import { GoingButton } from "@/components/GoingButton";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { Screen, ScreenBlock } from "@/components/Screen";
@@ -130,6 +129,9 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
       }
     : favoriteShowViewCopy(kind, view);
   const noun = kind === "artist" ? "artists" : "venues";
+  const followType = (
+    kind === "artist" ? FOLLOWED_ATTRACTION_TYPE : FOLLOWED_VENUE_TYPE
+  ) satisfies FollowedItemType;
 
   function retry() {
     void loadShows();
@@ -188,50 +190,17 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
     );
   }
 
+  const showRoster = follows.ready && followed.length > 0;
+
   return (
     <Screen>
       <ScreenBlock>
         <Eyebrow>{kind === "artist" ? "Your artists" : "Your venues"}</Eyebrow>
         <Title>{copy.title}</Title>
-        <Body>{copy.body}</Body>
         <ShowViewTabs
           selected={view}
           onSelect={(nextView) => router.setParams({ view: nextView })}
         />
-        {follows.ready && followed.length > 0 ? (
-          <FollowedRoster
-            title={kind === "artist" ? "Artists you follow" : "Venues you follow"}
-            empty={`No followed ${noun} yet. Search and tap Follow.`}
-            items={followed}
-            itemType={
-              (kind === "artist"
-                ? FOLLOWED_ATTRACTION_TYPE
-                : FOLLOWED_VENUE_TYPE) satisfies FollowedItemType
-            }
-            isPending={follows.isPending}
-            itemError={follows.itemError}
-            onRemove={(item) => {
-              void follows.toggleFollow(
-                kind === "artist"
-                  ? FOLLOWED_ATTRACTION_TYPE
-                  : FOLLOWED_VENUE_TYPE,
-                item,
-                true,
-              );
-            }}
-          />
-        ) : null}
-        {follows.ready && followed.length > 0 ? (
-          <FollowedItemPicker
-            kind={kind}
-            items={followed}
-            selectedKey={activeSelectedFollowKey}
-            onSelect={(nextKey) => {
-              setSelectedFollowKey(nextKey);
-              setLoadMoreError(null);
-            }}
-          />
-        ) : null}
       </ScreenBlock>
 
       {!follows.ready || state.status === "loading" ? (
@@ -288,6 +257,7 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
       {state.status === "ready" && shows.length > 0 ? (
         <ScreenBlock>
           <Strong>{shows.length === 1 ? "1 show" : `${shows.length} shows`}</Strong>
+          <Body>{copy.body}</Body>
           {saved.error ? <Body>{saved.error}</Body> : null}
           {shows.map(renderShow)}
           {loadMoreError ? <Body>{loadMoreError}</Body> : null}
@@ -301,6 +271,24 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
             />
           ) : null}
         </ScreenBlock>
+      ) : null}
+
+      {showRoster ? (
+        <FollowedListAccordion
+          kind={kind}
+          items={followed}
+          itemType={followType}
+          selectedKey={activeSelectedFollowKey}
+          onSelect={(nextKey) => {
+            setSelectedFollowKey(nextKey);
+            setLoadMoreError(null);
+          }}
+          isPending={follows.isPending}
+          itemError={follows.itemError}
+          onRemove={(item) => {
+            void follows.toggleFollow(followType, item, true);
+          }}
+        />
       ) : null}
     </Screen>
   );
