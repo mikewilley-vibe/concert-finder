@@ -13,7 +13,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
-import { FollowedRoster } from "@/components/FollowedRoster";
+import { FollowedListAccordion } from "@/components/FollowedListAccordion";
 import { ListRow } from "@/components/ListRow";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { Screen, ScreenBlock } from "@/components/Screen";
@@ -383,8 +383,8 @@ export default function DiscoverScreen() {
 
       {mode === "following" ? (
         <>
-          <FollowedRoster
-            title="Artists you follow"
+          <FollowedListAccordion
+            kind="artist"
             empty="No artists yet. Search by name and tap Follow."
             items={follows.artists}
             itemType={FOLLOWED_ATTRACTION_TYPE}
@@ -392,8 +392,8 @@ export default function DiscoverScreen() {
             itemError={follows.itemError}
             onRemove={(item) => removeFollow(FOLLOWED_ATTRACTION_TYPE, item)}
           />
-          <FollowedRoster
-            title="Venues you follow"
+          <FollowedListAccordion
+            kind="venue"
             empty="No venues yet. Search by name, and add a city if you want a tighter list."
             items={follows.venues}
             itemType={FOLLOWED_VENUE_TYPE}
