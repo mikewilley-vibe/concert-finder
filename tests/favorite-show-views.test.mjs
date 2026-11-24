@@ -151,6 +151,23 @@ test("selecting a venue shows every unique upcoming date at that venue", () => {
   );
 });
 
+test("a followed The Annex still receives shows ticketed as Annex - VA", () => {
+  const annex = {
+    ...show("splithoff", "2026-09-20", "artist-a", "Z7r9jZak6h"),
+    venueName: "Annex - VA",
+    city: "Norfolk",
+    matchedLabels: ["The Annex"],
+  };
+  const view = favoriteShowsForView({
+    kind: "venue",
+    view: "next",
+    shows: [annex],
+    follows: [{ item_key: "KovZ917AYLy", item_label: "The Annex" }],
+    now: NOW,
+  });
+  assert.deepEqual(view.map((item) => item.id), ["splithoff"]);
+});
+
 test("favorite pagination chunks follows and preserves each Ticketmaster cursor", async () => {
   const follows = Array.from({ length: 21 }, (_, index) => ({
     item_key: `artist-${index}`,

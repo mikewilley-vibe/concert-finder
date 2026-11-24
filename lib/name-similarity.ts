@@ -86,6 +86,36 @@ export const DIRECT_NAME_SIMILARITY = 0.88;
 export const SUGGEST_NAME_SIMILARITY = 0.76;
 export const MAX_NAME_SUGGESTIONS = 3;
 
+const REGION_CODES = new Set([
+  "al", "ak", "az", "ar", "ca", "co", "ct", "dc", "de", "fl", "ga", "hi", "ia",
+  "id", "il", "in", "ks", "ky", "la", "ma", "md", "me", "mi", "mn", "mo", "ms",
+  "mt", "nc", "nd", "ne", "nh", "nj", "nm", "nv", "ny", "oh", "ok", "or", "pa",
+  "ri", "sc", "sd", "tn", "tx", "ut", "va", "vt", "wa", "wi", "wv", "wy", "ab",
+  "bc", "mb", "nb", "nl", "ns", "nt", "nu", "on", "pe", "qc", "sk", "yt",
+]);
+
+/** "The Annex" and "Annex - VA" share a core name. Extra words stay put. */
+export function venueCoreName(value: string) {
+  const normalized = stripLeadingSmallWords(normalizeNameForComparison(value));
+  const parts = normalized.split(" ").filter(Boolean);
+  if (parts.length >= 2 && REGION_CODES.has(parts[parts.length - 1] ?? "")) {
+    parts.pop();
+  }
+  return parts.join(" ");
+}
+
+export function venueCitiesMatch(
+  left: string | null | undefined,
+  right: string | null | undefined,
+) {
+  const a = normalizeNameForComparison(left ?? "");
+  const b = normalizeNameForComparison(right ?? "");
+  if (!a || !b) {
+    return false;
+  }
+  return a === b;
+}
+
 export function isDirectNameMatch(query: string, candidate: string) {
   const q = normalizeNameForComparison(query);
   const c = normalizeNameForComparison(candidate);

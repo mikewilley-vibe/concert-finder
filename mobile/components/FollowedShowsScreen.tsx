@@ -142,6 +142,19 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
     hiddenForDistance: filtered.hiddenForDistance,
   });
   const showRoster = follows.ready && followed.length > 0;
+  const roster = showRoster ? (
+    <FollowedListAccordion
+      kind={kind}
+      items={followed}
+      itemType={followType}
+      onOpen={openFollowed}
+      isPending={follows.isPending}
+      itemError={follows.itemError}
+      onRemove={(item) => {
+        void follows.toggleFollow(followType, item, true);
+      }}
+    />
+  ) : null;
 
   function retry() {
     void loadShows();
@@ -183,6 +196,7 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
 
   return (
     <Screen>
+      {kind === "venue" ? roster : null}
       <ScreenBlock>
         <Eyebrow>{kind === "artist" ? "Your artists" : "Your venues"}</Eyebrow>
         <Title>{copy.title}</Title>
@@ -304,19 +318,7 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
         </ScreenBlock>
       ) : null}
 
-      {showRoster ? (
-        <FollowedListAccordion
-          kind={kind}
-          items={followed}
-          itemType={followType}
-          onOpen={openFollowed}
-          isPending={follows.isPending}
-          itemError={follows.itemError}
-          onRemove={(item) => {
-            void follows.toggleFollow(followType, item, true);
-          }}
-        />
-      ) : null}
+      {kind === "artist" ? roster : null}
     </Screen>
   );
 }
