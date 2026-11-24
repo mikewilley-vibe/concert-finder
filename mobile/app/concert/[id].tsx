@@ -4,12 +4,14 @@ import { useLocalSearchParams } from "expo-router";
 
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
+import { FollowToggleButton } from "@/components/FollowToggleButton";
 import { GoingButton } from "@/components/GoingButton";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { Screen, ScreenBlock } from "@/components/Screen";
 import { Body, Eyebrow, Strong, Title } from "@/components/Typography";
 import { colors } from "@/constants/theme";
 import { useFollows } from "@/hooks/useFollows";
+import { useHomeLocation } from "@/hooks/useHomeLocation";
 import { useInteractionSignals } from "@/hooks/useInteractionSignals";
 import { useSavedEvents } from "@/hooks/useSavedEvents";
 import {
@@ -18,6 +20,8 @@ import {
   type TicketmasterShow,
 } from "@/lib/api";
 import { FOLLOWED_ATTRACTION_TYPE } from "@/lib/follows";
+import { showDistanceLabel } from "@/lib/geo";
+import { activeOrigin } from "@/lib/home-location";
 import { openCalendarSettings } from "@/lib/calendar";
 import { shareConcert } from "@/lib/share";
 import { showPlace, showWhen } from "@/lib/show-format";
@@ -138,6 +142,7 @@ export default function ConcertScreen() {
   );
   const saved = useSavedEvents();
   const follows = useFollows();
+  const home = useHomeLocation();
   const interactions = useInteractionSignals();
   const [show, setShow] = useState<TicketmasterShow | null>(snapshot);
   const [loading, setLoading] = useState(eventId !== "preview");
@@ -236,6 +241,7 @@ export default function ConcertScreen() {
 
   const place = show ? showPlace(show) : "";
   const when = show ? showWhen(show) : "";
+  const distance = show ? showDistanceLabel(show, activeOrigin(home.location)) : null;
   const attendance = show ? saved.statusFor(show.id) : null;
   const isInterested = attendance === "interested";
   const isGoing = attendance === "going";
@@ -308,19 +314,12 @@ export default function ConcertScreen() {
               artist.id,
             );
             return (
-              <Button
+              <FollowToggleButton
                 key={artist.id}
-                label={
-                  followed
-                    ? `Following ${artist.name}`
-                    : `Follow ${artist.name}`
-                }
-                variant={followed ? "secondary" : "action"}
-                disabled={follows.isPending(
-                  FOLLOWED_ATTRACTION_TYPE,
-                  artist.id,
-                )}
-                onPress={() => {
+                name={artist.name}
+                followed={followed}
+                busy={follows.isPending(FOLLOWED_ATTRACTION_TYPE, artist.id)}
+                onToggle={() => {
                   void follows.toggleFollow(
                     FOLLOWED_ATTRACTION_TYPE,
                     { item_key: artist.id, item_label: artist.name },
@@ -343,6 +342,10 @@ export default function ConcertScreen() {
           {show.venueName ? <Body>{show.venueName}</Body> : null}
           {show.venueAddress ? <Body>{show.venueAddress}</Body> : null}
           {place ? <Body>{place}</Body> : null}
+          {!loading && distance ? <Body>{distance}</Body> : null}
+          {!loading && show && activeOrigin(home.location) && !distance ? (
+            <Body>Venue location isn’t available, so distance stays hidden.</Body>
+          ) : null}
           {show.dateLabel === "Date TBA" ? (
             <Body>Date to be announced</Body>
           ) : null}

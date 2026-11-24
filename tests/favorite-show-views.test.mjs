@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  allLoadedFavoriteShows,
   favoriteShowsForView,
   parseFavoriteShowView,
 } from "../mobile/lib/favorite-show-views.ts";
@@ -109,6 +110,14 @@ test("Next matches a followed venue when Ticketmaster uses a different venue id"
   assert.deepEqual(
     result.map((item) => item.id),
     ["poe"],
+  );
+});
+
+test("all loaded favorite shows keep every upcoming date and drop duplicates", () => {
+  const result = allLoadedFavoriteShows(shows, NOW);
+  assert.deepEqual(
+    result.map((item) => item.id),
+    ["a-first", "a-later", "b-first"],
   );
 });
 

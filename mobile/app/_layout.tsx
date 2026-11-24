@@ -18,6 +18,7 @@ import "react-native-reanimated";
 
 import { AuthProvider } from "@/components/AuthProvider";
 import { colors } from "@/constants/theme";
+import { FollowBridge } from "@/hooks/useFollows";
 
 export { ErrorBoundary } from "expo-router";
 
@@ -67,6 +68,7 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={navigationTheme}>
       <AuthProvider>
+        <FollowBridge />
         <KeyboardProvider preload={false}>
           <PushNotificationBridge />
           <StatusBar style="light" />
