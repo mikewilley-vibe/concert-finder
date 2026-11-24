@@ -5,6 +5,8 @@ import {
   nameSimilarity,
   normalizeNameForComparison,
   SUGGEST_NAME_SIMILARITY,
+  venueCitiesMatch,
+  venueCoreName,
 } from "./name-similarity.ts";
 import { EVENT_SEARCH_FOLLOW_LIMIT } from "../shared/api/v1.ts";
 import type {
@@ -602,6 +604,30 @@ export async function searchTicketmasterAttractionsForFollow(
   };
 }
 
+export function supplementVenuesForCity<
+  T extends { id: string; name: string; city: string | null },
+>(
+  cityScoped: readonly T[],
+  nationwide: readonly T[],
+  keyword: string,
+  city: string,
+) {
+  const needle = city.trim().toLowerCase();
+  const hasNamedMatch = cityScoped.some(
+    (venue) =>
+      isDirectNameMatch(keyword, venue.name) &&
+      (venue.city ?? "").toLowerCase().includes(needle),
+  );
+  const seen = new Set(cityScoped.map((venue) => venue.id));
+  const merged = hasNamedMatch
+    ? [...cityScoped]
+    : [
+        ...cityScoped,
+        ...nationwide.filter((venue) => !seen.has(venue.id)),
+      ];
+  return venuesMatchingCity(merged, city);
+}
+
 export async function searchTicketmasterVenues(
   keyword: string,
   city = "",
@@ -617,12 +643,35 @@ export async function searchTicketmasterVenues(
     return result;
   }
 
+  let venues = mapVenues(result.payload, limit);
+  if (trimmedCity) {
+    const needle = trimmedCity.toLowerCase();
+    const namedInCity = venues.some(
+      (venue) =>
+        isDirectNameMatch(keyword, venue.name) &&
+        (venue.city ?? "").toLowerCase().includes(needle),
+    );
+    let nationwide: ReturnType<typeof mapVenues> = [];
+    if (!namedInCity) {
+      const broader = await ticketmasterGet(VENUES_PATH, {
+        keyword,
+        size: String(limit),
+      });
+      if (broader.ok) {
+        nationwide = mapVenues(broader.payload, limit);
+      }
+    }
+    venues = supplementVenuesForCity(
+      venues,
+      nationwide,
+      keyword,
+      trimmedCity,
+    );
+  }
+
   return {
     ok: true,
-    venues: venuesMatchingCity(
-      mapVenues(result.payload, limit),
-      trimmedCity,
-    ).slice(0, RESULT_LIMIT),
+    venues: venues.slice(0, RESULT_LIMIT),
   };
 }
 
@@ -1170,7 +1219,7 @@ export function mapTicketmasterEvent(
 }
 
 function mergeShows(
-  batches: { source: "attraction" | "venue" | "discover"; payload: unknown }[],
+  batches: ShowBatch[],
   attractions: FollowedRef[],
   venues: FollowedRef[],
 ) {
@@ -1198,6 +1247,9 @@ function mergeShows(
         }
       }
 
+      if (batch.followedVenue) {
+        labels.add(batch.followedVenue.label);
+      }
       if (labels.size === 0) {
         if (batch.source === "attraction" && attractions.length === 1) {
           labels.add(attractions[0].label);
@@ -1398,33 +1450,47 @@ function isFollowedListingDetail(
   );
 }
 
-function batchesHaveUpcoming(
-  batches: { source: "attraction" | "venue" | "discover"; payload: unknown }[],
-  source: "attraction" | "venue" | "discover",
-) {
-  return batches.some(
-    (batch) =>
-      batch.source === source &&
-      eventRows(batch.payload).some((event) => isUpcomingEvent(event)),
-  );
-}
-
 export function eventMatchesFollowedVenue(
-  show: { venue: { id?: string | null; name?: string | null } },
+  show: { venue: { id?: string | null; name?: string | null; city?: string | null } },
   venue: FollowedRef,
+  place?: { city?: string | null } | null,
 ) {
   const venueId = show.venue.id?.trim() ?? "";
   if (venueId && venueId === venue.id.trim()) {
     return true;
   }
   const name = show.venue.name?.trim() ?? "";
-  return Boolean(name) && isDirectNameMatch(venue.label, name);
+  if (!name) {
+    return false;
+  }
+
+  const eventCity = show.venue.city ?? "";
+  const followCity = place?.city ?? "";
+  if (
+    followCity.trim() &&
+    eventCity.trim() &&
+    !venueCitiesMatch(followCity, eventCity)
+  ) {
+    return false;
+  }
+
+  if (isDirectNameMatch(venue.label, name)) {
+    return true;
+  }
+
+  const followCore = venueCoreName(venue.label);
+  const eventCore = venueCoreName(name);
+  return Boolean(followCore) && followCore === eventCore;
 }
 
-function filterPayloadToFollowedVenue(payload: unknown, venue: FollowedRef) {
+function filterPayloadToFollowedVenue(
+  payload: unknown,
+  venue: FollowedRef,
+  place?: { city?: string | null } | null,
+) {
   const events = eventRows(payload).filter((event) => {
     const show = mapTicketmasterEvent(event);
-    return show !== null && eventMatchesFollowedVenue(show, venue);
+    return show !== null && eventMatchesFollowedVenue(show, venue, place);
   });
   if (!payload || typeof payload !== "object") {
     return { _embedded: { events } };
@@ -1438,6 +1504,7 @@ function filterPayloadToFollowedVenue(payload: unknown, venue: FollowedRef) {
 type ShowBatch = {
   source: "attraction" | "venue" | "discover";
   payload: unknown;
+  followedVenue?: FollowedRef;
 };
 
 async function fetchUpcomingShowPages(
@@ -1473,12 +1540,28 @@ async function fetchUpcomingShowPages(
   return { ok: true, batches, lastFetchedPage };
 }
 
+async function lookupFollowedVenuePlace(id: string) {
+  const result = await ticketmasterGet(
+    `/discovery/v2/venues/${encodeURIComponent(id)}.json`,
+    {},
+  );
+  if (!result.ok) {
+    return null;
+  }
+  const venue = mapVenue(result.payload);
+  if (!venue?.city) {
+    return null;
+  }
+  return { city: venue.city, stateCode: venue.stateCode };
+}
+
 async function fetchVenueKeywordPages(
   venue: FollowedRef,
   pageSize: number,
   maxPages: number,
 ): Promise<{ ok: true; batches: ShowBatch[] } | TicketmasterFailure> {
   const batches: ShowBatch[] = [];
+  const place = await lookupFollowedVenuePlace(venue.id);
 
   for (let page = 0; page < maxPages; page += 1) {
     const result = await ticketmasterGet(EVENTS_PATH, {
@@ -1496,7 +1579,8 @@ async function fetchVenueKeywordPages(
     }
     batches.push({
       source: "venue",
-      payload: filterPayloadToFollowedVenue(result.payload, venue),
+      payload: filterPayloadToFollowedVenue(result.payload, venue, place),
+      followedVenue: venue,
     });
     if (!payloadHasMore(result.payload, page)) {
       break;
@@ -1542,26 +1626,25 @@ export async function searchUpcomingShows(
     lastFetchedPage = nationwide.lastFetchedPage;
   }
 
-  const shouldFallbackEmptyVenue =
-    input.venues.length === 1 &&
-    input.attractions.length === 0 &&
-    !batchesHaveUpcoming(resultBatches, "venue");
-
-  if (shouldFallbackEmptyVenue) {
-    const keywordPages = await fetchVenueKeywordPages(
-      input.venues[0],
-      input.pageSize,
-      listingDetail ? MAX_FOLLOWED_LISTING_PAGES : 1,
-    );
-    if (keywordPages.ok) {
-      shows = mergeLocatedShows(
-        [...resultBatches, ...keywordPages.batches],
-        input,
-        origin,
+  if (input.attractions.length === 0 && input.venues.length > 0) {
+    for (const venue of input.venues) {
+      const covered = shows.some((show) => show.venue.id === venue.id);
+      if (covered) {
+        continue;
+      }
+      const keywordPages = await fetchVenueKeywordPages(
+        venue,
+        input.pageSize,
+        listingDetail ? MAX_FOLLOWED_LISTING_PAGES : 1,
       );
+      if (!keywordPages.ok) {
+        if (shows.length === 0 && input.venues.length === 1) {
+          return keywordPages;
+        }
+        continue;
+      }
       resultBatches = [...resultBatches, ...keywordPages.batches];
-    } else if (shows.length === 0) {
-      return keywordPages;
+      shows = mergeLocatedShows(resultBatches, input, origin);
     }
   }
 

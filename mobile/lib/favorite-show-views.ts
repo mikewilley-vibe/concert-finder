@@ -113,7 +113,10 @@ export function showMatchesFollow(
   if (kind === "venue") {
     return (
       show.venueId === follow.item_key ||
-      normalizedName(show.venueName) === normalizedName(follow.item_label)
+      normalizedName(show.venueName) === normalizedName(follow.item_label) ||
+      (show.matchedLabels ?? []).some(
+        (label) => normalizedName(label) === normalizedName(follow.item_label),
+      )
     );
   }
 

@@ -6,6 +6,7 @@ import {
   MAX_FOLLOWED_LISTING_PAGES,
   searchUpcomingShows,
 } from "../lib/ticketmaster.ts";
+import { venueCoreName } from "../lib/name-similarity.ts";
 import {
   firstRouteParam,
 } from "../mobile/lib/route-params.ts";
@@ -67,6 +68,35 @@ test("route params keep the first non-empty Ticketmaster id", () => {
   assert.equal(firstRouteParam(["KovZ917A3Y7", "extra"]), "KovZ917A3Y7");
   assert.equal(firstRouteParam(["", "KovZ917A3Y7"]), undefined);
   assert.equal(firstRouteParam("  "), undefined);
+});
+
+test("The Annex in Norfolk matches Annex - VA and not a different city's Annex", () => {
+  assert.equal(venueCoreName("The Annex"), "annex");
+  assert.equal(venueCoreName("Annex - VA"), "annex");
+  assert.equal(
+    eventMatchesFollowedVenue(
+      { venue: { id: "Z7r9jZak6h", name: "Annex - VA", city: "Norfolk" } },
+      { id: "KovZ917AYLy", label: "The Annex" },
+      { city: "Norfolk" },
+    ),
+    true,
+  );
+  assert.equal(
+    eventMatchesFollowedVenue(
+      { venue: { id: "KovZ917AQq0", name: "Annex", city: "Vancouver" } },
+      { id: "KovZ917AYLy", label: "The Annex" },
+      { city: "Norfolk" },
+    ),
+    false,
+  );
+  assert.equal(
+    eventMatchesFollowedVenue(
+      { venue: { id: "KovZpaCVVe", name: "The Annex at The Red Zone", city: "Madison" } },
+      { id: "KovZ917AYLy", label: "The Annex" },
+      { city: "Norfolk" },
+    ),
+    false,
+  );
 });
 
 test("venue name matching accepts aliases without collapsing to the wrong hall", () => {
