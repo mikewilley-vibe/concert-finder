@@ -1,20 +1,20 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { View } from "react-native";
 
 import { ActionLink } from "@/components/ActionLink";
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
-import { FollowedItemPicker } from "@/components/FollowedItemPicker";
-import { FollowedRoster } from "@/components/FollowedRoster";
+import { FollowedListAccordion } from "@/components/FollowedListAccordion";
 import { GoingButton } from "@/components/GoingButton";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { Screen, ScreenBlock } from "@/components/Screen";
+import { ShowListFilterBar } from "@/components/ShowListFilterBar";
 import { ShowRow } from "@/components/ShowRow";
 import { ShowViewTabs } from "@/components/ShowViewTabs";
 import { Body, Eyebrow, Strong, Title } from "@/components/Typography";
 import { useFollows } from "@/hooks/useFollows";
 import { useSavedEvents } from "@/hooks/useSavedEvents";
+import { useShowListFilters } from "@/hooks/useShowListFilters";
 import {
   apiErrorMessage,
   searchUpcomingShows,
@@ -23,8 +23,6 @@ import {
 import {
   initialFavoriteShowCursors,
   loadFavoriteShowPage,
-  mergeFavoriteShowPages,
-  type FavoriteShowCursor,
 } from "@/lib/favorite-show-pages";
 import {
   allLoadedFavoriteShows,
@@ -37,26 +35,21 @@ import {
 import {
   FOLLOWED_ATTRACTION_TYPE,
   FOLLOWED_VENUE_TYPE,
+  type FollowedItem,
   type FollowedItemType,
 } from "@/lib/follows";
-import { scanDateLabel } from "@/lib/show-windows";
 import {
   applyShowListFilters,
   countShowsMissingCoordinates,
   showListFilterEmptyCopy,
   showListFilterResetLabel,
 } from "@/lib/show-list-filters";
-import { useShowListFilters } from "@/hooks/useShowListFilters";
-import { ShowListFilterBar } from "@/components/ShowListFilterBar";
+import { scanDateLabel } from "@/lib/show-windows";
 
 type LoadState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | {
-      status: "ready";
-      shows: TicketmasterShow[];
-      nextCursors: FavoriteShowCursor[];
-    };
+  | { status: "ready"; shows: TicketmasterShow[] };
 
 export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
   const params = useLocalSearchParams<{ view?: string | string[] }>();
@@ -66,11 +59,6 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
   const saved = useSavedEvents();
   const view: FavoriteShowView = parseFavoriteShowView(routeView);
   const [state, setState] = useState<LoadState>({ status: "loading" });
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
-  const [selectedFollowKey, setSelectedFollowKey] = useState<string | null>(
-    null,
-  );
   const requestIdRef = useRef(0);
   const filters = useShowListFilters(kind === "artist" ? "artists" : "venues");
 
@@ -81,7 +69,6 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
     setState({ status: "loading" });
-    setLoadMoreError(null);
     try {
       const followed = kind === "artist" ? follows.artists : follows.venues;
       const result = await loadFavoriteShowPage({
@@ -93,7 +80,6 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
         setState({
           status: "ready",
           shows: result.shows,
-          nextCursors: result.nextCursors,
         });
       }
     } catch (error) {
@@ -117,31 +103,18 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
   }, [loadShows]);
 
   const followed = kind === "artist" ? follows.artists : follows.venues;
-  const selectedFollow = followed.find(
-    (item) => item.item_key === selectedFollowKey,
-  );
-  const activeSelectedFollowKey = selectedFollow?.item_key ?? null;
-
   const filterPool = useMemo(() => {
     const loaded = state.status === "ready" ? state.shows : [];
-    if (filters.dateFilter === "all" || activeSelectedFollowKey) {
+    if (filters.dateFilter === "all") {
       return favoriteShowsForView({
         kind,
         view,
         shows: loaded,
         follows: followed,
-        selectedFollowKey: activeSelectedFollowKey,
       });
     }
     return allLoadedFavoriteShows(loaded);
-  }, [
-    activeSelectedFollowKey,
-    filters.dateFilter,
-    followed,
-    kind,
-    state,
-    view,
-  ]);
+  }, [filters.dateFilter, followed, kind, state, view]);
   const filtered = useMemo(
     () =>
       applyShowListFilters(filterPool, {
@@ -156,50 +129,36 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
     shows,
     filters.origin,
   );
-  const copy = selectedFollow
-    ? {
-        title: `${selectedFollow.item_label} upcoming shows`,
-        body: `All upcoming dates currently returned for ${selectedFollow.item_label}.`,
-        empty: `No upcoming shows were found for ${selectedFollow.item_label}.`,
-      }
-    : favoriteShowViewCopy(kind, view);
+  const copy = favoriteShowViewCopy(kind, view);
   const noun = kind === "artist" ? "artists" : "venues";
+  const followType = (
+    kind === "artist" ? FOLLOWED_ATTRACTION_TYPE : FOLLOWED_VENUE_TYPE
+  ) satisfies FollowedItemType;
+  const filterEmpty = showListFilterEmptyCopy({
+    dateFilter: filters.dateFilter,
+    nearMe: filtered.nearMeApplied,
+    radiusMiles: filters.radiusMiles,
+    hiddenWithoutCoordinates: filtered.hiddenWithoutCoordinates,
+    hiddenForDistance: filtered.hiddenForDistance,
+  });
+  const showRoster = follows.ready && followed.length > 0;
 
   function retry() {
     void loadShows();
   }
 
-  async function loadMore() {
-    if (
-      loadingMore ||
-      state.status !== "ready" ||
-      state.nextCursors.length === 0
-    ) {
+  function openFollowed(item: FollowedItem) {
+    if (kind === "artist") {
+      router.push({
+        pathname: "/artist/[id]",
+        params: { id: item.item_key, name: item.item_label },
+      });
       return;
     }
-    setLoadingMore(true);
-    setLoadMoreError(null);
-    try {
-      const result = await loadFavoriteShowPage({
-        kind,
-        cursors: state.nextCursors,
-        search: searchUpcomingShows,
-      });
-      setState({
-        status: "ready",
-        shows: mergeFavoriteShowPages(state.shows, result.shows),
-        nextCursors: result.nextCursors,
-      });
-    } catch (error) {
-      setLoadMoreError(
-        apiErrorMessage(
-          error,
-          "Could not load more followed shows. Try again.",
-        ),
-      );
-    } finally {
-      setLoadingMore(false);
-    }
+    router.push({
+      pathname: "/venue/[id]",
+      params: { id: item.item_key, name: item.item_label },
+    });
   }
 
   function renderShow(show: TicketmasterShow) {
@@ -208,9 +167,6 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
         key={show.id}
         show={show}
         kicker={scanDateLabel(show)}
-        followArtistId={
-          kind === "artist" ? activeSelectedFollowKey : undefined
-        }
         trailing={
           <GoingButton
             going={saved.statusFor(show.id) === "going"}
@@ -225,21 +181,12 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
     );
   }
 
-  const filterEmpty = showListFilterEmptyCopy({
-    dateFilter: filters.dateFilter,
-    nearMe: filtered.nearMeApplied,
-    radiusMiles: filters.radiusMiles,
-    hiddenWithoutCoordinates: filtered.hiddenWithoutCoordinates,
-    hiddenForDistance: filtered.hiddenForDistance,
-  });
-
   return (
     <Screen>
       <ScreenBlock>
         <Eyebrow>{kind === "artist" ? "Your artists" : "Your venues"}</Eyebrow>
         <Title>{copy.title}</Title>
-        <Body>{copy.body}</Body>
-        {follows.ready && followed.length > 0 ? (
+        {showRoster ? (
           <ShowListFilterBar
             dateFilter={filters.dateFilter}
             onDateFilter={filters.setDateFilter}
@@ -252,7 +199,7 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
             denied={filters.denied}
             nearLabel={filters.nearLabel}
             hint={
-              filters.dateFilter !== "all" && !activeSelectedFollowKey
+              filters.dateFilter !== "all"
                 ? "This date filter uses every upcoming show in the tab, including dates outside This Week and Next."
                 : null
             }
@@ -267,40 +214,6 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
           selected={view}
           onSelect={(nextView) => router.setParams({ view: nextView })}
         />
-        {follows.ready && followed.length > 0 ? (
-          <FollowedRoster
-            title={kind === "artist" ? "Artists you follow" : "Venues you follow"}
-            empty={`No followed ${noun} yet. Search and tap Follow.`}
-            items={followed}
-            itemType={
-              (kind === "artist"
-                ? FOLLOWED_ATTRACTION_TYPE
-                : FOLLOWED_VENUE_TYPE) satisfies FollowedItemType
-            }
-            isPending={follows.isPending}
-            itemError={follows.itemError}
-            onRemove={(item) => {
-              void follows.toggleFollow(
-                kind === "artist"
-                  ? FOLLOWED_ATTRACTION_TYPE
-                  : FOLLOWED_VENUE_TYPE,
-                item,
-                true,
-              );
-            }}
-          />
-        ) : null}
-        {follows.ready && followed.length > 0 ? (
-          <FollowedItemPicker
-            kind={kind}
-            items={followed}
-            selectedKey={activeSelectedFollowKey}
-            onSelect={(nextKey) => {
-              setSelectedFollowKey(nextKey);
-              setLoadMoreError(null);
-            }}
-          />
-        ) : null}
       </ScreenBlock>
 
       {!follows.ready || state.status === "loading" ? (
@@ -340,7 +253,7 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
           title="No shows in this view"
           body={copy.empty}
           action={
-            view === "week" ? (
+            view === "week" && filters.dateFilter === "all" ? (
               <Button
                 label="Show next dates"
                 onPress={() => router.setParams({ view: "next" })}
@@ -364,24 +277,13 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
           title={filterEmpty.title}
           body={filterEmpty.body}
           action={
-            <View style={{ gap: 8 }}>
-              <Button
-                label={showListFilterResetLabel({
-                  dateFilter: filters.dateFilter,
-                  nearMe: filters.nearMe,
-                })}
-                onPress={filters.clearFilters}
-              />
-              {activeSelectedFollowKey && state.nextCursors.length > 0 ? (
-                <Button
-                  label="Load more dates"
-                  busy={loadingMore}
-                  onPress={() => {
-                    void loadMore();
-                  }}
-                />
-              ) : null}
-            </View>
+            <Button
+              label={showListFilterResetLabel({
+                dateFilter: filters.dateFilter,
+                nearMe: filters.nearMe,
+              })}
+              onPress={filters.clearFilters}
+            />
           }
         />
       ) : null}
@@ -389,6 +291,7 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
       {state.status === "ready" && shows.length > 0 ? (
         <ScreenBlock>
           <Strong>{shows.length === 1 ? "1 show" : `${shows.length} shows`}</Strong>
+          <Body>{copy.body}</Body>
           {filtered.nearMeApplied && filtered.hiddenWithoutCoordinates > 0 ? (
             <Body>
               {filtered.hiddenWithoutCoordinates === 1
@@ -398,17 +301,21 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
           ) : null}
           {saved.error ? <Body>{saved.error}</Body> : null}
           {shows.map(renderShow)}
-          {loadMoreError ? <Body>{loadMoreError}</Body> : null}
-          {activeSelectedFollowKey && state.nextCursors.length > 0 ? (
-            <Button
-              label="Load more dates"
-              busy={loadingMore}
-              onPress={() => {
-                void loadMore();
-              }}
-            />
-          ) : null}
         </ScreenBlock>
+      ) : null}
+
+      {showRoster ? (
+        <FollowedListAccordion
+          kind={kind}
+          items={followed}
+          itemType={followType}
+          onOpen={openFollowed}
+          isPending={follows.isPending}
+          itemError={follows.itemError}
+          onRemove={(item) => {
+            void follows.toggleFollow(followType, item, true);
+          }}
+        />
       ) : null}
     </Screen>
   );
