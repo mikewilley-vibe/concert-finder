@@ -1,5 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { View } from "react-native";
 
 import { ActionLink } from "@/components/ActionLink";
 import { Button } from "@/components/Button";
@@ -26,6 +27,7 @@ import {
   type FavoriteShowCursor,
 } from "@/lib/favorite-show-pages";
 import {
+  allLoadedFavoriteShows,
   favoriteShowsForView,
   favoriteShowViewCopy,
   parseFavoriteShowView,
@@ -38,6 +40,14 @@ import {
   type FollowedItemType,
 } from "@/lib/follows";
 import { scanDateLabel } from "@/lib/show-windows";
+import {
+  applyShowListFilters,
+  countShowsMissingCoordinates,
+  showListFilterEmptyCopy,
+  showListFilterResetLabel,
+} from "@/lib/show-list-filters";
+import { useShowListFilters } from "@/hooks/useShowListFilters";
+import { ShowListFilterBar } from "@/components/ShowListFilterBar";
 
 type LoadState =
   | { status: "loading" }
@@ -62,6 +72,7 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
     null,
   );
   const requestIdRef = useRef(0);
+  const filters = useShowListFilters(kind === "artist" ? "artists" : "venues");
 
   const loadShows = useCallback(async () => {
     if (!follows.ready) {
@@ -111,17 +122,40 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
   );
   const activeSelectedFollowKey = selectedFollow?.item_key ?? null;
 
-  const shows = useMemo(() => {
-    const sourceShows =
-      state.status === "ready" ? state.shows : [];
-    return favoriteShowsForView({
-      kind,
-      view,
-      shows: sourceShows,
-      follows: followed,
-      selectedFollowKey: activeSelectedFollowKey,
-    });
-  }, [activeSelectedFollowKey, followed, kind, state, view]);
+  const filterPool = useMemo(() => {
+    const loaded = state.status === "ready" ? state.shows : [];
+    if (filters.dateFilter === "all" || activeSelectedFollowKey) {
+      return favoriteShowsForView({
+        kind,
+        view,
+        shows: loaded,
+        follows: followed,
+        selectedFollowKey: activeSelectedFollowKey,
+      });
+    }
+    return allLoadedFavoriteShows(loaded);
+  }, [
+    activeSelectedFollowKey,
+    filters.dateFilter,
+    followed,
+    kind,
+    state,
+    view,
+  ]);
+  const filtered = useMemo(
+    () =>
+      applyShowListFilters(filterPool, {
+        dateFilter: filters.dateFilter,
+        nearMe: filters.nearMe && Boolean(filters.origin),
+        origin: filters.origin,
+      }),
+    [filterPool, filters.dateFilter, filters.nearMe, filters.origin],
+  );
+  const shows = filtered.shows;
+  const missingCoordinates = countShowsMissingCoordinates(
+    shows,
+    filters.origin,
+  );
   const copy = selectedFollow
     ? {
         title: `${selectedFollow.item_label} upcoming shows`,
@@ -174,6 +208,9 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
         key={show.id}
         show={show}
         kicker={scanDateLabel(show)}
+        followArtistId={
+          kind === "artist" ? activeSelectedFollowKey : undefined
+        }
         trailing={
           <GoingButton
             going={saved.statusFor(show.id) === "going"}
@@ -188,12 +225,44 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
     );
   }
 
+  const filterEmpty = showListFilterEmptyCopy({
+    dateFilter: filters.dateFilter,
+    nearMe: filtered.nearMeApplied,
+    radiusMiles: filters.radiusMiles,
+    hiddenWithoutCoordinates: filtered.hiddenWithoutCoordinates,
+    hiddenForDistance: filtered.hiddenForDistance,
+  });
+
   return (
     <Screen>
       <ScreenBlock>
         <Eyebrow>{kind === "artist" ? "Your artists" : "Your venues"}</Eyebrow>
         <Title>{copy.title}</Title>
         <Body>{copy.body}</Body>
+        {follows.ready && followed.length > 0 ? (
+          <ShowListFilterBar
+            dateFilter={filters.dateFilter}
+            onDateFilter={filters.setDateFilter}
+            nearMe={filters.nearMe}
+            onToggleNearMe={() => {
+              void filters.toggleNearMe();
+            }}
+            locating={filters.locating}
+            notice={filters.notice}
+            denied={filters.denied}
+            nearLabel={filters.nearLabel}
+            hint={
+              filters.dateFilter !== "all" && !activeSelectedFollowKey
+                ? "This date filter uses every upcoming show in the tab, including dates outside This Week and Next."
+                : null
+            }
+            distanceNote={
+              filters.origin && missingCoordinates > 0 && !filtered.nearMeApplied
+                ? "Distance stays hidden when a venue has no map coordinates."
+                : null
+            }
+          />
+        ) : null}
         <ShowViewTabs
           selected={view}
           onSelect={(nextView) => router.setParams({ view: nextView })}
@@ -264,7 +333,9 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
         />
       ) : null}
 
-      {state.status === "ready" && followed.length > 0 && shows.length === 0 ? (
+      {state.status === "ready" &&
+      followed.length > 0 &&
+      filterPool.length === 0 ? (
         <EmptyState
           title="No shows in this view"
           body={copy.empty}
@@ -285,9 +356,46 @@ export function FollowedShowsScreen({ kind }: { kind: FavoriteShowKind }) {
         />
       ) : null}
 
+      {state.status === "ready" &&
+      followed.length > 0 &&
+      filterPool.length > 0 &&
+      shows.length === 0 ? (
+        <EmptyState
+          title={filterEmpty.title}
+          body={filterEmpty.body}
+          action={
+            <View style={{ gap: 8 }}>
+              <Button
+                label={showListFilterResetLabel({
+                  dateFilter: filters.dateFilter,
+                  nearMe: filters.nearMe,
+                })}
+                onPress={filters.clearFilters}
+              />
+              {activeSelectedFollowKey && state.nextCursors.length > 0 ? (
+                <Button
+                  label="Load more dates"
+                  busy={loadingMore}
+                  onPress={() => {
+                    void loadMore();
+                  }}
+                />
+              ) : null}
+            </View>
+          }
+        />
+      ) : null}
+
       {state.status === "ready" && shows.length > 0 ? (
         <ScreenBlock>
           <Strong>{shows.length === 1 ? "1 show" : `${shows.length} shows`}</Strong>
+          {filtered.nearMeApplied && filtered.hiddenWithoutCoordinates > 0 ? (
+            <Body>
+              {filtered.hiddenWithoutCoordinates === 1
+                ? "1 show is hidden because that venue has no map location."
+                : `${filtered.hiddenWithoutCoordinates} shows are hidden because those venues have no map location.`}
+            </Body>
+          ) : null}
           {saved.error ? <Body>{saved.error}</Body> : null}
           {shows.map(renderShow)}
           {loadMoreError ? <Body>{loadMoreError}</Body> : null}

@@ -42,6 +42,13 @@ function uniqueChronologicalShows(
     });
 }
 
+export function allLoadedFavoriteShows(
+  shows: readonly TicketmasterShow[],
+  now = new Date(),
+) {
+  return uniqueChronologicalShows(shows, now);
+}
+
 export function favoriteShowsForView(input: {
   kind: FavoriteShowKind;
   view: FavoriteShowView;

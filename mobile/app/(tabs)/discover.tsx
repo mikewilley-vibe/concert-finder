@@ -12,6 +12,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/Button";
+import { FollowToggleButton } from "@/components/FollowToggleButton";
 import { EmptyState } from "@/components/EmptyState";
 import { FollowedRoster } from "@/components/FollowedRoster";
 import { ListRow } from "@/components/ListRow";
@@ -523,7 +524,7 @@ function ArtistSearch({
                   subtitle="Artist"
                   onPress={() => onOpen(artist)}
                   trailing={
-                    <SearchFollowButton
+                    <FollowToggleButton
                       name={artist.name}
                       followed={followed}
                       busy={follows.isPending(
@@ -652,7 +653,7 @@ function VenueSearch({
                   accessibilityLabel={`View upcoming shows at ${venue.name}`}
                   onPress={() => onOpen(venue)}
                   trailing={
-                    <SearchFollowButton
+                    <FollowToggleButton
                       name={venue.name}
                       followed={followed}
                       busy={follows.isPending(FOLLOWED_VENUE_TYPE, venue.id)}
@@ -667,61 +668,6 @@ function VenueSearch({
         </ScreenBlock>
       ) : null}
     </>
-  );
-}
-
-function SearchFollowButton({
-  name,
-  followed,
-  busy,
-  onToggle,
-}: {
-  name: string;
-  followed: boolean;
-  busy: boolean;
-  onToggle: () => void;
-}) {
-  const [confirming, setConfirming] = useState(false);
-
-  if (followed && confirming) {
-    return (
-      <View style={styles.confirmFollow}>
-        <Button
-          label="Remove"
-          variant="danger"
-          busy={busy}
-          disabled={busy}
-          accessibilityLabel={`Confirm remove ${name}`}
-          onPress={() => {
-            setConfirming(false);
-            onToggle();
-          }}
-        />
-        <Button
-          label="Keep"
-          variant="secondary"
-          disabled={busy}
-          accessibilityLabel={`Keep following ${name}`}
-          onPress={() => setConfirming(false)}
-        />
-      </View>
-    );
-  }
-
-  return (
-    <Button
-      label={followed ? "Following" : "Follow"}
-      variant={followed ? "secondary" : "action"}
-      busy={busy}
-      accessibilityLabel={followed ? `Remove ${name}` : `Follow ${name}`}
-      onPress={() => {
-        if (followed) {
-          setConfirming(true);
-          return;
-        }
-        onToggle();
-      }}
-    />
   );
 }
 
@@ -783,9 +729,6 @@ const styles = StyleSheet.create({
   },
   result: {
     gap: 6,
-  },
-  confirmFollow: {
-    gap: 8,
   },
   rowError: {
     fontSize: 13,

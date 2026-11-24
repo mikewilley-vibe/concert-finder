@@ -1,20 +1,29 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
+import { FollowToggleButton } from "@/components/FollowToggleButton";
 import { GoingButton } from "@/components/GoingButton";
 import { LoadingBlock } from "@/components/LoadingBlock";
 import { Screen, ScreenBlock } from "@/components/Screen";
+import { ShowListFilterBar } from "@/components/ShowListFilterBar";
 import { ShowRow } from "@/components/ShowRow";
 import { Body, Eyebrow, Strong, Title } from "@/components/Typography";
 import { useFollows } from "@/hooks/useFollows";
 import { useSavedEvents } from "@/hooks/useSavedEvents";
+import { useShowListFilters } from "@/hooks/useShowListFilters";
 import {
   apiErrorMessage,
   searchUpcomingShows,
   type TicketmasterShow,
 } from "@/lib/api";
 import { loadFollowedListingShows } from "@/lib/followed-listing-shows";
+import {
+  applyShowListFilters,
+  countShowsMissingCoordinates,
+  showListFilterEmptyCopy,
+  showListFilterResetLabel,
+} from "@/lib/show-list-filters";
 import {
   FOLLOWED_ATTRACTION_TYPE,
   FOLLOWED_VENUE_TYPE,
@@ -40,6 +49,9 @@ export function FollowedDetailScreen({
 }) {
   const follows = useFollows();
   const saved = useSavedEvents();
+  const filters = useShowListFilters(
+    kind === "artist" ? "artist-detail" : "venue-detail",
+  );
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const requestIdRef = useRef(0);
   const itemType: FollowedItemType =
@@ -95,6 +107,26 @@ export function FollowedDetailScreen({
     return () => clearTimeout(timer);
   }, [loadShows]);
 
+  const filtered = useMemo(() => {
+    const loadedShows = state.status === "ready" ? state.shows : [];
+    return applyShowListFilters(loadedShows, {
+      dateFilter: filters.dateFilter,
+      nearMe: filters.nearMe && Boolean(filters.origin),
+      origin: filters.origin,
+    });
+  }, [filters.dateFilter, filters.nearMe, filters.origin, state]);
+  const missingCoordinates = countShowsMissingCoordinates(
+    filtered.shows,
+    filters.origin,
+  );
+  const filterEmpty = showListFilterEmptyCopy({
+    dateFilter: filters.dateFilter,
+    nearMe: filtered.nearMeApplied,
+    radiusMiles: filters.radiusMiles,
+    hiddenWithoutCoordinates: filtered.hiddenWithoutCoordinates,
+    hiddenForDistance: filtered.hiddenForDistance,
+  });
+
   return (
     <Screen>
       <ScreenBlock>
@@ -103,14 +135,11 @@ export function FollowedDetailScreen({
         {place ? <Body>{place}</Body> : null}
         {id ? (
           <>
-            <Button
-              label={followed ? "Following" : "Follow"}
-              variant={followed ? "secondary" : "action"}
-              disabled={follows.isPending(itemType, id)}
-              accessibilityLabel={
-                followed ? `Unfollow ${label}` : `Follow ${label}`
-              }
-              onPress={() => {
+            <FollowToggleButton
+              name={label}
+              followed={followed}
+              busy={follows.isPending(itemType, id)}
+              onToggle={() => {
                 void follows.toggleFollow(
                   itemType,
                   { item_key: id, item_label: label },
@@ -129,6 +158,25 @@ export function FollowedDetailScreen({
           </>
         ) : null}
         {follows.error ? <Body>{follows.error}</Body> : null}
+        {state.status === "ready" && state.shows.length > 0 ? (
+          <ShowListFilterBar
+            dateFilter={filters.dateFilter}
+            onDateFilter={filters.setDateFilter}
+            nearMe={filters.nearMe}
+            onToggleNearMe={() => {
+              void filters.toggleNearMe();
+            }}
+            locating={filters.locating}
+            notice={filters.notice}
+            denied={filters.denied}
+            nearLabel={filters.nearLabel}
+            distanceNote={
+              filters.origin && missingCoordinates > 0 && !filtered.nearMeApplied
+                ? "Distance stays hidden when a venue has no map coordinates."
+                : null
+            }
+          />
+        ) : null}
       </ScreenBlock>
 
       {state.status === "loading" ? (
@@ -157,24 +205,50 @@ export function FollowedDetailScreen({
         />
       ) : null}
 
-      {state.status === "ready" && state.shows.length > 0 ? (
+      {state.status === "ready" &&
+      state.shows.length > 0 &&
+      filtered.shows.length === 0 ? (
+        <EmptyState
+          title={filterEmpty.title}
+          body={filterEmpty.body}
+          action={
+            <Button
+              label={showListFilterResetLabel({
+                dateFilter: filters.dateFilter,
+                nearMe: filters.nearMe,
+              })}
+              onPress={filters.clearFilters}
+            />
+          }
+        />
+      ) : null}
+
+      {state.status === "ready" && filtered.shows.length > 0 ? (
         <ScreenBlock>
           <Strong>Upcoming shows</Strong>
           <Body>
-            {state.shows.length === 1
+            {filtered.shows.length === 1
               ? "1 upcoming Ticketmaster date."
-              : `${state.shows.length} upcoming Ticketmaster dates.`}
+              : `${filtered.shows.length} upcoming Ticketmaster dates.`}
             {state.capped
               ? " Showing the next dates Ticketmaster returned."
               : ""}
           </Body>
+          {filtered.nearMeApplied && filtered.hiddenWithoutCoordinates > 0 ? (
+            <Body>
+              {filtered.hiddenWithoutCoordinates === 1
+                ? "1 show is hidden because that venue has no map location."
+                : `${filtered.hiddenWithoutCoordinates} shows are hidden because those venues have no map location.`}
+            </Body>
+          ) : null}
           {saved.error ? <Body>{saved.error}</Body> : null}
-          {state.shows.map((show) => {
+          {filtered.shows.map((show) => {
             const going = saved.statusFor(show.id) === "going";
             return (
               <ShowRow
                 key={show.id}
                 show={show}
+                followArtistId={kind === "artist" ? id : undefined}
                 trailing={
                   <GoingButton
                     going={going}
