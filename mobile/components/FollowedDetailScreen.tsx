@@ -1,3 +1,4 @@
+import { Stack } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/Button";
@@ -21,6 +22,7 @@ import {
   type FollowedItemType,
 } from "@/lib/follows";
 import { shareListing } from "@/lib/share";
+import { scanDateLabel } from "@/lib/show-windows";
 
 type LoadState =
   | { status: "loading" }
@@ -97,6 +99,7 @@ export function FollowedDetailScreen({
 
   return (
     <Screen>
+      <Stack.Screen options={{ title: label, headerBackTitle: "Back" }} />
       <ScreenBlock>
         <Eyebrow>{kind === "artist" ? "Artist" : "Venue"}</Eyebrow>
         <Title>{label}</Title>
@@ -175,6 +178,7 @@ export function FollowedDetailScreen({
               <ShowRow
                 key={show.id}
                 show={show}
+                kicker={scanDateLabel(show)}
                 trailing={
                   <GoingButton
                     going={going}

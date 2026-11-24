@@ -11,8 +11,7 @@ export function FollowedListAccordion({
   kind,
   items,
   itemType,
-  selectedKey = null,
-  onSelect,
+  onOpen,
   isPending,
   itemError,
   onRemove,
@@ -21,8 +20,7 @@ export function FollowedListAccordion({
   kind: FavoriteShowKind;
   items: readonly FollowedItem[];
   itemType: FollowedItemType;
-  selectedKey?: string | null;
-  onSelect?: (key: string | null) => void;
+  onOpen: (item: FollowedItem) => void;
   isPending: (itemType: FollowedItemType, itemKey: string) => boolean;
   itemError: (itemType: FollowedItemType, itemKey: string) => string | null;
   onRemove: (item: FollowedItem) => void;
@@ -31,21 +29,12 @@ export function FollowedListAccordion({
   const [expanded, setExpanded] = useState(false);
   const plural = kind === "artist" ? "artists" : "venues";
   const title = `Your ${plural} (${items.length})`;
-  const allLabel = kind === "artist" ? "All artists" : "All venues";
-  const selected = items.find((item) => item.item_key === selectedKey) ?? null;
-
-  function choose(key: string | null) {
-    onSelect?.(key);
-    setExpanded(false);
-  }
 
   return (
     <View style={styles.frame}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={
-          selected ? `${title}, filtered to ${selected.item_label}` : title
-        }
+        accessibilityLabel={title}
         accessibilityState={{ expanded }}
         onPress={() => setExpanded((current) => !current)}
         style={({ pressed }) => [styles.header, pressed && styles.headerPressed]}
@@ -57,33 +46,11 @@ export function FollowedListAccordion({
               {expanded ? "⌄" : "›"}
             </Text>
           </View>
-          {selected ? (
-            <Text style={styles.headerFilter} numberOfLines={1}>
-              {selected.item_label}
-            </Text>
-          ) : null}
         </View>
       </Pressable>
 
       {expanded ? (
         <View>
-          {onSelect ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={allLabel}
-              accessibilityState={{ selected: selected === null }}
-              onPress={() => choose(null)}
-              style={({ pressed }) => [
-                styles.allRow,
-                selected === null && styles.rowSelected,
-                pressed && styles.headerPressed,
-              ]}
-            >
-              <Text style={[styles.name, selected === null && styles.nameSelected]}>
-                {allLabel}
-              </Text>
-            </Pressable>
-          ) : null}
           {items.length === 0 && empty ? (
             <View style={styles.empty}>
               <Body>{empty}</Body>
@@ -93,10 +60,9 @@ export function FollowedListAccordion({
             <FollowedAccordionRow
               key={item.item_key}
               item={item}
-              selected={selectedKey === item.item_key}
               busy={isPending(itemType, item.item_key)}
               error={itemError(itemType, item.item_key)}
-              onSelect={onSelect ? () => choose(item.item_key) : undefined}
+              onOpen={() => onOpen(item)}
               onRemove={() => onRemove(item)}
             />
           ))}
@@ -108,50 +74,32 @@ export function FollowedListAccordion({
 
 function FollowedAccordionRow({
   item,
-  selected,
   busy,
   error,
-  onSelect,
+  onOpen,
   onRemove,
 }: {
   item: FollowedItem;
-  selected: boolean;
   busy: boolean;
   error: string | null;
-  onSelect?: () => void;
+  onOpen: () => void;
   onRemove: () => void;
 }) {
   const [confirming, setConfirming] = useState(false);
 
   return (
-    <View style={[styles.item, selected && styles.rowSelected]}>
+    <View style={styles.item}>
       <View style={styles.itemRow}>
-        {onSelect ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={
-              selected
-                ? `Showing upcoming shows for ${item.item_label}`
-                : `Show upcoming shows for ${item.item_label}`
-            }
-            accessibilityState={{ selected }}
-            onPress={onSelect}
-            style={({ pressed }) => [styles.nameButton, pressed && styles.headerPressed]}
-          >
-            <Text
-              numberOfLines={1}
-              style={[styles.name, selected && styles.nameSelected]}
-            >
-              {item.item_label}
-            </Text>
-          </Pressable>
-        ) : (
-          <View style={styles.nameButton}>
-            <Text numberOfLines={1} style={styles.name}>
-              {item.item_label}
-            </Text>
-          </View>
-        )}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Upcoming shows for ${item.item_label}`}
+          onPress={onOpen}
+          style={({ pressed }) => [styles.nameButton, pressed && styles.headerPressed]}
+        >
+          <Text numberOfLines={1} style={styles.name}>
+            {item.item_label}
+          </Text>
+        </Pressable>
         {confirming ? null : (
           <Pressable
             accessibilityRole="button"
@@ -227,11 +175,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.semibold,
     fontSize: 16,
   },
-  headerFilter: {
-    color: colors.accent,
-    fontFamily: fonts.medium,
-    fontSize: 13,
-  },
   chevron: {
     width: 28,
     textAlign: "center",
@@ -240,22 +183,12 @@ const styles = StyleSheet.create({
     fontSize: 22,
     lineHeight: 24,
   },
-  allRow: {
-    minHeight: 40,
-    paddingHorizontal: 14,
-    borderTopWidth: 1,
-    borderTopColor: colors.line,
-    justifyContent: "center",
-  },
   item: {
     borderTopWidth: 1,
     borderTopColor: colors.line,
     paddingHorizontal: 14,
     paddingVertical: 2,
     gap: 4,
-  },
-  rowSelected: {
-    backgroundColor: colors.panelHover,
   },
   itemRow: {
     minHeight: 40,
@@ -272,10 +205,6 @@ const styles = StyleSheet.create({
     color: colors.foreground,
     fontFamily: fonts.medium,
     fontSize: 15,
-  },
-  nameSelected: {
-    color: colors.accent,
-    fontFamily: fonts.semibold,
   },
   removeButton: {
     minHeight: 36,
